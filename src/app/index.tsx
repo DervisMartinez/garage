@@ -1,98 +1,102 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
+import { useMyMoto } from '@/presentation/context/MotoContext';
+import { SetupScreen } from '@/presentation/screens/SetupScreen';
+import { MainApp } from '@/presentation/screens/MainApp';
+import { AuthScreen } from '@/presentation/screens/AuthScreen';
+import { supabase } from '@/data/supabaseClient';
+import { Session } from '@supabase/supabase-js';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+const PreloadScreen = () => {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.2, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      ])
+    ).start();
+
+    Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+  }, []);
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <View style={styles.preloadContainer}>
+      <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', transform: [{ scale: pulseAnim }] }}>
+        <View style={styles.iconCircle}>
+          <MaterialCommunityIcons name="engine" size={60} color="#8ca9ff" />
+        </View>
+      </Animated.View>
+      <Animated.Text style={[styles.preloadText, { opacity: fadeAnim }]}>Arrancando motores...</Animated.Text>
+    </View>
   );
-}
+};
 
 export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+  const { myMoto, isLoaded, isAddingMoto } = useMyMoto();
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+  // Mantenemos un mínimo de tiempo para que se aprecie la animación (opcional, 1.5s)
+  const [minWaitDone, setMinWaitDone] = useState(false);
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    setTimeout(() => {
+      setMinWaitDone(true);
+    }, 1500);
+  }, []);
+
+  if (authLoading || !isLoaded || !minWaitDone) {
+    return <PreloadScreen />;
+  }
+
+  if (!session) {
+    return <AuthScreen />;
+  }
+
+  if (!myMoto || isAddingMoto) {
+    return <SetupScreen />;
+  }
+
+  return <MainApp />;
 }
 
 const styles = StyleSheet.create({
-  container: {
+  preloadContainer: {
     flex: 1,
+    backgroundColor: '#111319',
     justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: 'center'
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
+  iconCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#1d2025',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    alignItems: 'center',
+    shadowColor: '#4169E1',
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10
   },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  preloadText: {
+    color: '#c4cce0',
+    marginTop: 30,
+    fontSize: 16,
+    fontFamily: 'Montserrat_600SemiBold',
+    letterSpacing: 1
+  }
 });

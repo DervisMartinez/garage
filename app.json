@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "moto-app",
+    "name": "GARAGE",
     "slug": "moto-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,35 +8,47 @@
     "scheme": "motoapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.dervis.garage",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "GARAGE necesita acceso a tus fotos para guardar y actualizar tu foto de perfil y documentos de la moto.",
+        "NSCameraUsageDescription": "GARAGE necesita acceso a tu cámara para tomar fotos de tu moto y documentos."
+      }
     },
     "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
+      "package": "com.dervis.garage",
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static"
     },
     "plugins": [
       "expo-router",
+      "expo-splash-screen",
       [
-        "expo-splash-screen",
+        "expo-image-picker",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "photosPermission": "GARAGE necesita acceso a tus fotos para guardar y actualizar tu foto de perfil y documentos de la moto.",
+          "cameraPermission": "GARAGE necesita acceso a tu cámara para tomar fotos de tu moto y documentos."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "GARAGE necesita acceso a tu cámara para escanear el código QR y fotografiar tus documentos."
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "927c0e77-f0e7-4154-9eae-67448fc7c4d3"
+      }
     }
   }
 }
