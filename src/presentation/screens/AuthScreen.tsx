@@ -78,12 +78,12 @@ export const AuthScreen = () => {
   };
 
   // Determine gradient colors based on theme so it blends perfectly
-  const bgTop = mode === 'dark' ? 'rgba(17,19,25,0.1)' : 'rgba(245,245,247,0.1)';
-  const bgMid = mode === 'dark' ? 'rgba(17,19,25,0.8)' : 'rgba(245,245,247,0.85)';
-  const bgBottom = mode === 'dark' ? 'rgba(17,19,25,1)' : 'rgba(245,245,247,1)';
+  const bgTop = mode === 'dark' ? 'rgba(10,12,18,0.35)' : 'rgba(255,255,255,0.35)';
+  const bgMid = mode === 'dark' ? 'rgba(10,12,18,0.88)' : 'rgba(255,255,255,0.92)';
+  const bgBottom = mode === 'dark' ? 'rgba(10,12,18,0.98)' : 'rgba(255,255,255,0.98)';
 
   return (
-    <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ImageBackground 
         source={require('../../../assets/images/fondo_login.jpg')} 
         style={{ flex: 1, width: '100%', height: '100%' }}
@@ -94,98 +94,138 @@ export const AuthScreen = () => {
           style={{ flex: 1 }}
         >
           <ScrollView 
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: 24, paddingBottom: 50 }} 
+            style={{ flex: 1, width: '100%' }}
+            contentContainerStyle={{ 
+              flexGrow: 1, 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              paddingHorizontal: 20, 
+              paddingTop: 30,
+              paddingBottom: 40,
+            }} 
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={{ alignItems: 'center', marginBottom: 30, marginTop: 100 }}>
-              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surfaceContainer, justifyContent: 'center', alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10 }}>
-                <MaterialCommunityIcons name="engine" size={40} color={colors.primary} />
-              </View>
-              <Text style={{ fontSize: 36, fontFamily: F.extrabold, color: colors.onSurface, letterSpacing: -1 }}>GARAGE</Text>
-              <Text style={{ fontSize: 14, fontFamily: F.medium, color: colors.onSurfaceVariant, marginTop: 4 }}>
-                {isLogin ? 'Tu garaje inteligente en la nube' : 'Crea tu garaje inteligente'}
-              </Text>
-            </View>
-
-            <View style={{ gap: 12 }}>
+            <View style={{ width: '100%', maxWidth: 390, alignSelf: 'center' }}>
               
-              {!isLogin && (
-                <>
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <TextInput 
-                      style={[styles.input, { flex: 1, backgroundColor: colors.surfaceContainer, borderColor: colors.surfaceContainerHigh, color: colors.onSurface, fontFamily: F.semibold }]} 
-                      placeholder="Nombre" 
-                      placeholderTextColor={colors.onSurfaceVariant} 
-                      value={firstName} 
-                      onChangeText={setFirstName} 
-                    />
-                    <TextInput 
-                      style={[styles.input, { flex: 1, backgroundColor: colors.surfaceContainer, borderColor: colors.surfaceContainerHigh, color: colors.onSurface, fontFamily: F.semibold }]} 
-                      placeholder="Apellido" 
-                      placeholderTextColor={colors.onSurfaceVariant} 
-                      value={lastName} 
-                      onChangeText={setLastName} 
-                    />
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <TextInput 
-                      style={[styles.input, { flex: 1, backgroundColor: colors.surfaceContainer, borderColor: colors.surfaceContainerHigh, color: colors.onSurface, fontFamily: F.semibold }]} 
-                      placeholder="País" 
-                      placeholderTextColor={colors.onSurfaceVariant} 
-                      value={country} 
-                      onChangeText={setCountry} 
-                    />
-                    <TextInput 
-                      style={[styles.input, { flex: 1, backgroundColor: colors.surfaceContainer, borderColor: colors.surfaceContainerHigh, color: colors.onSurface, fontFamily: F.semibold }]} 
-                      placeholder="Estado/Provincia" 
-                      placeholderTextColor={colors.onSurfaceVariant} 
-                      value={state} 
-                      onChangeText={setState} 
-                    />
-                  </View>
-                </>
-              )}
+              {/* LOGO & HEADER */}
+              <View style={{ alignItems: 'center', marginBottom: 26 }}>
+                <View style={[styles.logoBadge, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant }]}>
+                  <MaterialCommunityIcons name="engine" size={38} color={colors.primary} />
+                </View>
+                <Text style={{ fontSize: 34, fontFamily: F.extrabold, color: colors.onSurface, letterSpacing: -0.8 }}>
+                  GARAGE
+                </Text>
+                <Text style={{ fontSize: 13, fontFamily: F.medium, color: colors.onSurfaceVariant, marginTop: 4, textAlign: 'center' }}>
+                  {isLogin ? 'Tu garaje inteligente en la nube' : 'Crea tu garaje inteligente'}
+                </Text>
+              </View>
 
-              <TextInput 
-                style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.surfaceContainerHigh, color: colors.onSurface, fontFamily: F.semibold }]} 
-                placeholder="Correo Electrónico" 
-                placeholderTextColor={colors.onSurfaceVariant} 
-                value={email} 
-                onChangeText={setEmail} 
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
+              {/* FORM FIELDS */}
+              <View style={{ gap: 12, width: '100%' }}>
+                
+                {!isLogin && (
+                  <>
+                    <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <TextInput 
+                          style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
+                          placeholder="Nombre" 
+                          placeholderTextColor={colors.onSurfaceVariant} 
+                          value={firstName} 
+                          onChangeText={setFirstName} 
+                        />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <TextInput 
+                          style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
+                          placeholder="Apellido" 
+                          placeholderTextColor={colors.onSurfaceVariant} 
+                          value={lastName} 
+                          onChangeText={setLastName} 
+                        />
+                      </View>
+                    </View>
 
-              <View style={[styles.input, { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainer, borderColor: colors.surfaceContainerHigh, padding: 0, paddingHorizontal: 16 }]}>
+                    <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <TextInput 
+                          style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
+                          placeholder="País" 
+                          placeholderTextColor={colors.onSurfaceVariant} 
+                          value={country} 
+                          onChangeText={setCountry} 
+                        />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <TextInput 
+                          style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
+                          placeholder="Estado / Prov." 
+                          placeholderTextColor={colors.onSurfaceVariant} 
+                          value={state} 
+                          onChangeText={setState} 
+                        />
+                      </View>
+                    </View>
+                  </>
+                )}
+
                 <TextInput 
-                  style={{ flex: 1, paddingVertical: 16, color: colors.onSurface, fontFamily: F.semibold, fontSize: 16 }} 
-                  placeholder="Contraseña" 
+                  style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
+                  placeholder="Correo Electrónico" 
                   placeholderTextColor={colors.onSurfaceVariant} 
-                  value={password} 
-                  onChangeText={setPassword} 
-                  secureTextEntry={!showPassword}
+                  value={email} 
+                  onChangeText={setEmail} 
                   autoCapitalize="none"
-                  autoCorrect={false}
+                  keyboardType="email-address"
                 />
+
+                <View style={[styles.input, { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, paddingHorizontal: 16, paddingVertical: 0 }]}>
+                  <TextInput 
+                    style={{ flex: 1, height: 50, color: colors.onSurface, fontFamily: F.semibold, fontSize: 15 }} 
+                    placeholder="Contraseña" 
+                    placeholderTextColor={colors.onSurfaceVariant} 
+                    value={password} 
+                    onChangeText={setPassword} 
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity 
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    style={{ padding: 4 }}
+                  >
+                    <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={22} color={showPassword ? colors.primary : colors.onSurfaceVariant} />
+                  </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity 
-                  onPress={() => setShowPassword(!showPassword)}
-                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                  style={{ padding: 6 }}
+                  style={[styles.button, { backgroundColor: colors.primary }]} 
+                  onPress={handleAuth} 
+                  disabled={loading}
+                  activeOpacity={0.85}
                 >
-                  <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={24} color={showPassword ? colors.primary : colors.onSurfaceVariant} />
+                  {loading ? (
+                    <ActivityIndicator color={colors.onPrimaryContainer} />
+                  ) : (
+                    <Text style={[styles.buttonText, { color: colors.onPrimaryContainer, fontFamily: F.extrabold }]}>
+                      {isLogin ? 'INGRESAR' : 'REGISTRARSE'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={() => setIsLogin(!isLogin)} 
+                  style={{ alignItems: 'center', paddingVertical: 12, marginTop: 4 }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: colors.primary, fontFamily: F.bold, fontSize: 13 }}>
+                    {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Ingresa aquí'}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleAuth} disabled={loading}>
-                {loading ? <ActivityIndicator color={colors.onPrimaryContainer} /> : <Text style={[styles.buttonText, { color: colors.onPrimaryContainer, fontFamily: F.extrabold }]}>{isLogin ? 'INGRESAR' : 'REGISTRARSE'}</Text>}
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setIsLogin(!isLogin)} style={{alignItems: 'center', marginVertical: 8}}>
-                <Text style={{color: colors.primary, fontFamily: F.bold, fontSize: 13}}>
-                  {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Ingresa aquí'}
-                </Text>
-              </TouchableOpacity>
             </View>
           </ScrollView>
         </LinearGradient>
@@ -195,7 +235,44 @@ export const AuthScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  input: { borderWidth: 1, borderRadius: 12, padding: 16, fontSize: 16 },
-  button: { padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-  buttonText: { fontSize: 16, letterSpacing: 1 },
+  logoBadge: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+    borderWidth: 0.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  input: {
+    height: 52,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    width: '100%',
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  button: {
+    height: 54,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    shadowColor: '#0A84FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  buttonText: {
+    fontSize: 15,
+    letterSpacing: 0.8,
+  },
 });

@@ -2,7 +2,7 @@
   "expo": {
     "name": "GARAGE",
     "slug": "moto-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "motoapp",
@@ -10,6 +10,7 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.dervis.garage",
+      "buildNumber": "2",
       "supportsTablet": false,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "GARAGE necesita acceso a tus fotos para guardar y actualizar tu foto de perfil y documentos de la moto.",
@@ -18,6 +19,7 @@
     },
     "android": {
       "package": "com.dervis.garage",
+      "versionCode": 2,
       "predictiveBackGestureEnabled": false
     },
     "web": {
