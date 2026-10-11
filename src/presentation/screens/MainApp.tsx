@@ -58,11 +58,21 @@ export const MainApp = () => {
 
   // Animated values for raised bubble effect (as seen in user design reference)
   const tabAnims = useRef(
-    tabs.map(t => ({
-      scale: new Animated.Value(t.id === 'moto' ? 1.15 : 1),
-      translateY: new Animated.Value(t.id === 'moto' ? -8 : 0),
+    [0, 1, 2, 3, 4].map(i => ({
+      scale: new Animated.Value(i === 0 ? 1.15 : 1),
+      translateY: new Animated.Value(i === 0 ? -8 : 0),
     }))
-  ).current;
+  );
+
+  const getTabAnim = (index: number) => {
+    if (!tabAnims.current[index]) {
+      tabAnims.current[index] = {
+        scale: new Animated.Value(index === 0 ? 1.15 : 1),
+        translateY: new Animated.Value(index === 0 ? -8 : 0),
+      };
+    }
+    return tabAnims.current[index];
+  };
 
   const plusScale = useRef(new Animated.Value(1)).current;
 
@@ -72,14 +82,15 @@ export const MainApp = () => {
     // Spring elevate the active tab and lower inactive tabs
     tabs.forEach((_, i) => {
       const isTarget = i === index;
+      const anim = getTabAnim(i);
       Animated.parallel([
-        Animated.spring(tabAnims[i].scale, {
+        Animated.spring(anim.scale, {
           toValue: isTarget ? 1.18 : 1,
           friction: 5,
           tension: 100,
           useNativeDriver: true,
         }),
-        Animated.spring(tabAnims[i].translateY, {
+        Animated.spring(anim.translateY, {
           toValue: isTarget ? -8 : 0,
           friction: 5,
           tension: 90,
@@ -160,7 +171,7 @@ export const MainApp = () => {
         {(() => {
           const item = tabs[0];
           const isActive = activeTab === item.id;
-          const { scale, translateY } = tabAnims[0];
+          const { scale, translateY } = getTabAnim(0);
           return (
             <TouchableOpacity 
               key={item.id} 
@@ -190,7 +201,7 @@ export const MainApp = () => {
         {(() => {
           const item = tabs[1];
           const isActive = activeTab === item.id;
-          const { scale, translateY } = tabAnims[1];
+          const { scale, translateY } = getTabAnim(1);
           return (
             <TouchableOpacity 
               key={item.id} 
@@ -236,7 +247,7 @@ export const MainApp = () => {
         {(() => {
           const item = tabs[2];
           const isActive = activeTab === item.id;
-          const { scale, translateY } = tabAnims[2];
+          const { scale, translateY } = getTabAnim(2);
           return (
             <TouchableOpacity 
               key={item.id} 
@@ -266,7 +277,7 @@ export const MainApp = () => {
         {(() => {
           const item = tabs[3];
           const isActive = activeTab === item.id;
-          const { scale, translateY } = tabAnims[3];
+          const { scale, translateY } = getTabAnim(3);
           return (
             <TouchableOpacity 
               key={item.id} 
@@ -296,7 +307,7 @@ export const MainApp = () => {
         {(() => {
           const item = tabs[4];
           const isActive = activeTab === item.id;
-          const { scale, translateY } = tabAnims[4];
+          const { scale, translateY } = getTabAnim(4);
           return (
             <TouchableOpacity 
               key={item.id} 
