@@ -202,9 +202,15 @@ Tu Garaje Inteligente en Ruta
 
     const encodedBody = encodeURIComponent(emailBody);
 
-    Linking.openURL(`mailto:${targetEmail}?subject=${subject}&body=${encodedBody}`).catch(() => {
-      Alert.alert('Error', 'No se pudo abrir el gestor de correo en tu dispositivo.');
-    });
+    if (Platform.OS === 'web') {
+      // En la web (navegador), abrir directamente la ventana de redacción de Gmail o cliente de correo
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${subject}&body=${encodedBody}`;
+      window.open(gmailUrl, '_blank');
+    } else {
+      Linking.openURL(`mailto:${targetEmail}?subject=${subject}&body=${encodedBody}`).catch(() => {
+        Alert.alert('Error', 'No se pudo abrir el gestor de correo en tu dispositivo.');
+      });
+    }
   };
 
   const sendWhatsAppSOS = () => {
