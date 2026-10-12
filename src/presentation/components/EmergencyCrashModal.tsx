@@ -146,20 +146,64 @@ export const EmergencyCrashModal: React.FC<Props> = ({ visible, onClose, manualT
   };
 
   const sendEmergencyEmail = () => {
-    const targetEmail = emergencyEmail || 'emergencia@familiar.com';
-    const motoInfo = myMoto ? `${myMoto.brand} ${myMoto.model} (Placa: ${myMoto.plate || 'S/N'})` : 'Moto';
-    const subject = encodeURIComponent(`🚨 ALERTA SOS: Posible Accidente - ${pilotName}`);
-    const body = encodeURIComponent(
-      `¡ALERTA DE EMERGENCIA!\n\n` +
-      `Se ha detectado un impacto o solicitud de auxilio para el piloto: ${pilotName}.\n` +
-      `Tipo de Sangre: ${bloodType}\n` +
-      `Vehículo: ${motoInfo}\n\n` +
-      `📍 UBICACIÓN GPS EN TIEMPO REAL:\n${mapsUrl}\n\n` +
-      `Por favor comunícate de inmediato con las autoridades o servicios médicos locales.`
-    );
+    const targetEmail = emergencyEmail || '';
+    if (!targetEmail) {
+      Alert.alert(
+        'Correo no configurado',
+        'Por favor ingresa primero el Correo Familiar Designado en la pestaña Perfil para enviar la alerta.',
+        [{ text: 'Entendido' }]
+      );
+      return;
+    }
 
-    Linking.openURL(`mailto:${targetEmail}?subject=${subject}&body=${body}`).catch(() => {
-      Alert.alert('Error', 'No se pudo abrir el cliente de correo en tu dispositivo.');
+    const motoInfo = myMoto 
+      ? `${myMoto.brand.toUpperCase()} ${myMoto.model.toUpperCase()} • Placa: ${myMoto.plate || 'S/N'}` 
+      : 'Vehículo en Garaje';
+    
+    const subject = encodeURIComponent(`🚨 [GARAGE SOS] ALERTA DE ACCIDENTE / AUXILIO - Piloto: ${pilotName}`);
+    
+    const emailBody = 
+`=========================================
+      🛡️ GARAGE TELEMETRY & RESCUE 🛡️
+   ALERTA DE EMERGENCIA & AUXILIO EN RUTA
+=========================================
+
+⚠️ ATENCIÓN: El sistema GARAGE detectó un impacto severo o desaceleración brusca (>3.5G) asociada al piloto registrado.
+
+👤 DATOS VITALES DEL PILOTO:
+-----------------------------------------
+• Nombre del Piloto: ${pilotName}
+• Tipo de Sangre: ${bloodType}
+• Contacto Familiar Registrado: ${emergencyContact || 'Familiar'}
+• Teléfono de Emergencia: ${emergencyPhone || 'No especificado'}
+
+🏍️ VEHÍCULO EN RUTA:
+-----------------------------------------
+• Modelo: ${motoInfo}
+• Odómetro Actual: ${myMoto?.currentOdometer || 0} km
+
+📍 UBICACIÓN GPS EN TIEMPO REAL:
+-----------------------------------------
+${location ? `Coordenadas: Lat ${location.lat.toFixed(5)}, Lng ${location.lng.toFixed(5)}` : 'Calculando señal GPS satelital...'}
+
+🗺️ VER UBICACIÓN EXACTA EN GOOGLE MAPS:
+${mapsUrl}
+
+-----------------------------------------
+📞 ACCIONES RECOMENDADAS:
+1. Intente contactar de inmediato al piloto a su teléfono móvil.
+2. Si no responde, comuníquese con el 911 / 171 indicando las coordenadas GPS proporcionadas arriba.
+3. Comparta la ficha médica (Tipo de Sangre: ${bloodType}) con los servicios de paramédicos o rescate.
+
+=========================================
+Enviado automáticamente por GARAGE APP
+Tu Garaje Inteligente en Ruta
+=========================================`;
+
+    const encodedBody = encodeURIComponent(emailBody);
+
+    Linking.openURL(`mailto:${targetEmail}?subject=${subject}&body=${encodedBody}`).catch(() => {
+      Alert.alert('Error', 'No se pudo abrir el gestor de correo en tu dispositivo.');
     });
   };
 
