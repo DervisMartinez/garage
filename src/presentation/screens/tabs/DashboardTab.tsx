@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Dimensions, Switch } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMyMoto } from '../../context/MotoContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -10,13 +10,40 @@ import { MOTO_CATALOG } from '../../../data/catalog';
 import { TutorialModal } from '../../components/TutorialModal';
 import { TechnicalSheetModal } from '../../components/TechnicalSheetModal';
 import { VehicleStatsAndCalendarModal } from '../../components/VehicleStatsAndCalendarModal';
+import { EmergencyCrashModal } from '../../components/EmergencyCrashModal';
+import { useCrashDetection } from '../../hooks/useCrashDetection';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let hasPromptedOdoThisSession = false;
 
 export const DashboardTab = () => {
-const { myMoto, records, addRecord, updateMoto } = useMyMoto();
+  const { myMoto, motos, selectMoto, records, addRecord, updateMoto, setIsAddingMoto } = useMyMoto();
+  const { 
+    isEnabled: isCrashEnabled, 
+    toggleCrashDetection, 
+    crashTriggered, 
+    isManualTrigger, 
+    triggerManualSOS, 
+    simulateTestCrash, 
+    dismissCrashAlert 
+  } = useCrashDetection();
+
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const carouselScrollRef = useRef<ScrollView>(null);
+  const screenWidth = Dimensions.get('window').width;
+  const slideWidth = screenWidth - 32;
+
+  // Sincronizar índice del carrusel con myMoto activo
+  React.useEffect(() => {
+    if (motos && myMoto) {
+      const idx = motos.findIndex(m => m.id === myMoto.id);
+      if (idx !== -1 && idx !== activeSlideIndex) {
+        setActiveSlideIndex(idx);
+        carouselScrollRef.current?.scrollTo({ x: idx * slideWidth, animated: true });
+      }
+    }
+  }, [myMoto?.id, motos]);
 
   React.useEffect(() => {
     if (!myMoto) return;
@@ -123,15 +150,38 @@ const { myMoto, records, addRecord, updateMoto } = useMyMoto();
   if (!myMoto) return null;
   const specs = getMotoSpecs(myMoto.brand, myMoto.model);
 
-  // Check for components requiring attention (< 15% life)
-  const lowComponents = [
+  // Check for components requiring attention and vehicle overall status
+  const componentsList = [
     { name: 'Aceite', p: oilP },
     { name: 'Caucho Del.', p: tiresFP },
     { name: 'Caucho Tras.', p: tiresRP },
     { name: 'Frenos Del.', p: brakesFP },
     { name: 'Frenos Tras.', p: brakesRP },
     { name: 'Cadena', p: chainP },
-  ].filter(c => c.p < 15);
+    { name: 'Filtro Aire', p: airP },
+    { name: 'Filtro Gas', p: fuelP },
+    { name: 'Bujías', p: sparkP },
+  ];
+
+  const lowComponents = componentsList.filter(c => c.p < 15);
+
+  // Cálculo dinámico de los 4 estados reales del vehículo: Óptimo, Regular, En Mantenimiento, Atención
+  const vehicleStatus = useMemo(() => {
+    const minPercent = Math.min(oilP, tiresFP, tiresRP, brakesFP, brakesRP, chainP, airP, fuelP, sparkP);
+    const criticalCount = componentsList.filter(c => c.p < 15).length;
+    const warningCount = componentsList.filter(c => c.p < 30).length;
+
+    if (minPercent < 15 || criticalCount >= 2) {
+      return { label: '● Atención', color: '#FF453A', bg: 'rgba(255, 69, 58, 0.18)', desc: 'Requiere servicio urgente' };
+    }
+    if (minPercent < 30 || warningCount >= 1) {
+      return { label: '● En Mantenimiento', color: '#FF9500', bg: 'rgba(255, 149, 0, 0.18)', desc: 'Servicio programado próximo' };
+    }
+    if (minPercent < 50) {
+      return { label: '● Regular', color: '#FFD60A', bg: 'rgba(255, 214, 10, 0.18)', desc: 'Desgaste moderado en piezas' };
+    }
+    return { label: '● Óptimo', color: '#30D158', bg: 'rgba(48, 209, 88, 0.18)', desc: 'Todos los sistemas en buen estado' };
+  }, [oilP, tiresFP, tiresRP, brakesFP, brakesRP, chainP, airP, fuelP, sparkP]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
@@ -144,6 +194,15 @@ const { myMoto, records, addRecord, updateMoto } = useMyMoto();
           <Text style={[styles.headerTitle, { color: colors.onSurface, fontFamily: F.bold }]}>GARAGE</Text>
         </View>
         <View style={styles.headerRight}>
+          {/* Botón SOS de Emergencia */}
+          <TouchableOpacity 
+            style={[styles.iconButton, { backgroundColor: 'rgba(255, 69, 58, 0.18)', borderWidth: 1, borderColor: '#FF453A' }]} 
+            onPress={triggerManualSOS}
+            accessibilityLabel="Activar SOS de Emergencia"
+          >
+            <MaterialIcons name="emergency" size={20} color="#FF453A" />
+          </TouchableOpacity>
+
           <TouchableOpacity 
             style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]} 
             onPress={() => {
@@ -169,6 +228,50 @@ const { myMoto, records, addRecord, updateMoto } = useMyMoto();
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         
+        {/* BANNER DETECTOR DE IMPACTO & SEGURIDAD SOS */}
+        <View style={{
+          backgroundColor: isCrashEnabled ? (mode === 'dark' ? '#0F231D' : '#E8F5E9') : (mode === 'dark' ? '#2A1B1B' : '#FFEBEE'),
+          marginHorizontal: 16,
+          marginTop: 12,
+          padding: 12,
+          borderRadius: 14,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderWidth: 0.5,
+          borderColor: isCrashEnabled ? '#30D158' : '#FF453A'
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+            <MaterialCommunityIcons 
+              name={isCrashEnabled ? "shield-check" : "shield-alert"} 
+              size={24} 
+              color={isCrashEnabled ? '#30D158' : '#FF453A'} 
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 12 }}>
+                Detector de Caídas & SOS en Ruta
+              </Text>
+              <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 10 }}>
+                {isCrashEnabled ? 'Acelerómetro activo (>3.5G). Aviso GPS por Correo/Tel.' : 'Monitoreo de impacto desactivado'}
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity 
+              onPress={simulateTestCrash}
+              style={{ backgroundColor: colors.surfaceContainerHigh, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}
+            >
+              <Text style={{ fontFamily: F.bold, fontSize: 10, color: colors.primary }}>PROBAR</Text>
+            </TouchableOpacity>
+            <Switch
+              value={isCrashEnabled}
+              onValueChange={toggleCrashDetection}
+              trackColor={{ false: '#767577', true: '#30D158' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        </View>
+
         {/* REMINDERS BANNER */}
         {lowComponents.length > 0 && (
           <View style={{ backgroundColor: colors.errorContainer, margin: 16, marginBottom: 0, padding: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}>
@@ -182,7 +285,7 @@ const { myMoto, records, addRecord, updateMoto } = useMyMoto();
           </View>
         )}
 
-        {/* HERO SECTION CON ESTUDIO DEGRADADO AUTOMOTRIZ (Estilo Referencia) */}
+        {/* HERO SECTION CON ESTUDIO DEGRADADO AUTOMOTRIZ & CARRUSEL DESLIZABLE */}
         <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
           
           {/* Tagline superior automotriz */}
@@ -191,62 +294,105 @@ const { myMoto, records, addRecord, updateMoto } = useMyMoto();
               Tu Garaje. <Text style={{ color: colors.primary }}>Inteligente en Ruta.</Text>
             </Text>
             <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 12.5, marginTop: 3 }}>
-              Monitorea, gestiona y mantén tu vehículo en óptimas condiciones.
+              Desliza para cambiar de vehículo o toca para ver sus detalles.
             </Text>
           </View>
 
-          {/* Sección de Estudio Automotriz con Degradado Natural Integrado (Sin recuadros) */}
+          {/* Sección de Estudio Automotriz con Degradado Natural Integrado */}
           <LinearGradient
             colors={mode === 'dark' ? [colors.surface, '#0F1A30', '#1A2644', '#0F1A30', colors.surface] : [colors.surface, '#EAEFF7', '#DCE5F2', '#EAEFF7', colors.surface]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={{
               paddingVertical: 14,
-              paddingHorizontal: 8,
+              paddingHorizontal: 0,
               width: '100%',
               alignItems: 'center',
             }}
           >
-            {/* Contenedor de la Imagen con Reflejo y Podium */}
-            <View style={{ width: '100%', height: 180, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-              {myMoto.imageUrl ? (
-                <Image source={{ uri: myMoto.imageUrl }} style={{ width: '92%', height: 160, zIndex: 5 }} resizeMode="contain" />
-              ) : (() => {
-                const catMoto = MOTO_CATALOG.find(m => m.brand === myMoto.brand && m.model === myMoto.model);
-                if (catMoto && catMoto.imageRes) {
-                  return <Image source={catMoto.imageRes} style={{ width: '92%', height: 160, zIndex: 5 }} resizeMode="contain" />;
+            {/* Carrusel Deslizable de Vehículos */}
+            <ScrollView
+              ref={carouselScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              nestedScrollEnabled
+              onMomentumScrollEnd={(e) => {
+                const idx = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
+                if (motos && motos[idx] && motos[idx].id !== myMoto.id) {
+                  setActiveSlideIndex(idx);
+                  selectMoto(motos[idx].id);
+                } else {
+                  setActiveSlideIndex(idx);
                 }
-                return (
-                  <View style={{ width: '100%', height: 160, justifyContent: 'center', alignItems: 'center', zIndex: 5 }}>
-                    <MaterialIcons name="two-wheeler" size={96} color={colors.onSurfaceVariant} />
-                  </View>
-                );
-              })()}
+              }}
+              style={{ width: slideWidth }}
+              contentContainerStyle={{ alignItems: 'center' }}
+            >
+              {motos && motos.length > 0 ? (
+                motos.map((moto, index) => {
+                  const catMoto = MOTO_CATALOG.find(m => m.brand === moto.brand && m.model === moto.model);
+                  return (
+                    <View key={moto.id} style={{ width: slideWidth, height: 180, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                      {moto.imageUrl ? (
+                        <Image source={{ uri: moto.imageUrl }} style={{ width: '92%', height: 160, zIndex: 5 }} resizeMode="contain" />
+                      ) : catMoto?.imageRes ? (
+                        <Image source={catMoto.imageRes} style={{ width: '92%', height: 160, zIndex: 5 }} resizeMode="contain" />
+                      ) : (
+                        <View style={{ width: '100%', height: 160, justifyContent: 'center', alignItems: 'center', zIndex: 5 }}>
+                          <MaterialIcons name="two-wheeler" size={96} color={colors.onSurfaceVariant} />
+                        </View>
+                      )}
 
-              {/* Spotlight Glow de suelo */}
-              <View style={[styles.podiumGlow, { backgroundColor: mode === 'dark' ? 'rgba(10, 132, 255, 0.28)' : 'rgba(0, 122, 255, 0.15)', bottom: 6 }]} />
-              <View style={[styles.podiumRing, { borderColor: mode === 'dark' ? 'rgba(10, 132, 255, 0.35)' : 'rgba(0, 122, 255, 0.2)', bottom: -4 }]}>
-                <View style={[styles.podiumInnerRing, { borderColor: mode === 'dark' ? 'rgba(10, 132, 255, 0.2)' : 'rgba(0, 122, 255, 0.12)' }]} />
-              </View>
-            </View>
+                      {/* Spotlight Glow de suelo */}
+                      <View style={[styles.podiumGlow, { backgroundColor: mode === 'dark' ? 'rgba(10, 132, 255, 0.28)' : 'rgba(0, 122, 255, 0.15)', bottom: 6 }]} />
+                      <View style={[styles.podiumRing, { borderColor: mode === 'dark' ? 'rgba(10, 132, 255, 0.35)' : 'rgba(0, 122, 255, 0.2)', bottom: -4 }]}>
+                        <View style={[styles.podiumInnerRing, { borderColor: mode === 'dark' ? 'rgba(10, 132, 255, 0.2)' : 'rgba(0, 122, 255, 0.12)' }]} />
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={{ width: slideWidth, height: 180, justifyContent: 'center', alignItems: 'center' }}>
+                  <MaterialIcons name="two-wheeler" size={96} color={colors.onSurfaceVariant} />
+                </View>
+              )}
+            </ScrollView>
 
-            {/* Puntos de Carrusel Sutiles */}
-            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginVertical: 8 }}>
-              <View style={{ width: 16, height: 4, borderRadius: 2, backgroundColor: colors.primary }} />
-              <View style={{ width: 6, height: 4, borderRadius: 2, backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)' }} />
-              <View style={{ width: 6, height: 4, borderRadius: 2, backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)' }} />
+            {/* Puntos de Carrusel Deslizables e Interactivos */}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginVertical: 8 }}>
+              {motos && motos.length > 1 ? (
+                motos.map((m, idx) => (
+                  <TouchableOpacity
+                    key={m.id}
+                    onPress={() => {
+                      setActiveSlideIndex(idx);
+                      selectMoto(m.id);
+                      carouselScrollRef.current?.scrollTo({ x: idx * slideWidth, animated: true });
+                    }}
+                    style={{
+                      width: activeSlideIndex === idx ? 18 : 6,
+                      height: 5,
+                      borderRadius: 2.5,
+                      backgroundColor: activeSlideIndex === idx ? colors.primary : (mode === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)')
+                    }}
+                  />
+                ))
+              ) : (
+                <View style={{ width: 18, height: 5, borderRadius: 2.5, backgroundColor: colors.primary }} />
+              )}
             </View>
 
             {/* Barra de Datos del Vehículo Integrada */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingTop: 8, paddingHorizontal: 4 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingTop: 8, paddingHorizontal: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 18 }}>
                   {myMoto.brand} {myMoto.model}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <View style={{ backgroundColor: 'rgba(48,209,88,0.18)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                    <Text style={{ fontFamily: F.bold, color: '#30D158', fontSize: 11 }}>
-                      {lowComponents.length === 0 ? '● Óptimo' : '● Atención'}
+                  <View style={{ backgroundColor: vehicleStatus.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                    <Text style={{ fontFamily: F.bold, color: vehicleStatus.color, fontSize: 11 }}>
+                      {vehicleStatus.label}
                     </Text>
                   </View>
                   <Text style={{ fontFamily: F.semibold, color: colors.onSurfaceVariant, fontSize: 12 }}>
@@ -605,6 +751,11 @@ const { myMoto, records, addRecord, updateMoto } = useMyMoto();
         visible={statsCalVisible} 
         onClose={() => setStatsCalVisible(false)} 
         initialTab={statsCalInitialTab}
+      />
+      <EmergencyCrashModal
+        visible={crashTriggered}
+        onClose={dismissCrashAlert}
+        manualTrigger={isManualTrigger}
       />
     </SafeAreaView>
   );

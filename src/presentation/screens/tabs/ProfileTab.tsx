@@ -39,6 +39,7 @@ export const ProfileTab = () => {
   const [bloodType, setBloodType] = useState('O+');
   const [emergencyContact, setEmergencyContact] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [emergencyEmail, setEmergencyEmail] = useState('');
 
   const [motoYear, setMotoYear] = useState('');
   const [showTutorial, setShowTutorial] = useState(false);
@@ -70,6 +71,7 @@ export const ProfileTab = () => {
           if (p.blood_type) setBloodType(p.blood_type);
           if (p.emergency_contact_name) setEmergencyContact(p.emergency_contact_name);
           if (p.emergency_contact_phone) setEmergencyPhone(p.emergency_contact_phone);
+          if (p.emergency_email) setEmergencyEmail(p.emergency_email);
         } catch (e) {}
       }
     });
@@ -87,6 +89,7 @@ export const ProfileTab = () => {
         if (meta.blood_type) setBloodType(meta.blood_type);
         if (meta.emergency_contact_name) setEmergencyContact(meta.emergency_contact_name);
         if (meta.emergency_contact_phone) setEmergencyPhone(meta.emergency_contact_phone);
+        if (meta.emergency_email) setEmergencyEmail(meta.emergency_email);
 
         if (meta.avatar_url) {
           setLocalAvatarUri(meta.avatar_url);
@@ -184,6 +187,7 @@ export const ProfileTab = () => {
         blood_type: bloodType,
         emergency_contact_name: emergencyContact.trim(),
         emergency_contact_phone: emergencyPhone.trim(),
+        emergency_email: emergencyEmail.trim(),
       };
 
       // 1. Persist locally to device storage immediately
@@ -381,6 +385,19 @@ export const ProfileTab = () => {
                   placeholder="+58 424..."
                   placeholderTextColor={colors.onSurfaceVariant}
                   keyboardType="phone-pad"
+                />
+              </View>
+
+              <View>
+                <Text style={[styles.inputLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>Correo Familiar Designado (Aviso GPS / SOS)</Text>
+                <TextInput 
+                  style={[styles.inputField, { backgroundColor: colors.surfaceContainer, color: colors.onSurface, borderColor: colors.outlineVariant, fontFamily: F.medium }]} 
+                  value={emergencyEmail}
+                  onChangeText={setEmergencyEmail}
+                  placeholder="familiar@correo.com"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
                 />
               </View>
             </View>
