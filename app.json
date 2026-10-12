@@ -14,13 +14,22 @@
       "supportsTablet": false,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "GARAGE necesita acceso a tus fotos para guardar y actualizar tu foto de perfil y documentos de la moto.",
-        "NSCameraUsageDescription": "GARAGE necesita acceso a tu cámara para tomar fotos de tu moto y documentos."
+        "NSCameraUsageDescription": "GARAGE necesita acceso a tu cámara para tomar fotos de tu moto y documentos.",
+        "NSLocationWhenInUseUsageDescription": "GARAGE necesita tu ubicación para compartir tus coordenadas por correo o mensaje en caso de colisión o emergencia.",
+        "NSMotionUsageDescription": "GARAGE utiliza los sensores de movimiento y acelerómetro para detectar posibles caídas o impactos en ruta."
       }
     },
     "android": {
       "package": "com.dervis.garage",
       "versionCode": 2,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "output": "static"
@@ -28,6 +37,12 @@
     "plugins": [
       "expo-router",
       "expo-splash-screen",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "GARAGE necesita tu ubicación para enviar tus coordenadas exactas a tus familiares en emergencias."
+        }
+      ],
       [
         "expo-image-picker",
         {
