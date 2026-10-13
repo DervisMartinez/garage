@@ -185,18 +185,35 @@ export const DashboardTab = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
-      <StatusBar barStyle={colors.statusBar} backgroundColor={colors.surface} />
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor={mode === 'dark' ? '#051838' : '#FF4D00'} 
+      />
       
-      {/* HEADER */}
-      <View style={[styles.header, { borderBottomColor: colors.surfaceContainer }]}>
+      {/* DEGRADADO SUPERIOR DE ALTA PRECISIÓN AUTOMOTRIZ (Referencia Visual Motorsport) */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <LinearGradient
+          colors={
+            mode === 'dark'
+              ? ['#051838', '#0A2B5E', '#10408A', '#0D3169', colors.surface]
+              : ['#FF4D00', '#FF7000', '#FF9200', '#FFB033', colors.surface]
+          }
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 0.60 }}
+          style={{ width: '100%', height: 480 }}
+        />
+      </View>
+      
+      {/* HEADER INTEGRADO */}
+      <View style={[styles.header, { borderBottomColor: 'transparent', backgroundColor: 'transparent' }]}>
         <View style={styles.headerLeft}>
-          <MaterialCommunityIcons name="engine" size={28} color={colors.primary} />
-          <Text style={[styles.headerTitle, { color: colors.onSurface, fontFamily: F.bold }]}>GARAGE</Text>
+          <MaterialCommunityIcons name="engine" size={28} color={mode === 'dark' ? '#00e3fd' : '#FFFFFF'} />
+          <Text style={[styles.headerTitle, { color: '#FFFFFF', fontFamily: F.bold }]}>GARAGE</Text>
         </View>
         <View style={styles.headerRight}>
           {/* Botón SOS de Emergencia */}
           <TouchableOpacity 
-            style={[styles.iconButton, { backgroundColor: 'rgba(255, 69, 58, 0.18)', borderWidth: 1, borderColor: '#FF453A' }]} 
+            style={[styles.iconButton, { backgroundColor: 'rgba(255, 69, 58, 0.25)', borderWidth: 1, borderColor: '#FF453A' }]} 
             onPress={triggerManualSOS}
             accessibilityLabel="Activar SOS de Emergencia"
           >
@@ -204,24 +221,24 @@ export const DashboardTab = () => {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]} 
+            style={[styles.iconButton, { backgroundColor: 'rgba(255, 255, 255, 0.16)' }]} 
             onPress={() => {
               setStatsCalInitialTab('calendar');
               setStatsCalVisible(true);
             }}
             accessibilityLabel="Calendario y Estadísticas"
           >
-            <MaterialIcons name="event-note" size={20} color={colors.primary} />
+            <MaterialIcons name="event-note" size={20} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity 
-            style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]} 
+            style={[styles.iconButton, { backgroundColor: 'rgba(255, 255, 255, 0.16)' }]} 
             onPress={() => setTutorialVisible(true)}
             accessibilityLabel="Guía y tutorial"
           >
-            <MaterialIcons name="help-outline" size={20} color={colors.primary} />
+            <MaterialIcons name="help-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]} onPress={toggleTheme}>
-            <MaterialIcons name={mode === 'dark' ? 'light-mode' : 'dark-mode'} size={20} color={colors.primary} />
+          <TouchableOpacity style={[styles.iconButton, { backgroundColor: 'rgba(255, 255, 255, 0.16)' }]} onPress={toggleTheme}>
+            <MaterialIcons name={mode === 'dark' ? 'light-mode' : 'dark-mode'} size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -290,17 +307,21 @@ export const DashboardTab = () => {
           
           {/* Tagline superior automotriz */}
           <View style={{ marginBottom: 14 }}>
-            <Text style={{ fontFamily: F.extrabold, color: colors.onSurface, fontSize: 24, letterSpacing: -0.6 }}>
-              Tu Garaje. <Text style={{ color: colors.primary }}>Inteligente en Ruta.</Text>
+            <Text style={{ fontFamily: F.extrabold, color: '#FFFFFF', fontSize: 24, letterSpacing: -0.6 }}>
+              Tu Garaje. <Text style={{ color: mode === 'dark' ? '#00e3fd' : '#FFE082' }}>Inteligente en Ruta.</Text>
             </Text>
-            <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 12.5, marginTop: 3 }}>
+            <Text style={{ fontFamily: F.medium, color: mode === 'dark' ? 'rgba(255, 255, 255, 0.78)' : '#FFF3E0', fontSize: 12.5, marginTop: 3 }}>
               Desliza para cambiar de vehículo o toca para ver sus detalles.
             </Text>
           </View>
 
           {/* Sección de Estudio Automotriz con Degradado Natural Integrado */}
           <LinearGradient
-            colors={mode === 'dark' ? [colors.surface, '#0F1A30', '#1A2644', '#0F1A30', colors.surface] : [colors.surface, '#EAEFF7', '#DCE5F2', '#EAEFF7', colors.surface]}
+            colors={
+              mode === 'dark' 
+                ? ['transparent', 'rgba(10, 43, 94, 0.35)', 'rgba(16, 64, 138, 0.45)', 'rgba(10, 43, 94, 0.35)', 'transparent'] 
+                : ['transparent', 'rgba(255, 112, 0, 0.18)', 'rgba(255, 146, 0, 0.28)', 'rgba(255, 112, 0, 0.18)', 'transparent']
+            }
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={{

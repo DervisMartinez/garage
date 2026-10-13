@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useMyMoto } from '../context/MotoContext';
 import { dispatchEmergencyEmail } from '../../services/emergencyService';
+import { supabase } from '../../data/supabaseClient';
 
 interface Props {
   visible: boolean;
@@ -40,7 +41,7 @@ export const EmergencyCrashModal: React.FC<Props> = ({ visible, onClose, manualT
   const [dispatchMessage, setDispatchMessage] = useState<string>('');
 
   // Datos vitales del perfil del piloto
-  const [pilotName, setPilotName] = useState('Piloto GARAGE');
+  const [pilotName, setPilotName] = useState('Dervis Martinez');
   const [bloodType, setBloodType] = useState('O+');
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [emergencyContact, setEmergencyContact] = useState('');
@@ -73,18 +74,40 @@ export const EmergencyCrashModal: React.FC<Props> = ({ visible, onClose, manualT
     outline: '#40485c',
   };
 
-  // Cargar perfil del piloto en caché
+  // Cargar perfil del piloto en caché y sesión de Supabase
   useEffect(() => {
+    // 1. Cargar almacenamiento local inmediato
     AsyncStorage.getItem('@user_profile_data').then(cached => {
       if (cached) {
         try {
           const p = JSON.parse(cached);
-          if (p.first_name || p.last_name) setPilotName(`${p.first_name || ''} ${p.last_name || ''}`.trim());
+          const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim();
+          if (fullName) setPilotName(fullName);
           if (p.blood_type) setBloodType(p.blood_type);
           if (p.emergency_contact_phone) setEmergencyPhone(p.emergency_contact_phone);
           if (p.emergency_contact_name) setEmergencyContact(p.emergency_contact_name);
           if (p.emergency_email) setEmergencyEmail(p.emergency_email);
         } catch {}
+      }
+    });
+
+    // 2. Cargar sesión de usuario en Supabase (datos de registro)
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        const meta = data.user.user_metadata || {};
+        const fullName = `${meta.first_name || ''} ${meta.last_name || ''}`.trim() || meta.full_name || meta.name;
+        if (fullName) {
+          setPilotName(fullName);
+        } else if (data.user.email) {
+          const emailName = data.user.email.split('@')[0].replace(/[0-9_.-]+/g, ' ').trim();
+          if (emailName) {
+            setPilotName(emailName.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
+          }
+        }
+        if (meta.blood_type) setBloodType(meta.blood_type);
+        if (meta.emergency_contact_phone) setEmergencyPhone(meta.emergency_contact_phone);
+        if (meta.emergency_contact_name) setEmergencyContact(meta.emergency_contact_name);
+        if (meta.emergency_email) setEmergencyEmail(meta.emergency_email);
       }
     });
   }, [visible]);
@@ -213,13 +236,14 @@ export const EmergencyCrashModal: React.FC<Props> = ({ visible, onClose, manualT
   };
 
   const sendWhatsAppSOS = () => {
+    const activePilot = pilotName && pilotName.trim().length > 0 ? pilotName : 'Dervis Martinez';
     const text = encodeURIComponent(
-      `[GARAGE SOS] ALERTA DE IMPACTO / AUXILIO EN RUTA\n\n` +
-      `Piloto: ${pilotName}\n` +
-      `Grupo Sanguíneo: ${bloodType}\n` +
-      `Vehículo: ${motoInfo}\n\n` +
-      `Ubicación GPS en tiempo real:\n${mapsUrl}\n\n` +
-      `¡Se requiere asistencia inmediata!`
+      `🚨 *[GARAGE SOS] ALERTA DE IMPACTO / AUXILIO EN RUTA*\n\n` +
+      `👤 *Piloto:* ${activePilot}\n` +
+      `🩸 *Grupo Sanguíneo:* ${bloodType}\n` +
+      `🏍️ *Vehículo:* ${motoInfo}\n\n` +
+      `📍 *Ubicación GPS Satelital:*\n${mapsUrl}\n\n` +
+      `⚠️ *¡El sensor de GARAGE registró un impacto severo (>3.5G)! Por favor comunícate de inmediato con el piloto o los servicios de rescate.*`
     );
 
     const cleanNumber = emergencyPhone ? emergencyPhone.replace(/[^0-9]/g, '') : '';

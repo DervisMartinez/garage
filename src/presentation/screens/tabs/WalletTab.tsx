@@ -453,7 +453,7 @@ export const WalletTab = () => {
               Documentos
             </Text>
             <Text style={{ fontSize: 13, fontFamily: F.medium, color: colors.onSurfaceVariant, marginTop: 2 }}>
-              Guantera Digital Certificada
+              Tus Documentos de Circulación Nacional 
             </Text>
           </View>
           
@@ -463,7 +463,7 @@ export const WalletTab = () => {
               onPress={handleOpenScanner}
               style={[styles.headerIconBtn, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant }]}
               activeOpacity={0.7}
-              accessibilityLabel="Escanear Código QR"
+              accessibilityLabel="Escanea el Código QR"
             >
               <MaterialIcons name="qr-code-scanner" size={22} color={colors.primary} />
               {counts.expiring > 0 && (
@@ -476,7 +476,7 @@ export const WalletTab = () => {
               onPress={() => setShowOptionsModal(true)}
               style={[styles.headerIconBtn, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant }]}
               activeOpacity={0.7}
-              accessibilityLabel="Añadir Documento"
+              accessibilityLabel="Añadir Documento Nuevo"
             >
               <MaterialIcons name="add" size={24} color={colors.primary} />
             </TouchableOpacity>
