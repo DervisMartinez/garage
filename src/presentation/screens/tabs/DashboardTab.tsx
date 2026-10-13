@@ -187,16 +187,16 @@ export const DashboardTab = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
       <StatusBar 
         barStyle="light-content" 
-        backgroundColor={mode === 'dark' ? '#051838' : '#FF4D00'} 
+        backgroundColor={mode === 'dark' ? '#051838' : '#1E3A8A'} 
       />
       
-      {/* DEGRADADO SUPERIOR DE ALTA PRECISIÓN AUTOMOTRIZ (Referencia Visual Motorsport) */}
+      {/* DEGRADADO SUPERIOR DE ALTA PRECISIÓN AUTOMOTRIZ (Azul Oscuro en Dark / Azul Rey Fuerte en Light) */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
           colors={
             mode === 'dark'
               ? ['#051838', '#0A2B5E', '#10408A', '#0D3169', colors.surface]
-              : ['#FF4D00', '#FF7000', '#FF9200', '#FFB033', colors.surface]
+              : ['#1E3A8A', '#1D4ED8', '#2563EB', '#3B82F6', colors.surface]
           }
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 0.60 }}
@@ -207,17 +207,29 @@ export const DashboardTab = () => {
       {/* HEADER INTEGRADO */}
       <View style={[styles.header, { borderBottomColor: 'transparent', backgroundColor: 'transparent' }]}>
         <View style={styles.headerLeft}>
-          <MaterialCommunityIcons name="engine" size={28} color={mode === 'dark' ? '#00e3fd' : '#FFFFFF'} />
+          <MaterialCommunityIcons name="engine" size={28} color="#00e3fd" />
           <Text style={[styles.headerTitle, { color: '#FFFFFF', fontFamily: F.bold }]}>GARAGE</Text>
         </View>
         <View style={styles.headerRight}>
-          {/* Botón SOS de Emergencia */}
+          {/* Botón SOS de Emergencia de Alto Contraste */}
           <TouchableOpacity 
-            style={[styles.iconButton, { backgroundColor: 'rgba(255, 69, 58, 0.25)', borderWidth: 1, borderColor: '#FF453A' }]} 
+            style={[
+              styles.iconButton, 
+              { 
+                backgroundColor: '#DC2626', 
+                borderWidth: 1.5, 
+                borderColor: '#FFFFFF',
+                shadowColor: '#DC2626',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.5,
+                shadowRadius: 5,
+                elevation: 4
+              }
+            ]} 
             onPress={triggerManualSOS}
             accessibilityLabel="Activar SOS de Emergencia"
           >
-            <MaterialIcons name="emergency" size={20} color="#FF453A" />
+            <MaterialIcons name="emergency" size={20} color="#FFFFFF" />
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -262,7 +274,7 @@ export const DashboardTab = () => {
             <MaterialCommunityIcons 
               name={isCrashEnabled ? "shield-check" : "shield-alert"} 
               size={24} 
-              color={isCrashEnabled ? '#30D158' : '#FF453A'} 
+              color={isCrashEnabled ? '#30D158' : '#ff443a8e'} 
             />
             <View style={{ flex: 1 }}>
               <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 12 }}>

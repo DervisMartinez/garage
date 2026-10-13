@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ImageBackground, ScrollView } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ActivityIndicator, 
+  ImageBackground, 
+  ScrollView 
+} from 'react-native';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../data/supabaseClient';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,24 +20,86 @@ export const AuthScreen = () => {
   const { colors, mode } = useTheme();
   
   // Auth state
+  const [isLogin, setIsLogin] = useState(true);
+  const [registerStep, setRegisterStep] = useState<1 | 2 | 3>(1);
+  const [loading, setLoading] = useState(false);
+
+  // Form Fields - Step 1: Acceso
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
-  // Extra profile fields for registration
+  // Form Fields - Step 2: Piloto
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+
+  // Form Fields - Step 3: Región
   const [country, setCountry] = useState('');
   const [state, setState] = useState('');
 
-  const [loading, setLoading] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
+  const F = {
+    bold: 'Montserrat_700Bold',
+    semibold: 'Montserrat_600SemiBold',
+    medium: 'Montserrat_500Medium',
+    regular: 'Montserrat_400Regular',
+    extrabold: 'Montserrat_800ExtraBold',
+  };
+
+  const isDark = mode === 'dark';
+
+  // Tokens oficiales según DESIGN.md
+  const tokens = {
+    primary: isDark ? '#4169E1' : '#275FE3',
+    secondary: '#00e3fd',
+    tertiary: '#00ae78',
+    alert: '#ba1a1a',
+    surface: isDark ? '#111319' : '#f5f5f7',
+    surfaceCard: isDark ? '#191c21' : '#ffffff',
+    surfaceContainer: isDark ? '#1d2025' : '#ececf0',
+    surfaceHigh: isDark ? '#272a30' : '#e0e0e6',
+    outline: '#40485c',
+  };
+
+  // Validaciones de navegación de pasos en Registro
+  const handleNextStep = () => {
+    if (registerStep === 1) {
+      if (!email || !password) {
+        alert('Ingresa correo y contraseña para continuar');
+        return;
+      }
+      if (password.length < 6) {
+        alert('La contraseña debe tener al menos 6 caracteres');
+        return;
+      }
+      if (confirmPassword && password !== confirmPassword) {
+        alert('Las contraseñas no coinciden');
+        return;
+      }
+      setRegisterStep(2);
+    } else if (registerStep === 2) {
+      if (!firstName || !lastName) {
+        alert('Ingresa tu nombre y apellido para tu carnet de piloto');
+        return;
+      }
+      setRegisterStep(3);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (registerStep > 1) {
+      setRegisterStep((prev) => (prev - 1) as 1 | 2 | 3);
+    }
+  };
 
   const handleAuth = async () => {
-    if (!email || !password) { alert('Correo y contraseña son obligatorios'); return; }
-    
+    if (!email || !password) {
+      alert('Correo y contraseña son requeridos');
+      return;
+    }
+
     if (!isLogin && (!firstName || !lastName || !country || !state)) {
-      alert('Por favor llena todos los campos de perfil para continuar');
+      alert('Por favor completa los datos de tu perfil');
       return;
     }
 
@@ -41,27 +114,27 @@ export const AuthScreen = () => {
           password,
           options: {
             data: {
-              first_name: firstName,
-              last_name: lastName,
-              country: country,
-              state: state
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              country: country.trim(),
+              state: state.trim()
             }
           }
         });
         if (error) throw error;
         
-        // Si Supabase devuelve sesión nula tras registrar, significa que pide confirmar email
         if (!data.session) {
-          alert('¡Registro exitoso!');
+          alert('¡Registro exitoso! Revisa tu bandeja de correo para confirmar tu cuenta.');
           setIsLogin(true);
+          setRegisterStep(1);
         } else {
-          alert('¡Registro exitoso!');
+          alert('¡Bienvenido a tu Garaje!');
         }
       }
     } catch (error: any) {
       let msg = error.message;
-      if (msg.includes('Invalid login credentials')) msg = 'Correo o contraseña incorrectos, o falta confirmar tu correo.';
-      if (msg.includes('User already registered')) msg = 'Este correo ya está registrado.';
+      if (msg.includes('Invalid login credentials')) msg = 'Correo o contraseña incorrectos.';
+      if (msg.includes('User already registered')) msg = 'Este correo ya se encuentra registrado.';
       if (msg.includes('Password should be at least')) msg = 'La contraseña debe tener al menos 6 caracteres.';
       alert(msg);
     } finally {
@@ -69,21 +142,16 @@ export const AuthScreen = () => {
     }
   };
 
-  const F = {
-    bold: 'Montserrat_700Bold',
-    semibold: 'Montserrat_600SemiBold',
-    medium: 'Montserrat_500Medium',
-    regular: 'Montserrat_400Regular',
-    extrabold: 'Montserrat_800ExtraBold',
-  };
-
-  // Determine gradient colors based on theme so it blends perfectly
-  const bgTop = mode === 'dark' ? 'rgba(10,12,18,0.35)' : 'rgba(255,255,255,0.35)';
-  const bgMid = mode === 'dark' ? 'rgba(10,12,18,0.88)' : 'rgba(255,255,255,0.92)';
-  const bgBottom = mode === 'dark' ? 'rgba(10,12,18,0.98)' : 'rgba(255,255,255,0.98)';
+  // Fondo con degradado ambiental motorsport
+  const bgTop = isDark ? 'rgba(7, 18, 38, 0.45)' : 'rgba(235, 243, 255, 0.40)';
+  const bgMid = isDark ? 'rgba(10, 16, 28, 0.92)' : 'rgba(255, 255, 255, 0.94)';
+  const bgBottom = isDark ? 'rgba(17, 19, 25, 0.99)' : 'rgba(245, 245, 247, 0.99)';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ImageBackground 
         source={require('../../../assets/images/fondo_login.jpg')} 
         style={{ flex: 1, width: '100%', height: '100%' }}
@@ -95,136 +163,427 @@ export const AuthScreen = () => {
         >
           <ScrollView 
             style={{ flex: 1, width: '100%' }}
-            contentContainerStyle={{ 
-              flexGrow: 1, 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              paddingHorizontal: 20, 
-              paddingTop: 30,
-              paddingBottom: 40,
-            }} 
+            contentContainerStyle={styles.scrollContent} 
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={{ width: '100%', maxWidth: 390, alignSelf: 'center' }}>
+            <View style={styles.cardContainer}>
               
-              {/* LOGO & HEADER */}
-              <View style={{ alignItems: 'center', marginBottom: 26 }}>
-                <View style={[styles.logoBadge, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant }]}>
-                  <MaterialCommunityIcons name="engine" size={38} color={colors.primary} />
+              {/* BRAND HEADER & LOGO */}
+              <View style={{ alignItems: 'center', marginBottom: 22 }}>
+                <View style={[styles.logoBadge, { backgroundColor: tokens.surfaceCard, borderColor: tokens.outline }]}>
+                  <MaterialCommunityIcons name="engine" size={40} color={tokens.secondary} />
                 </View>
-                <Text style={{ fontSize: 34, fontFamily: F.extrabold, color: colors.onSurface, letterSpacing: -0.8 }}>
+                <Text style={{ fontSize: 32, fontFamily: F.extrabold, color: colors.onSurface, letterSpacing: -0.6 }}>
                   GARAGE
                 </Text>
                 <Text style={{ fontSize: 13, fontFamily: F.medium, color: colors.onSurfaceVariant, marginTop: 4, textAlign: 'center' }}>
-                  {isLogin ? 'Tu garaje inteligente en la nube' : 'Crea tu garaje inteligente'}
+                  {isLogin ? 'Tu garaje inteligente en la nube' : 'Crea tu cuenta de piloto'}
                 </Text>
               </View>
 
-              {/* FORM FIELDS */}
-              <View style={{ gap: 12, width: '100%' }}>
-                
-                {!isLogin && (
-                  <>
-                    <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <TextInput 
-                          style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
-                          placeholder="Nombre" 
-                          placeholderTextColor={colors.onSurfaceVariant} 
-                          value={firstName} 
-                          onChangeText={setFirstName} 
-                        />
-                      </View>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <TextInput 
-                          style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
-                          placeholder="Apellido" 
-                          placeholderTextColor={colors.onSurfaceVariant} 
-                          value={lastName} 
-                          onChangeText={setLastName} 
-                        />
-                      </View>
-                    </View>
-
-                    <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <TextInput 
-                          style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
-                          placeholder="País" 
-                          placeholderTextColor={colors.onSurfaceVariant} 
-                          value={country} 
-                          onChangeText={setCountry} 
-                        />
-                      </View>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <TextInput 
-                          style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
-                          placeholder="Estado / Prov." 
-                          placeholderTextColor={colors.onSurfaceVariant} 
-                          value={state} 
-                          onChangeText={setState} 
-                        />
-                      </View>
-                    </View>
-                  </>
-                )}
-
-                <TextInput 
-                  style={[styles.input, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, color: colors.onSurface, fontFamily: F.semibold }]} 
-                  placeholder="Correo Electrónico" 
-                  placeholderTextColor={colors.onSurfaceVariant} 
-                  value={email} 
-                  onChangeText={setEmail} 
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-
-                <View style={[styles.input, { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, paddingHorizontal: 16, paddingVertical: 0 }]}>
-                  <TextInput 
-                    style={{ flex: 1, height: 50, color: colors.onSurface, fontFamily: F.semibold, fontSize: 15 }} 
-                    placeholder="Contraseña" 
-                    placeholderTextColor={colors.onSurfaceVariant} 
-                    value={password} 
-                    onChangeText={setPassword} 
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  <TouchableOpacity 
-                    onPress={() => setShowPassword(!showPassword)}
-                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                    style={{ padding: 4 }}
-                  >
-                    <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={22} color={showPassword ? colors.primary : colors.onSurfaceVariant} />
-                  </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity 
-                  style={[styles.button, { backgroundColor: colors.primary }]} 
-                  onPress={handleAuth} 
-                  disabled={loading}
-                  activeOpacity={0.85}
+              {/* SEGMENTED SWITCHER: INICIAR SESIÓN / REGISTRARSE (Estilo Pinterest Awsmd) */}
+              <View style={[styles.segmentedBar, { backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline }]}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsLogin(true);
+                    setRegisterStep(1);
+                  }}
+                  activeOpacity={0.8}
+                  style={[
+                    styles.segmentButton,
+                    isLogin && [styles.segmentActive, { backgroundColor: tokens.primary }]
+                  ]}
                 >
-                  {loading ? (
-                    <ActivityIndicator color={colors.onPrimaryContainer} />
-                  ) : (
-                    <Text style={[styles.buttonText, { color: colors.onPrimaryContainer, fontFamily: F.extrabold }]}>
-                      {isLogin ? 'INGRESAR' : 'REGISTRARSE'}
-                    </Text>
-                  )}
+                  <Text style={[
+                    styles.segmentText,
+                    { fontFamily: F.bold, color: isLogin ? '#FFFFFF' : colors.onSurfaceVariant }
+                  ]}>
+                    INICIAR SESIÓN
+                  </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  onPress={() => setIsLogin(!isLogin)} 
-                  style={{ alignItems: 'center', paddingVertical: 12, marginTop: 4 }}
-                  activeOpacity={0.7}
+                <TouchableOpacity
+                  onPress={() => setIsLogin(false)}
+                  activeOpacity={0.8}
+                  style={[
+                    styles.segmentButton,
+                    !isLogin && [styles.segmentActive, { backgroundColor: tokens.primary }]
+                  ]}
                 >
-                  <Text style={{ color: colors.primary, fontFamily: F.bold, fontSize: 13 }}>
-                    {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Ingresa aquí'}
+                  <Text style={[
+                    styles.segmentText,
+                    { fontFamily: F.bold, color: !isLogin ? '#FFFFFF' : colors.onSurfaceVariant }
+                  ]}>
+                    REGISTRARSE
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              {/* VISTA 1: INICIAR SESIÓN */}
+              {isLogin ? (
+                <View style={{ gap: 12, width: '100%' }}>
+                  <View>
+                    <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                      CORREO ELECTRÓNICO
+                    </Text>
+                    <TextInput 
+                      style={[styles.input, { backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, color: colors.onSurface, fontFamily: F.medium }]} 
+                      placeholder="piloto@correo.com" 
+                      placeholderTextColor={colors.onSurfaceVariant} 
+                      value={email} 
+                      onChangeText={setEmail} 
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                    />
+                  </View>
+
+                  <View>
+                    <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                      CONTRASEÑA
+                    </Text>
+                    <View style={[styles.input, { flexDirection: 'row', alignItems: 'center', backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, paddingHorizontal: 14 }]}>
+                      <TextInput 
+                        style={{ flex: 1, height: 48, color: colors.onSurface, fontFamily: F.medium, fontSize: 14 }} 
+                        placeholder="••••••••" 
+                        placeholderTextColor={colors.onSurfaceVariant} 
+                        value={password} 
+                        onChangeText={setPassword} 
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      <TouchableOpacity 
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeTouch}
+                      >
+                        <MaterialIcons 
+                          name={showPassword ? 'visibility-off' : 'visibility'} 
+                          size={22} 
+                          color={showPassword ? tokens.secondary : colors.onSurfaceVariant} 
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Botón Ingresar */}
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: tokens.primary, marginTop: 8 }]} 
+                    onPress={handleAuth} 
+                    disabled={loading}
+                    activeOpacity={0.85}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.btnText, { color: '#FFFFFF', fontFamily: F.extrabold }]}>
+                          INGRESAR AL GARAJE
+                        </Text>
+                        <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                
+                /* VISTA 2: REGISTRO PROGRESIVO POR PESTAÑAS (Awsmd Fluid Design) */
+                <View style={{ width: '100%' }}>
+                  
+                  {/* BARRA DE PESTAÑAS / PASOS (Step Indicator) */}
+                  <View style={styles.stepTabsRow}>
+                    
+                    {/* Paso 1: Acceso */}
+                    <TouchableOpacity 
+                      onPress={() => setRegisterStep(1)}
+                      style={[
+                        styles.stepTabItem, 
+                        registerStep === 1 && [styles.stepTabActive, { borderColor: tokens.primary }]
+                      ]}
+                    >
+                      <View style={[
+                        styles.stepCircle, 
+                        { backgroundColor: registerStep >= 1 ? tokens.primary : tokens.surfaceContainer }
+                      ]}>
+                        <Text style={{ fontFamily: F.extrabold, fontSize: 11, color: registerStep >= 1 ? '#FFFFFF' : colors.onSurfaceVariant }}>
+                          1
+                        </Text>
+                      </View>
+                      <Text style={[
+                        styles.stepTabText, 
+                        { fontFamily: F.bold, color: registerStep === 1 ? colors.onSurface : colors.onSurfaceVariant }
+                      ]}>
+                        Acceso
+                      </Text>
+                    </TouchableOpacity>
+
+                    <View style={[styles.stepConnector, { backgroundColor: registerStep > 1 ? tokens.primary : tokens.outline }]} />
+
+                    {/* Paso 2: Piloto */}
+                    <TouchableOpacity 
+                      onPress={() => {
+                        if (email && password.length >= 6) setRegisterStep(2);
+                      }}
+                      style={[
+                        styles.stepTabItem, 
+                        registerStep === 2 && [styles.stepTabActive, { borderColor: tokens.primary }]
+                      ]}
+                    >
+                      <View style={[
+                        styles.stepCircle, 
+                        { backgroundColor: registerStep >= 2 ? tokens.primary : tokens.surfaceContainer }
+                      ]}>
+                        <Text style={{ fontFamily: F.extrabold, fontSize: 11, color: registerStep >= 2 ? '#FFFFFF' : colors.onSurfaceVariant }}>
+                          2
+                        </Text>
+                      </View>
+                      <Text style={[
+                        styles.stepTabText, 
+                        { fontFamily: F.bold, color: registerStep === 2 ? colors.onSurface : colors.onSurfaceVariant }
+                      ]}>
+                        Piloto
+                      </Text>
+                    </TouchableOpacity>
+
+                    <View style={[styles.stepConnector, { backgroundColor: registerStep > 2 ? tokens.primary : tokens.outline }]} />
+
+                    {/* Paso 3: Región */}
+                    <TouchableOpacity 
+                      onPress={() => {
+                        if (email && password.length >= 6 && firstName && lastName) setRegisterStep(3);
+                      }}
+                      style={[
+                        styles.stepTabItem, 
+                        registerStep === 3 && [styles.stepTabActive, { borderColor: tokens.primary }]
+                      ]}
+                    >
+                      <View style={[
+                        styles.stepCircle, 
+                        { backgroundColor: registerStep >= 3 ? tokens.primary : tokens.surfaceContainer }
+                      ]}>
+                        <Text style={{ fontFamily: F.extrabold, fontSize: 11, color: registerStep >= 3 ? '#FFFFFF' : colors.onSurfaceVariant }}>
+                          3
+                        </Text>
+                      </View>
+                      <Text style={[
+                        styles.stepTabText, 
+                        { fontFamily: F.bold, color: registerStep === 3 ? colors.onSurface : colors.onSurfaceVariant }
+                      ]}>
+                        Región
+                      </Text>
+                    </TouchableOpacity>
+
+                  </View>
+
+                  {/* CONTENEDOR FLUIDO DEL PASO ACTUAL */}
+                  <View style={[styles.fluidCardStep, { backgroundColor: tokens.surfaceCard, borderColor: tokens.outline }]}>
+                    
+                    {/* PASO 1: ACCESO & CREDENCIALES */}
+                    {registerStep === 1 && (
+                      <View style={{ gap: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <MaterialIcons name="security" size={18} color={tokens.secondary} />
+                          <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 13, textTransform: 'uppercase' }}>
+                            Paso 1: Seguridad & Credenciales
+                          </Text>
+                        </View>
+
+                        <View>
+                          <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                            CORREO ELECTRÓNICO
+                          </Text>
+                          <TextInput 
+                            style={[styles.input, { backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, color: colors.onSurface, fontFamily: F.medium }]} 
+                            placeholder="piloto@correo.com" 
+                            placeholderTextColor={colors.onSurfaceVariant} 
+                            value={email} 
+                            onChangeText={setEmail} 
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                          />
+                        </View>
+
+                        <View>
+                          <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                            CONTRASEÑA (MÍN. 6 CARACTERES)
+                          </Text>
+                          <TextInput 
+                            style={[styles.input, { backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, color: colors.onSurface, fontFamily: F.medium }]} 
+                            placeholder="••••••••" 
+                            placeholderTextColor={colors.onSurfaceVariant} 
+                            value={password} 
+                            onChangeText={setPassword} 
+                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                          />
+                        </View>
+
+                        <View>
+                          <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                            CONFIRMAR CONTRASEÑA
+                          </Text>
+                          <TextInput 
+                            style={[styles.input, { backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, color: colors.onSurface, fontFamily: F.medium }]} 
+                            placeholder="••••••••" 
+                            placeholderTextColor={colors.onSurfaceVariant} 
+                            value={confirmPassword} 
+                            onChangeText={setConfirmPassword} 
+                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                          />
+                        </View>
+
+                        <TouchableOpacity 
+                          style={[styles.actionBtn, { backgroundColor: tokens.primary, marginTop: 8 }]} 
+                          onPress={handleNextStep}
+                          activeOpacity={0.85}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={[styles.btnText, { color: '#FFFFFF', fontFamily: F.extrabold }]}>
+                              CONTINUAR A DATOS DEL PILOTO
+                            </Text>
+                            <MaterialIcons name="chevron-right" size={20} color="#FFFFFF" />
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* PASO 2: DATOS DEL PILOTO */}
+                    {registerStep === 2 && (
+                      <View style={{ gap: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <MaterialIcons name="person" size={18} color={tokens.secondary} />
+                          <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 13, textTransform: 'uppercase' }}>
+                            Paso 2: Carnet & Datos Personales
+                          </Text>
+                        </View>
+
+                        <View>
+                          <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                            NOMBRE(S)
+                          </Text>
+                          <TextInput 
+                            style={[styles.input, { backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, color: colors.onSurface, fontFamily: F.medium }]} 
+                            placeholder="Ej. Dervis" 
+                            placeholderTextColor={colors.onSurfaceVariant} 
+                            value={firstName} 
+                            onChangeText={setFirstName} 
+                          />
+                        </View>
+
+                        <View>
+                          <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                            APELLIDO(S)
+                          </Text>
+                          <TextInput 
+                            style={[styles.input, { backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, color: colors.onSurface, fontFamily: F.medium }]} 
+                            placeholder="Ej. Martinez" 
+                            placeholderTextColor={colors.onSurfaceVariant} 
+                            value={lastName} 
+                            onChangeText={setLastName} 
+                          />
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                          <TouchableOpacity 
+                            style={[styles.secondaryActionBtn, { borderColor: tokens.outline, backgroundColor: tokens.surfaceContainer }]} 
+                            onPress={handlePrevStep}
+                            activeOpacity={0.8}
+                          >
+                            <MaterialIcons name="chevron-left" size={20} color={colors.onSurface} />
+                            <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 13 }}>
+                              ATRÁS
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity 
+                            style={[styles.actionBtn, { flex: 1, backgroundColor: tokens.primary }]} 
+                            onPress={handleNextStep}
+                            activeOpacity={0.85}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={[styles.btnText, { color: '#FFFFFF', fontFamily: F.extrabold }]}>
+                                SIGUIENTE
+                              </Text>
+                              <MaterialIcons name="chevron-right" size={20} color="#FFFFFF" />
+                            </View>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* PASO 3: REGIÓN & UBICACIÓN */}
+                    {registerStep === 3 && (
+                      <View style={{ gap: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <MaterialIcons name="place" size={18} color={tokens.secondary} />
+                          <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 13, textTransform: 'uppercase' }}>
+                            Paso 3: Región & Ubicación
+                          </Text>
+                        </View>
+
+                        <View>
+                          <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                            PAÍS
+                          </Text>
+                          <TextInput 
+                            style={[styles.input, { backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, color: colors.onSurface, fontFamily: F.medium }]} 
+                            placeholder="Ej. Venezuela / Colombia / España" 
+                            placeholderTextColor={colors.onSurfaceVariant} 
+                            value={country} 
+                            onChangeText={setCountry} 
+                          />
+                        </View>
+
+                        <View>
+                          <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                            ESTADO / PROVINCIA / CIUDAD
+                          </Text>
+                          <TextInput 
+                            style={[styles.input, { backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, color: colors.onSurface, fontFamily: F.medium }]} 
+                            placeholder="Ej. Carabobo, Valencia" 
+                            placeholderTextColor={colors.onSurfaceVariant} 
+                            value={state} 
+                            onChangeText={setState} 
+                          />
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                          <TouchableOpacity 
+                            style={[styles.secondaryActionBtn, { borderColor: tokens.outline, backgroundColor: tokens.surfaceContainer }]} 
+                            onPress={handlePrevStep}
+                            activeOpacity={0.8}
+                          >
+                            <MaterialIcons name="chevron-left" size={20} color={colors.onSurface} />
+                            <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 13 }}>
+                              ATRÁS
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity 
+                            style={[styles.actionBtn, { flex: 1, backgroundColor: tokens.tertiary }]} 
+                            onPress={handleAuth}
+                            disabled={loading}
+                            activeOpacity={0.85}
+                          >
+                            {loading ? (
+                              <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <MaterialIcons name="check-circle" size={18} color="#FFFFFF" />
+                                <Text style={[styles.btnText, { color: '#FFFFFF', fontFamily: F.extrabold }]}>
+                                  CREAR CUENTA
+                                </Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+
+                  </View>
+                </View>
+              )}
 
             </View>
           </ScrollView>
@@ -235,6 +594,19 @@ export const AuthScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 36,
+    paddingBottom: 40,
+  },
+  cardContainer: {
+    width: '100%',
+    maxWidth: 410,
+    alignSelf: 'center',
+  },
   logoBadge: {
     width: 76,
     height: 76,
@@ -242,37 +614,122 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14,
-    borderWidth: 0.5,
+    borderWidth: 0.8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 6,
   },
+  segmentedBar: {
+    flexDirection: 'row',
+    borderRadius: 16,
+    padding: 4,
+    borderWidth: 0.8,
+    marginBottom: 20,
+  },
+  segmentButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  segmentActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  segmentText: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  fieldLabel: {
+    fontSize: 10.5,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
   input: {
-    height: 52,
+    height: 50,
     borderWidth: 1,
     borderRadius: 14,
-    paddingHorizontal: 16,
-    fontSize: 15,
+    paddingHorizontal: 14,
+    fontSize: 14,
     width: '100%',
-    minWidth: 0,
     justifyContent: 'center',
   },
-  button: {
-    height: 54,
+  eyeTouch: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBtn: {
+    height: 52, // Mínimo 48px hit area
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
-    shadowColor: '#0A84FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
-  buttonText: {
-    fontSize: 15,
+  secondaryActionBtn: {
+    height: 52,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  btnText: {
+    fontSize: 13.5,
     letterSpacing: 0.8,
+  },
+  stepTabsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  stepTabItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
+  stepTabActive: {
+    backgroundColor: 'rgba(65, 105, 225, 0.12)',
+  },
+  stepCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepTabText: {
+    fontSize: 12,
+  },
+  stepConnector: {
+    flex: 1,
+    height: 2,
+    marginHorizontal: 4,
+    borderRadius: 1,
+  },
+  fluidCardStep: {
+    borderRadius: 20,
+    borderWidth: 0.8,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
 });
