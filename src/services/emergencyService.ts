@@ -61,7 +61,12 @@ export const dispatchEmergencyEmail = async (payload: EmergencyPayload): Promise
   };
 
   try {
-    const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(cleanEmail)}`, {
+    // Si es el correo verificado del piloto, usar el token enmascarado asignado por FormSubmit
+    const targetEndpoint = cleanEmail.toLowerCase().includes('dervismartinez20@gmail.com')
+      ? '475b5f6e87dd9abdfbc1ee2879359eba'
+      : encodeURIComponent(cleanEmail);
+
+    const response = await fetch(`https://formsubmit.co/ajax/${targetEndpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
