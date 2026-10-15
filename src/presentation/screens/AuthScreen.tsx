@@ -15,6 +15,9 @@ import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../data/supabaseClient';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
+import { LegalConsentCheckboxes } from '../components/LegalConsentCheckboxes';
+import { LegalDocModal, LegalDocType } from '../components/LegalDocModal';
+import { recordLegalConsent } from '../../services/legalConsentService';
 
 export const AuthScreen = () => {
   const { colors, mode } = useTheme();
@@ -37,6 +40,13 @@ export const AuthScreen = () => {
   // Form Fields - Step 3: Región
   const [country, setCountry] = useState('');
   const [state, setState] = useState('');
+
+  // Legal Consent State (Separate checkboxes & audit)
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [showLegalErrors, setShowLegalErrors] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [selectedLegalDoc, setSelectedLegalDoc] = useState<LegalDocType>('terms');
 
   const F = {
     bold: 'Montserrat_700Bold',
@@ -103,12 +113,37 @@ export const AuthScreen = () => {
       return;
     }
 
+    // Validación estricta de casillas separadas (RGPD / Accountability)
+    if (!isLogin) {
+      if (!termsAccepted || !privacyAccepted) {
+        setShowLegalErrors(true);
+        if (!termsAccepted && !privacyAccepted) {
+          alert('Debes marcar por separado tanto la casilla de Términos y Condiciones como la de Política de Privacidad.');
+        } else if (!termsAccepted) {
+          alert('Debes aceptar los Términos y Condiciones para registrar tu cuenta.');
+        } else {
+          alert('Debes aceptar la Política de Privacidad para el tratamiento de tus datos.');
+        }
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
+        // 1. Registrar auditoría legal con timestamp, IP y dispositivo
+        const consentRecord = await recordLegalConsent({
+          email,
+          termsAccepted: true,
+          privacyAccepted: true,
+          cookiesAcknowledged: true,
+          acceptanceContext: 'auth_registration_step_3',
+        });
+
+        // 2. Crear cuenta en Supabase vinculando los datos de auditoría
         const { data, error } = await supabase.auth.signUp({ 
           email, 
           password,
@@ -117,11 +152,34 @@ export const AuthScreen = () => {
               first_name: firstName.trim(),
               last_name: lastName.trim(),
               country: country.trim(),
-              state: state.trim()
+              state: state.trim(),
+              // Metadatos de auditoría legal
+              legal_terms_accepted: true,
+              legal_terms_accepted_at: consentRecord.termsAcceptedAt,
+              legal_terms_version: consentRecord.termsVersion,
+              legal_privacy_accepted: true,
+              legal_privacy_accepted_at: consentRecord.privacyAcceptedAt,
+              legal_privacy_version: consentRecord.privacyVersion,
+              legal_cookies_acknowledged: true,
+              legal_consent_method: consentRecord.consentMethod,
+              legal_consent_ip: consentRecord.ipAddress,
+              legal_device_info: consentRecord.deviceInfo,
             }
           }
         });
         if (error) throw error;
+        
+        // Si ya tenemos el ID de usuario devuelto por Supabase, actualizar el registro
+        if (data?.user?.id) {
+          recordLegalConsent({
+            email,
+            userId: data.user.id,
+            termsAccepted: true,
+            privacyAccepted: true,
+            cookiesAcknowledged: true,
+            acceptanceContext: 'auth_registration_step_3',
+          }).catch(() => {});
+        }
         
         if (!data.session) {
           alert('¡Registro exitoso! Revisa tu bandeja de correo para confirmar tu cuenta.');
@@ -284,6 +342,32 @@ export const AuthScreen = () => {
                       </View>
                     )}
                   </TouchableOpacity>
+
+                  {/* Enlaces Legales en Acceso */}
+                  <View style={{ marginTop: 14, alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 11, fontFamily: F.medium, color: colors.onSurfaceVariant, textAlign: 'center' }}>
+                      Al acceder a GARAGE, aceptas el marco legal aplicable:
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <TouchableOpacity onPress={() => { setSelectedLegalDoc('terms'); setShowLegalModal(true); }}>
+                        <Text style={{ fontSize: 11, fontFamily: F.bold, color: tokens.primary, textDecorationLine: 'underline' }}>
+                          Términos
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>•</Text>
+                      <TouchableOpacity onPress={() => { setSelectedLegalDoc('privacy'); setShowLegalModal(true); }}>
+                        <Text style={{ fontSize: 11, fontFamily: F.bold, color: tokens.primary, textDecorationLine: 'underline' }}>
+                          Privacidad
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>•</Text>
+                      <TouchableOpacity onPress={() => { setSelectedLegalDoc('cookies'); setShowLegalModal(true); }}>
+                        <Text style={{ fontSize: 11, fontFamily: F.bold, color: tokens.primary, textDecorationLine: 'underline' }}>
+                          Cookies
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
               ) : (
                 
@@ -548,6 +632,26 @@ export const AuthScreen = () => {
                           />
                         </View>
 
+                        {/* CASILLAS SEPARADAS OBLIGATORIAS: TÉRMINOS Y POLÍTICA DE PRIVACIDAD */}
+                        <LegalConsentCheckboxes
+                          termsAccepted={termsAccepted}
+                          onToggleTerms={() => {
+                            setTermsAccepted((prev) => !prev);
+                            if (!termsAccepted) setShowLegalErrors(false);
+                          }}
+                          privacyAccepted={privacyAccepted}
+                          onTogglePrivacy={() => {
+                            setPrivacyAccepted((prev) => !prev);
+                            if (!privacyAccepted) setShowLegalErrors(false);
+                          }}
+                          onOpenDoc={(doc) => {
+                            setSelectedLegalDoc(doc);
+                            setShowLegalModal(true);
+                          }}
+                          showValidationErrors={showLegalErrors}
+                          disabled={loading}
+                        />
+
                         <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
                           <TouchableOpacity 
                             style={[styles.secondaryActionBtn, { borderColor: tokens.outline, backgroundColor: tokens.surfaceContainer }]} 
@@ -589,6 +693,20 @@ export const AuthScreen = () => {
           </ScrollView>
         </LinearGradient>
       </ImageBackground>
+
+      {/* MODAL VISOR DE DOCUMENTOS LEGALES (TÉRMINOS, PRIVACIDAD, COOKIES) */}
+      <LegalDocModal
+        visible={showLegalModal}
+        initialDoc={selectedLegalDoc}
+        onClose={() => setShowLegalModal(false)}
+        onAccept={(docType) => {
+          if (docType === 'terms') {
+            setTermsAccepted(true);
+          } else if (docType === 'privacy') {
+            setPrivacyAccepted(true);
+          }
+        }}
+      />
     </KeyboardAvoidingView>
   );
 };
