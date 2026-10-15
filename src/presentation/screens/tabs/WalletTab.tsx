@@ -534,9 +534,7 @@ export const WalletTab = () => {
   const renderCard = (
     doc: any,
     isSelected: boolean,
-    isMobile: boolean,
-    onPress: () => void,
-    customMarginTop?: number
+    onPress: () => void
   ) => {
     const cardData = getCardStyle(doc.title);
     const parsed = parseDocTitle(doc.title);
@@ -551,22 +549,15 @@ export const WalletTab = () => {
         activeOpacity={0.92}
         onPress={onPress}
         style={[
-          isMobile ? styles.mobileCard : styles.physicalCard,
-          customMarginTop !== undefined && { marginTop: customMarginTop },
-          isSelected && (isDesktop ? {
+          styles.physicalCard,
+          isSelected && {
             borderColor: '#4169E1',
             borderWidth: 2,
             shadowColor: '#4169E1',
             shadowOpacity: 0.45,
             shadowRadius: 16,
             transform: [{ translateY: -4 }]
-          } : {
-            borderColor: '#4169E1',
-            borderWidth: 1.5,
-            shadowColor: '#4169E1',
-            shadowOpacity: 0.35,
-            shadowRadius: 12,
-          })
+          }
         ]}
       >
         <LinearGradient
@@ -773,195 +764,15 @@ export const WalletTab = () => {
               <Text style={styles.emptyAddBtnText}>Añadir Primer Documento</Text>
             </TouchableOpacity>
           </View>
-        ) : !isDesktop ? (
-          // ==============================
-          // MOBILE VIEW: AUTHENTIC APPLE WALLET
-          // ==============================
-          expandedCardId && expandedDoc && expandedParsed && expandedStatus ? (
-            // 1. MOBILE EXPANDED FOCUSED PASS VIEW
-            <View style={styles.mobileExpandedPassContainer}>
-              {/* TOP CONTROLS */}
-              <View style={styles.mobileExpandedHeader}>
-                <TouchableOpacity
-                  style={[styles.backToStackBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}
-                  onPress={() => setExpandedCardId(null)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons name="arrow-back-ios" size={13} color={colors.onSurface} style={{ marginLeft: 3 }} />
-                  <Text style={[styles.backToStackText, { color: colors.onSurface }]}>Guantera Digital</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.quickScanBtn, { backgroundColor: isDark ? 'rgba(0, 227, 253, 0.12)' : 'rgba(39, 95, 227, 0.1)' }]}
-                  onPress={handleOpenScanner}
-                >
-                  <MaterialIcons name="qr-code-scanner" size={18} color="#00e3fd" />
-                </TouchableOpacity>
-              </View>
-
-              {/* FOCUSED CARD (TAP TO COLLAPSE) */}
-              {renderCard(expandedDoc, true, true, () => setExpandedCardId(null), 0)}
-
-              {/* PASS DETAILS SHEET (APPLE WALLET DETAILS / BACK OF PASS) */}
-              <View style={[
-                styles.mobilePassDetailsSheet,
-                { 
-                  backgroundColor: isDark ? '#191c21' : '#ffffff',
-                  borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)'
-                }
-              ]}>
-                {/* QUICK ACTIONS ROW */}
-                <View style={styles.passActionsRow}>
-                  <TouchableOpacity
-                    style={[styles.passActionBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc' }]}
-                    onPress={() => handleOpenEdit(expandedDoc)}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialIcons name="edit" size={16} color={colors.onSurface} />
-                    <Text style={[styles.passActionBtnText, { color: colors.onSurface }]}>Editar Datos</Text>
-                  </TouchableOpacity>
-
-                  {expandedDoc.image_url && (
-                    <TouchableOpacity
-                      style={[styles.passActionBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc' }]}
-                      onPress={() => setSelectedDocImage(expandedDoc.image_url)}
-                      activeOpacity={0.8}
-                    >
-                      <MaterialIcons name="fullscreen" size={18} color="#00e3fd" />
-                      <Text style={[styles.passActionBtnText, { color: colors.onSurface }]}>Foto Original</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  <TouchableOpacity
-                    style={styles.passDeleteBtn}
-                    onPress={() => deleteDocument(expandedDoc.id)}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialIcons name="delete-outline" size={18} color="#ffb4ab" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* PHOTO THUMBNAIL (IF PRESENT) */}
-                {expandedDoc.image_url && (
-                  <TouchableOpacity
-                    style={styles.passPhotoWrap}
-                    onPress={() => setSelectedDocImage(expandedDoc.image_url)}
-                    activeOpacity={0.85}
-                  >
-                    <Image source={{ uri: expandedDoc.image_url }} style={styles.passPhoto} resizeMode="cover" />
-                    <View style={styles.photoZoomOverlay}>
-                      <MaterialIcons name="zoom-in" size={18} color="#ffffff" />
-                      <Text style={styles.photoZoomText}>Toca para ver en pantalla completa</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-
-                {/* QR CODE BANNER */}
-                {expandedParsed.qrData && (
-                  <View style={[styles.qrBannerBox, { backgroundColor: isDark ? 'rgba(0, 227, 253, 0.08)' : 'rgba(39, 95, 227, 0.06)', borderColor: isDark ? 'rgba(0, 227, 253, 0.25)' : 'rgba(39, 95, 227, 0.2)' }]}>
-                    <MaterialIcons name="qr-code-2" size={24} color="#00e3fd" />
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={[styles.qrBannerTitle, { color: colors.onSurface }]}>Código QR Verificado</Text>
-                      <Text style={[styles.qrBannerData, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
-                        {expandedParsed.qrData}
-                      </Text>
-                    </View>
-                    {expandedParsed.qrData.startsWith('http') && (
-                      <TouchableOpacity 
-                        onPress={() => Linking.openURL(expandedParsed.qrData!)}
-                        style={styles.openUrlBtn}
-                      >
-                        <Text style={styles.openUrlBtnText}>Abrir ↗</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
-
-                {/* METADATA TABLE */}
-                <View style={styles.inspectorDetailsTable}>
-                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
-                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>N° DOCUMENTO</Text>
-                    <Text style={[styles.detailTableVal, { color: colors.onSurface }]}>
-                      {expandedParsed.docNumber || 'S/N'}
-                    </Text>
-                  </View>
-
-                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
-                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>TITULAR</Text>
-                    <Text style={[styles.detailTableVal, { color: colors.onSurface }]}>
-                      {pilotName}
-                    </Text>
-                  </View>
-
-                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
-                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>ESTADO DE VALIDEZ</Text>
-                    <Text style={[styles.detailTableVal, { color: expandedStatus.badgeColor }]}>
-                      {expandedStatus.label}
-                    </Text>
-                  </View>
-
-                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
-                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>VINCULACIÓN VEHICULAR</Text>
-                    <Text style={[styles.detailTableVal, { color: colors.onSurface }]}>
-                      {expandedDoc.type === 'moto' ? (myMoto ? `${myMoto.brand} ${myMoto.model}` : 'Vehículo') : 'Personal'}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* RETURN PILL */}
-                <TouchableOpacity
-                  style={[styles.returnToWalletBtn, { backgroundColor: isDark ? '#272a30' : '#f0f0f4' }]}
-                  onPress={() => setExpandedCardId(null)}
-                  activeOpacity={0.8}
-                >
-                  <MaterialIcons name="view-carousel" size={18} color={colors.onSurface} />
-                  <Text style={[styles.returnToWalletBtnText, { color: colors.onSurface }]}>Ver todas las tarjetas</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            // 2. MOBILE OVERLAPPING APPLE WALLET STACK
-            <View style={styles.mobileWalletStack}>
-              {filteredDocuments.map((doc, index) => {
-                const marginTop = index === 0 ? 0 : -145;
-                return renderCard(doc, false, true, () => setExpandedCardId(doc.id), marginTop);
-              })}
-
-              {/* ADD DOCUMENT BUTTON AT BOTTOM OF STACK */}
-              <TouchableOpacity
-                style={[
-                  styles.mobileAddBtn, 
-                  { 
-                    borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : '#d0d4dc',
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8f9fc',
-                    marginTop: filteredDocuments.length > 0 ? 20 : 0
-                  }
-                ]}
-                onPress={() => setShowOptionsModal(true)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.addDashedIconWrap}>
-                  <MaterialIcons name="add" size={24} color="#00e3fd" />
-                </View>
-                <Text style={[styles.addDashedTitle, { color: colors.onSurface }]}>Registrar Otro Documento</Text>
-                <Text style={[styles.addDashedSubtitle, { color: colors.onSurfaceVariant }]}>
-                  Foto física o escaneo de código QR
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )
         ) : (
-          // ==============================
-          // DESKTOP VIEW: DUAL-COLUMN INSPECTOR DASHBOARD
-          // ==============================
-          <View style={{ flexDirection: 'row', gap: 28, alignItems: 'flex-start', marginTop: 12 }}>
+          <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 28, alignItems: 'flex-start', marginTop: 12 }}>
             
             {/* CARDS GRID */}
-            <View style={{ flex: 1.3, width: '100%' }}>
-              <View style={styles.cardsGrid}>
+            <View style={{ flex: isDesktop ? 1.3 : undefined, width: '100%' }}>
+              <View style={[styles.cardsGrid, !isDesktop && { justifyContent: 'center' }]}>
                 {filteredDocuments.map((doc) => {
                   const isSelected = selectedDocId === doc.id;
-                  return renderCard(doc, isSelected, false, () => setSelectedDocId(doc.id));
+                  return renderCard(doc, isSelected, () => setSelectedDocId(doc.id));
                 })}
 
                 {/* ADD NEW DOCUMENT DASHED CARD */}
@@ -983,13 +794,14 @@ export const WalletTab = () => {
               </View>
             </View>
 
-            {/* DOCUMENT INSPECTOR (RIGHT COLUMN ON DESKTOP) */}
+            {/* DOCUMENT INSPECTOR (VISOR DE DOCUMENTO OFICIAL) */}
             {activeDoc && activeParsed && activeStatus && (
               <View style={[
                 styles.inspectorPanel, 
                 { 
                   backgroundColor: isDark ? '#191c21' : '#ffffff',
-                  borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)'
+                  borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)',
+                  width: '100%',
                 }
               ]}>
                 
@@ -1710,128 +1522,6 @@ const styles = StyleSheet.create({
     borderRadius: 80,
     borderWidth: 20,
     borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  mobileCard: {
-    width: '100%',
-    minHeight: 220,
-    borderRadius: 22,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    elevation: 10,
-  },
-  mobileWalletStack: {
-    width: '100%',
-    paddingBottom: 40,
-    marginTop: 8,
-  },
-  mobileAddBtn: {
-    width: '100%',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-  },
-  mobileExpandedPassContainer: {
-    width: '100%',
-    marginTop: 4,
-    paddingBottom: 40,
-  },
-  mobileExpandedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  backToStackBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    gap: 4,
-  },
-  backToStackText: {
-    fontSize: 12.5,
-    fontFamily: 'Montserrat_700Bold',
-  },
-  quickScanBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mobilePassDetailsSheet: {
-    marginTop: 16,
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  passActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  passActionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 9,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  passActionBtnText: {
-    fontSize: 11.5,
-    fontFamily: 'Montserrat_700Bold',
-  },
-  passDeleteBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: 'rgba(186, 26, 26, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  passPhotoWrap: {
-    width: '100%',
-    height: 180,
-    borderRadius: 16,
-    overflow: 'hidden',
-    position: 'relative',
-    marginBottom: 16,
-  },
-  passPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-  returnToWalletBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 16,
-    marginTop: 6,
-  },
-  returnToWalletBtnText: {
-    fontSize: 12.5,
-    fontFamily: 'Montserrat_700Bold',
   },
   cardCategoryPill: {
     borderWidth: 1,

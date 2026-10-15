@@ -1,6 +1,24 @@
+const path = require('path');
 const { Client } = require('pg');
 
-const connectionString = 'postgresql://postgres.ayydkesfvsisemdrxnlt:XTGLSZ2udbu23WtV@aws-0-us-east-1.pooler.supabase.com:6543/postgres';
+// Carga segura de variables de entorno (.env)
+if (typeof process.loadEnvFile === 'function') {
+  try {
+    process.loadEnvFile(path.join(__dirname, '../.env'));
+  } catch (e) {}
+} else {
+  try {
+    require('dotenv').config({ path: path.join(__dirname, '../.env') });
+  } catch (e) {}
+}
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  console.error('❌ ERROR DE SEGURIDAD: Variable DATABASE_URL no encontrada en .env');
+  console.error('👉 Configura DATABASE_URL en tu archivo .env local para continuar.');
+  process.exit(1);
+}
 
 const setupDB = async () => {
   const client = new Client({

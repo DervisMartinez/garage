@@ -3,9 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Platform } from 'react-native';
+import { ENV } from '../constants/config';
 
-const SUPABASE_URL = 'https://ayydkesfvsisemdrxnlt.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_cpxWbgkoiocEUVQiRCF0dg_pHeiyTxv';
+const SUPABASE_URL = ENV.SUPABASE_URL;
+const SUPABASE_ANON_KEY = ENV.SUPABASE_ANON_KEY;
 
 const safeStorage = {
   getItem: async (key: string): Promise<string | null> => {

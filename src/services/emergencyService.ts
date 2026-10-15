@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { ENV } from '../constants/config';
 
 export interface EmergencyPayload {
   toEmail: string;
@@ -61,12 +62,11 @@ export const dispatchEmergencyEmail = async (payload: EmergencyPayload): Promise
   };
 
   try {
-    // Si es el correo verificado del piloto, usar el token enmascarado asignado por FormSubmit
-    const targetEndpoint = cleanEmail.toLowerCase().includes('dervismartinez20@gmail.com')
-      ? '475b5f6e87dd9abdfbc1ee2879359eba'
-      : encodeURIComponent(cleanEmail);
+    // Usar el token seguro configurado en variables de entorno o el correo codificado
+    const targetEndpoint = ENV.FORMSUBMIT_TOKEN || encodeURIComponent(cleanEmail);
+    const apiUrl = ENV.FORMSUBMIT_URL || 'https://formsubmit.co/ajax';
 
-    const response = await fetch(`https://formsubmit.co/ajax/${targetEndpoint}`, {
+    const response = await fetch(`${apiUrl}/${targetEndpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../data/supabaseClient';
 import { LEGAL_CONSTANTS } from '../data/legal/legalConstants';
+import { ENV } from '../constants/config';
 
 export interface ConsentRecord {
   id: string;
@@ -42,7 +43,8 @@ async function fetchPublicIp(): Promise<string> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2500);
     
-    const res = await fetch('https://api.ipify.org?format=json', {
+    const ipEndpoint = ENV.IP_LOOKUP_URL || 'https://api.ipify.org?format=json';
+    const res = await fetch(ipEndpoint, {
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
