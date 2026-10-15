@@ -51,8 +51,10 @@ export const WalletTab = () => {
   const [uploading, setUploading] = useState(false);
   const [userData, setUserData] = useState<any>(null);
 
-  // Selected card for inspector on desktop & expanded on mobile
+  // Selected card for inspector on desktop
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  // Expanded card for mobile iOS Apple Wallet stack
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [selectedDocImage, setSelectedDocImage] = useState<string | null>(null);
 
   // Modals
@@ -424,21 +426,20 @@ export const WalletTab = () => {
   };
 
   const deleteDocument = async (id: string) => {
+    const doDelete = async () => {
+      await supabase.from('documents').delete().eq('id', id);
+      if (userData) loadDocuments(userData.id);
+      if (selectedDocId === id) setSelectedDocId(null);
+      if (expandedCardId === id) setExpandedCardId(null);
+    };
+
     if (Platform.OS === 'web') {
       const confirm = window.confirm('¿Estás seguro de eliminar este documento de tu billetera?');
-      if (confirm) {
-        await supabase.from('documents').delete().eq('id', id);
-        if (userData) loadDocuments(userData.id);
-        if (selectedDocId === id) setSelectedDocId(null);
-      }
+      if (confirm) doDelete();
     } else {
       Alert.alert('Eliminar Documento', '¿Estás seguro de eliminar este documento?', [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: async () => {
-          await supabase.from('documents').delete().eq('id', id);
-          if (userData) loadDocuments(userData.id);
-          if (selectedDocId === id) setSelectedDocId(null);
-        }}
+        { text: 'Eliminar', style: 'destructive', onPress: doDelete }
       ]);
     }
   };
@@ -463,58 +464,173 @@ export const WalletTab = () => {
     return true;
   });
 
-  // Selected document object
+  // Selected document object for desktop inspector
   const activeDoc = documents.find(d => d.id === selectedDocId) || (documents.length > 0 ? documents[0] : null);
   const activeParsed = activeDoc ? parseDocTitle(activeDoc.title) : null;
   const activeStatus = activeDoc ? getDocumentStatus(activeDoc) : null;
   const activeStyle = activeDoc ? getCardStyle(activeDoc.title) : null;
 
+  // Expanded document object for mobile iOS Apple Wallet stack
+  const expandedDoc = documents.find(d => d.id === expandedCardId) || null;
+  const expandedParsed = expandedDoc ? parseDocTitle(expandedDoc.title) : null;
+  const expandedStatus = expandedDoc ? getDocumentStatus(expandedDoc) : null;
+
   const pilotName = userData?.user_metadata?.first_name 
     ? `${userData.user_metadata.first_name} ${userData.user_metadata.last_name || ''}`.trim().toUpperCase()
-    : 'PILOTO REGISTRADO';
+    : (myMoto?.brand ? `${myMoto.brand} PILOTO` : 'PILOTO REGISTRADO');
+
+  // Reusable credential card front (NO EMV CHIP, NO CONTACTLESS)
+  const renderCard = (
+    doc: any,
+    isSelected: boolean,
+    isMobile: boolean,
+    onPress: () => void,
+    customMarginTop?: number
+  ) => {
+    const cardData = getCardStyle(doc.title);
+    const parsed = parseDocTitle(doc.title);
+    const docStatus = getDocumentStatus(doc);
+    const vehicleText = doc.type === 'moto' 
+      ? (myMoto ? `${myMoto.brand} ${myMoto.model}` : 'Vehículo Registrado')
+      : 'Documento Personal';
+
+    return (
+      <TouchableOpacity
+        key={doc.id}
+        activeOpacity={0.92}
+        onPress={onPress}
+        style={[
+          isMobile ? styles.mobileCard : styles.physicalCard,
+          customMarginTop !== undefined && { marginTop: customMarginTop },
+          isSelected && (isDesktop ? {
+            borderColor: '#4169E1',
+            borderWidth: 2,
+            shadowColor: '#4169E1',
+            shadowOpacity: 0.45,
+            shadowRadius: 16,
+            transform: [{ translateY: -4 }]
+          } : {
+            borderColor: '#4169E1',
+            borderWidth: 1.5,
+            shadowColor: '#4169E1',
+            shadowOpacity: 0.35,
+            shadowRadius: 12,
+          })
+        ]}
+      >
+        <LinearGradient
+          colors={cardData.colors as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardGradient}
+        >
+          {/* Subtle Watermark Shape */}
+          <View style={styles.cardWatermarkCircle} pointerEvents="none" />
+
+          {/* CARD TOP ROW: OFFICIAL INSIGNIA & CATEGORY PILL */}
+          <View style={styles.cardTopRow}>
+            <View style={styles.credentialInsignia}>
+              <View style={styles.insigniaIconWrap}>
+                <MaterialIcons name={cardData.icon as any} size={18} color="#ffffff" />
+              </View>
+              <View style={{ marginLeft: 8 }}>
+                <Text style={styles.insigniaTitle}>DOCUMENTO OFICIAL</Text>
+                <Text style={styles.insigniaSub}>REPÚBLICA BOLIVARIANA</Text>
+              </View>
+            </View>
+
+            <View style={[styles.cardCategoryPill, { borderColor: cardData.accent, backgroundColor: 'rgba(0,0,0,0.35)' }]}>
+              <Text style={[styles.cardCategoryPillText, { color: cardData.accent }]}>
+                {cardData.typeLabel}
+              </Text>
+            </View>
+          </View>
+
+          {/* CARD CENTER: DOCUMENT TITLE & NUMBER */}
+          <View style={{ marginVertical: 6 }}>
+            <Text style={styles.cardCleanTitle} numberOfLines={1}>
+              {parsed.cleanTitle}
+            </Text>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+              <Text style={styles.docNumberPrefix}>N° </Text>
+              <Text style={styles.cardEmbossedNumber}>
+                {parsed.docNumber && parsed.docNumber !== 'S/N' 
+                  ? parsed.docNumber 
+                  : 'V-•••••••••'}
+              </Text>
+            </View>
+          </View>
+
+          {/* CARD FOOTER: HOLDER NAME & EXPIRATION STATUS */}
+          <View style={styles.cardFooterRow}>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text style={styles.cardHolderLabel}>TITULAR • {vehicleText.toUpperCase()}</Text>
+              <Text style={styles.cardHolderName} numberOfLines={1}>
+                {pilotName}
+              </Text>
+            </View>
+
+            <View style={[styles.cardStatusCapsule, { backgroundColor: docStatus.badgeBg }]}>
+              <View style={[styles.statusDot, { backgroundColor: docStatus.badgeColor }]} />
+              <Text style={[styles.cardStatusText, { color: docStatus.badgeColor }]}>
+                {docStatus.label}
+              </Text>
+            </View>
+          </View>
+
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       
       {/* 1. TOP HEADER & FILTER BAR */}
-      <View style={[styles.headerContainer, { maxWidth: 1240, width: '100%', alignSelf: 'center' }]}>
+      <View style={[styles.headerContainer, { maxWidth: 1240, width: '100%', alignSelf: 'center', paddingHorizontal: isDesktop ? 28 : 18, paddingTop: isDesktop ? 24 : 16 }]}>
         <View style={styles.headerTopRow}>
-          <View>
+          <View style={{ flex: 1, minWidth: 200 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <MaterialIcons name="account-balance-wallet" size={20} color="#4169E1" />
               <Text style={styles.headerKicker}>GUANTERA DIGITAL • GARAGE VAULT</Text>
             </View>
-            <Text style={[styles.headerTitle, { color: colors.onSurface }]}>
+            <Text style={[styles.headerTitle, { color: colors.onSurface, fontSize: isDesktop ? 28 : 22 }]}>
               Documentos de Circulación
             </Text>
-            <Text style={[styles.headerSubtitle, { color: colors.onSurfaceVariant }]}>
+            <Text style={[styles.headerSubtitle, { color: colors.onSurfaceVariant, fontSize: isDesktop ? 13 : 11.5 }]}>
               Credenciales oficiales, carnets digitales y pólizas vigentes
             </Text>
           </View>
           
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: isDesktop ? 12 : 8, flexWrap: 'wrap' }}>
             <TouchableOpacity 
               onPress={handleOpenScanner}
-              style={[styles.headerActionBtn, { borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc' }]}
+              style={[styles.headerActionBtn, { borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc', paddingVertical: isDesktop ? 9 : 7, paddingHorizontal: isDesktop ? 14 : 10 }]}
               activeOpacity={0.8}
             >
               <MaterialIcons name="qr-code-scanner" size={18} color="#00e3fd" />
-              <Text style={[styles.headerActionBtnText, { color: colors.onSurface }]}>Escanear QR</Text>
+              <Text style={[styles.headerActionBtnText, { color: colors.onSurface, fontSize: isDesktop ? 12 : 11 }]}>Escanear QR</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               onPress={() => setShowOptionsModal(true)}
-              style={styles.headerPrimaryBtn}
+              style={[styles.headerPrimaryBtn, { paddingVertical: isDesktop ? 9 : 7, paddingHorizontal: isDesktop ? 16 : 12 }]}
               activeOpacity={0.8}
             >
               <MaterialIcons name="add" size={18} color="#ffffff" />
-              <Text style={styles.headerPrimaryBtnText}>+ Añadir Documento</Text>
+              <Text style={[styles.headerPrimaryBtnText, { fontSize: isDesktop ? 12 : 11 }]}>+ Añadir</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* FILTER BAR PILLS */}
-        <View style={[styles.filterBar, { backgroundColor: isDark ? '#191c21' : '#ececf0', borderColor: isDark ? 'rgba(64, 72, 92, 0.35)' : '#e0e0e6' }]}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 6, paddingVertical: 2, alignItems: 'center' }}
+          style={[styles.filterBar, { backgroundColor: isDark ? '#191c21' : '#ececf0', borderColor: isDark ? 'rgba(64, 72, 92, 0.35)' : '#e0e0e6' }]}
+        >
           <TouchableOpacity
             onPress={() => setStatusFilter('all')}
             style={[styles.filterPill, statusFilter === 'all' && styles.filterPillActive]}
@@ -556,17 +672,17 @@ export const WalletTab = () => {
               </Text>
             </TouchableOpacity>
           )}
-        </View>
+        </ScrollView>
       </View>
 
-      {/* 2. BODY CONTENT: SPLIT DESKTOP OR MOBILE ACCORDION */}
+      {/* 2. BODY CONTENT: AUTHENTIC APPLE WALLET (MOBILE) OR DUAL-COLUMN (DESKTOP) */}
       <ScrollView 
         contentContainerStyle={{ 
           maxWidth: 1240, 
           width: '100%', 
           alignSelf: 'center', 
-          paddingHorizontal: 28, 
-          paddingBottom: 80 
+          paddingHorizontal: isDesktop ? 28 : 18, 
+          paddingBottom: 90 
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -595,106 +711,198 @@ export const WalletTab = () => {
               <Text style={styles.emptyAddBtnText}>Añadir Primer Documento</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 28, alignItems: 'flex-start', marginTop: 12 }}>
-            
-            {/* CARDS DECK / GRID (FIXED CARD PROPORTIONS) */}
-            <View style={{ flex: 1.3, width: '100%' }}>
-              <View style={[styles.cardsGrid, !isDesktop && { justifyContent: 'center' }]}>
-                {filteredDocuments.map((doc) => {
-                  const isSelected = isDesktop ? (selectedDocId === doc.id) : (selectedDocId === doc.id);
-                  const cardData = getCardStyle(doc.title);
-                  const parsed = parseDocTitle(doc.title);
-                  const docStatus = getDocumentStatus(doc);
-                  
-                  return (
+        ) : !isDesktop ? (
+          // ==============================
+          // MOBILE VIEW: AUTHENTIC APPLE WALLET
+          // ==============================
+          expandedCardId && expandedDoc && expandedParsed && expandedStatus ? (
+            // 1. MOBILE EXPANDED FOCUSED PASS VIEW
+            <View style={styles.mobileExpandedPassContainer}>
+              {/* TOP CONTROLS */}
+              <View style={styles.mobileExpandedHeader}>
+                <TouchableOpacity
+                  style={[styles.backToStackBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}
+                  onPress={() => setExpandedCardId(null)}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons name="arrow-back-ios" size={13} color={colors.onSurface} style={{ marginLeft: 3 }} />
+                  <Text style={[styles.backToStackText, { color: colors.onSurface }]}>Guantera Digital</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickScanBtn, { backgroundColor: isDark ? 'rgba(0, 227, 253, 0.12)' : 'rgba(39, 95, 227, 0.1)' }]}
+                  onPress={handleOpenScanner}
+                >
+                  <MaterialIcons name="qr-code-scanner" size={18} color="#00e3fd" />
+                </TouchableOpacity>
+              </View>
+
+              {/* FOCUSED CARD (TAP TO COLLAPSE) */}
+              {renderCard(expandedDoc, true, true, () => setExpandedCardId(null), 0)}
+
+              {/* PASS DETAILS SHEET (APPLE WALLET DETAILS / BACK OF PASS) */}
+              <View style={[
+                styles.mobilePassDetailsSheet,
+                { 
+                  backgroundColor: isDark ? '#191c21' : '#ffffff',
+                  borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)'
+                }
+              ]}>
+                {/* QUICK ACTIONS ROW */}
+                <View style={styles.passActionsRow}>
+                  <TouchableOpacity
+                    style={[styles.passActionBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc' }]}
+                    onPress={() => handleOpenEdit(expandedDoc)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="edit" size={16} color={colors.onSurface} />
+                    <Text style={[styles.passActionBtnText, { color: colors.onSurface }]}>Editar Datos</Text>
+                  </TouchableOpacity>
+
+                  {expandedDoc.image_url && (
                     <TouchableOpacity
-                      key={doc.id}
-                      activeOpacity={0.9}
-                      onPress={() => setSelectedDocId(isSelected && !isDesktop ? null : doc.id)}
-                      style={[
-                        styles.physicalCard,
-                        isSelected && {
-                          borderColor: '#4169E1',
-                          borderWidth: 2,
-                          shadowColor: '#4169E1',
-                          shadowOpacity: 0.45,
-                          shadowRadius: 16,
-                          transform: [{ translateY: -4 }]
-                        }
-                      ]}
+                      style={[styles.passActionBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc' }]}
+                      onPress={() => setSelectedDocImage(expandedDoc.image_url)}
+                      activeOpacity={0.8}
                     >
-                      <LinearGradient
-                        colors={cardData.colors as [string, string, ...string[]]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.cardGradient}
-                      >
-                        {/* Shimmer overlay pattern */}
-                        <div style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%)',
-                          borderRadius: '20px',
-                          pointerEvents: 'none',
-                        } as any} />
-
-                        {/* CARD TOP ROW: EMV CHIP, CONTACTLESS ICON & LOGO */}
-                        <View style={styles.cardTopRow}>
-                          <View style={styles.emvChip}>
-                            <View style={styles.emvChipLine1} />
-                            <View style={styles.emvChipLine2} />
-                          </View>
-
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <MaterialCommunityIcons name="contactless-payment" size={20} color="rgba(255,255,255,0.7)" />
-                            <View style={[styles.cardCategoryPill, { borderColor: cardData.accent }]}>
-                              <Text style={[styles.cardCategoryPillText, { color: cardData.accent }]}>
-                                {cardData.typeLabel}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-
-                        {/* CARD CENTER: DOCUMENT TITLE & NUMBER */}
-                        <View style={{ marginVertical: 10 }}>
-                          <Text style={styles.cardCleanTitle} numberOfLines={1}>
-                            {parsed.cleanTitle}
-                          </Text>
-
-                          <Text style={styles.cardEmbossedNumber}>
-                            {parsed.docNumber && parsed.docNumber !== 'S/N' 
-                              ? parsed.docNumber 
-                              : 'V-•••••••••'}
-                          </Text>
-                        </View>
-
-                        {/* CARD FOOTER: HOLDER NAME & EXPIRATION STATUS */}
-                        <View style={styles.cardFooterRow}>
-                          <View style={{ flex: 1, paddingRight: 8 }}>
-                            <Text style={styles.cardHolderLabel}>TITULAR</Text>
-                            <Text style={styles.cardHolderName} numberOfLines={1}>
-                              {pilotName}
-                            </Text>
-                          </View>
-
-                          <View style={[styles.cardStatusCapsule, { backgroundColor: docStatus.badgeBg }]}>
-                            <View style={[styles.statusDot, { backgroundColor: docStatus.badgeColor }]} />
-                            <Text style={[styles.cardStatusText, { color: docStatus.badgeColor }]}>
-                              {docStatus.label}
-                            </Text>
-                          </View>
-                        </View>
-
-                      </LinearGradient>
+                      <MaterialIcons name="fullscreen" size={18} color="#00e3fd" />
+                      <Text style={[styles.passActionBtnText, { color: colors.onSurface }]}>Foto Original</Text>
                     </TouchableOpacity>
-                  );
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.passDeleteBtn}
+                    onPress={() => deleteDocument(expandedDoc.id)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="delete-outline" size={18} color="#ffb4ab" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* PHOTO THUMBNAIL (IF PRESENT) */}
+                {expandedDoc.image_url && (
+                  <TouchableOpacity
+                    style={styles.passPhotoWrap}
+                    onPress={() => setSelectedDocImage(expandedDoc.image_url)}
+                    activeOpacity={0.85}
+                  >
+                    <Image source={{ uri: expandedDoc.image_url }} style={styles.passPhoto} resizeMode="cover" />
+                    <View style={styles.photoZoomOverlay}>
+                      <MaterialIcons name="zoom-in" size={18} color="#ffffff" />
+                      <Text style={styles.photoZoomText}>Toca para ver en pantalla completa</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                {/* QR CODE BANNER */}
+                {expandedParsed.qrData && (
+                  <View style={[styles.qrBannerBox, { backgroundColor: isDark ? 'rgba(0, 227, 253, 0.08)' : 'rgba(39, 95, 227, 0.06)', borderColor: isDark ? 'rgba(0, 227, 253, 0.25)' : 'rgba(39, 95, 227, 0.2)' }]}>
+                    <MaterialIcons name="qr-code-2" size={24} color="#00e3fd" />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={[styles.qrBannerTitle, { color: colors.onSurface }]}>Código QR Verificado</Text>
+                      <Text style={[styles.qrBannerData, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
+                        {expandedParsed.qrData}
+                      </Text>
+                    </View>
+                    {expandedParsed.qrData.startsWith('http') && (
+                      <TouchableOpacity 
+                        onPress={() => Linking.openURL(expandedParsed.qrData!)}
+                        style={styles.openUrlBtn}
+                      >
+                        <Text style={styles.openUrlBtnText}>Abrir ↗</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+
+                {/* METADATA TABLE */}
+                <View style={styles.inspectorDetailsTable}>
+                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
+                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>N° DOCUMENTO</Text>
+                    <Text style={[styles.detailTableVal, { color: colors.onSurface }]}>
+                      {expandedParsed.docNumber || 'S/N'}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
+                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>TITULAR</Text>
+                    <Text style={[styles.detailTableVal, { color: colors.onSurface }]}>
+                      {pilotName}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
+                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>ESTADO DE VALIDEZ</Text>
+                    <Text style={[styles.detailTableVal, { color: expandedStatus.badgeColor }]}>
+                      {expandedStatus.label}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
+                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>VINCULACIÓN VEHICULAR</Text>
+                    <Text style={[styles.detailTableVal, { color: colors.onSurface }]}>
+                      {expandedDoc.type === 'moto' ? (myMoto ? `${myMoto.brand} ${myMoto.model}` : 'Vehículo') : 'Personal'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* RETURN PILL */}
+                <TouchableOpacity
+                  style={[styles.returnToWalletBtn, { backgroundColor: isDark ? '#272a30' : '#f0f0f4' }]}
+                  onPress={() => setExpandedCardId(null)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="view-carousel" size={18} color={colors.onSurface} />
+                  <Text style={[styles.returnToWalletBtnText, { color: colors.onSurface }]}>Ver todas las tarjetas</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            // 2. MOBILE OVERLAPPING APPLE WALLET STACK
+            <View style={styles.mobileWalletStack}>
+              {filteredDocuments.map((doc, index) => {
+                const marginTop = index === 0 ? 0 : -145;
+                return renderCard(doc, false, true, () => setExpandedCardId(doc.id), marginTop);
+              })}
+
+              {/* ADD DOCUMENT BUTTON AT BOTTOM OF STACK */}
+              <TouchableOpacity
+                style={[
+                  styles.mobileAddBtn, 
+                  { 
+                    borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : '#d0d4dc',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8f9fc',
+                    marginTop: filteredDocuments.length > 0 ? 20 : 0
+                  }
+                ]}
+                onPress={() => setShowOptionsModal(true)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.addDashedIconWrap}>
+                  <MaterialIcons name="add" size={24} color="#00e3fd" />
+                </View>
+                <Text style={[styles.addDashedTitle, { color: colors.onSurface }]}>Registrar Otro Documento</Text>
+                <Text style={[styles.addDashedSubtitle, { color: colors.onSurfaceVariant }]}>
+                  Foto física o escaneo de código QR
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )
+        ) : (
+          // ==============================
+          // DESKTOP VIEW: DUAL-COLUMN INSPECTOR DASHBOARD
+          // ==============================
+          <View style={{ flexDirection: 'row', gap: 28, alignItems: 'flex-start', marginTop: 12 }}>
+            
+            {/* CARDS GRID */}
+            <View style={{ flex: 1.3, width: '100%' }}>
+              <View style={styles.cardsGrid}>
+                {filteredDocuments.map((doc) => {
+                  const isSelected = selectedDocId === doc.id;
+                  return renderCard(doc, isSelected, false, () => setSelectedDocId(doc.id));
                 })}
 
-                {/* ADD NEW DOCUMENT DASHED CARD (MATCHES PROPORTIONS) */}
+                {/* ADD NEW DOCUMENT DASHED CARD */}
                 <TouchableOpacity
                   style={[styles.addDashedCard, { borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : '#d0d4dc' }]}
                   onPress={() => setShowOptionsModal(true)}
@@ -1306,27 +1514,170 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  emvChip: {
-    width: 42,
+  credentialInsignia: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  insigniaIconWrap: {
+    width: 32,
     height: 32,
-    borderRadius: 6,
-    backgroundColor: '#d4af37',
-    borderWidth: 1,
-    borderColor: '#ffd700',
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
-  emvChipLine1: {
-    width: '100%',
-    height: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+  insigniaTitle: {
+    color: '#ffffff',
+    fontSize: 8.5,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1,
   },
-  emvChipLine2: {
-    width: 1,
-    height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+  insigniaSub: {
+    color: 'rgba(255, 255, 255, 0.65)',
+    fontSize: 7.5,
+    fontFamily: 'Montserrat_500Medium',
+    letterSpacing: 0.5,
+    marginTop: 1,
+  },
+  docNumberPrefix: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1,
+  },
+  cardWatermarkCircle: {
     position: 'absolute',
+    right: -30,
+    bottom: -30,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 20,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  mobileCard: {
+    width: '100%',
+    minHeight: 220,
+    borderRadius: 22,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  mobileWalletStack: {
+    width: '100%',
+    paddingBottom: 40,
+    marginTop: 8,
+  },
+  mobileAddBtn: {
+    width: '100%',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+  },
+  mobileExpandedPassContainer: {
+    width: '100%',
+    marginTop: 4,
+    paddingBottom: 40,
+  },
+  mobileExpandedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  backToStackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    gap: 4,
+  },
+  backToStackText: {
+    fontSize: 12.5,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  quickScanBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mobilePassDetailsSheet: {
+    marginTop: 16,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  passActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  passActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  passActionBtnText: {
+    fontSize: 11.5,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  passDeleteBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: 'rgba(186, 26, 26, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  passPhotoWrap: {
+    width: '100%',
+    height: 180,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: 16,
+  },
+  passPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  returnToWalletBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 16,
+    marginTop: 6,
+  },
+  returnToWalletBtnText: {
+    fontSize: 12.5,
+    fontFamily: 'Montserrat_700Bold',
   },
   cardCategoryPill: {
     borderWidth: 1,
