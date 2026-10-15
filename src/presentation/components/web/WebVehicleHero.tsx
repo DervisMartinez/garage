@@ -100,12 +100,12 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
         {/* ATMOSPHERIC BACKGROUND RADIAL GLOW */}
         <View style={{
           position: 'absolute',
-          top: '20%',
-          left: '35%',
-          width: 550,
-          height: 400,
-          borderRadius: 275,
-          backgroundColor: isDark ? 'rgba(65, 105, 225, 0.12)' : 'rgba(39, 95, 227, 0.08)',
+          top: '15%',
+          left: '25%',
+          width: 700,
+          height: 520,
+          borderRadius: 350,
+          backgroundColor: isDark ? 'rgba(65, 105, 225, 0.14)' : 'rgba(39, 95, 227, 0.09)',
           pointerEvents: 'none',
           zIndex: 1,
         } as any} />
@@ -113,9 +113,9 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
         {/* WATERMARK TEXT (Like "2022" in Yamaha reference image) */}
         <Text style={{
           position: 'absolute',
-          top: '12%',
-          left: '12%',
-          fontSize: 160,
+          top: '10%',
+          left: '8%',
+          fontSize: 180,
           fontFamily: F.extrabold,
           color: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.035)',
           zIndex: 1,
@@ -193,12 +193,12 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
 
             {/* SOFT GROUND SHADOW (Like in technical presentation) */}
             <View style={{
-              width: '75%',
-              height: 24,
+              width: '85%',
+              height: 28,
               marginHorizontal: 'auto',
-              marginTop: -18,
-              borderRadius: 12,
-              backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)',
+              marginTop: -24,
+              borderRadius: 14,
+              backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.14)',
             } as any} />
           </TouchableOpacity>
 
@@ -395,9 +395,9 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
 const styles = StyleSheet.create({
   heroContainer: {
     width: '100%',
-    minHeight: 520,
+    minHeight: 600,
     paddingTop: 36,
-    paddingBottom: 24,
+    paddingBottom: 28,
     paddingHorizontal: 40,
     position: 'relative',
     justifyContent: 'space-between',
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     zIndex: 2,
-    gap: 20,
+    gap: 24,
   },
   carouselArrowBtn: {
     width: 48,
@@ -418,21 +418,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bikeShowcaseContainer: {
-    flex: 1.3,
+    flex: 1.6,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 340,
+    minHeight: 440,
     position: 'relative',
   },
   bikeImage: {
     width: '100%',
-    height: 320,
-    maxWidth: 580,
+    height: 450,
+    maxWidth: 780,
   },
   bikePlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 300,
+    height: 400,
   },
   bikePlaceholderText: {
     fontSize: 16,

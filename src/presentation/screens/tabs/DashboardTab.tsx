@@ -373,15 +373,15 @@ export const DashboardTab = () => {
                       onPress={() => setInspectionVisible(true)}
                       activeOpacity={0.9}
                       accessibilityLabel="Toca para inspeccionar tu moto en 3D"
-                      style={{ width: slideWidth, height: 180, justifyContent: 'center', alignItems: 'center', position: 'relative' }}
+                      style={{ width: slideWidth, height: 215, justifyContent: 'center', alignItems: 'center', position: 'relative' }}
                     >
                       {moto.imageUrl ? (
-                        <Image source={{ uri: moto.imageUrl }} style={{ width: '92%', height: 160, zIndex: 5 }} resizeMode="contain" />
+                        <Image source={{ uri: moto.imageUrl }} style={{ width: '96%', height: 195, zIndex: 5 }} resizeMode="contain" />
                       ) : catMoto?.imageRes ? (
-                        <Image source={catMoto.imageRes} style={{ width: '92%', height: 160, zIndex: 5 }} resizeMode="contain" />
+                        <Image source={catMoto.imageRes} style={{ width: '96%', height: 195, zIndex: 5 }} resizeMode="contain" />
                       ) : (
-                        <View style={{ width: '100%', height: 160, justifyContent: 'center', alignItems: 'center', zIndex: 5 }}>
-                          <MaterialIcons name="two-wheeler" size={96} color={colors.onSurfaceVariant} />
+                        <View style={{ width: '100%', height: 195, justifyContent: 'center', alignItems: 'center', zIndex: 5 }}>
+                          <MaterialIcons name="two-wheeler" size={106} color={colors.onSurfaceVariant} />
                         </View>
                       )}
 
@@ -924,11 +924,11 @@ const styles = StyleSheet.create({
   iconButton: { position: 'relative', padding: 8, borderRadius: 20 },
   scrollContent: { paddingBottom: 20 },
   heroSection: { padding: 16, alignItems: 'center' },
-  heroImageContainer: { width: '100%', alignItems: 'center', marginBottom: 20, height: 180 },
+  heroImageContainer: { width: '100%', alignItems: 'center', marginBottom: 20, height: 215 },
   heroImage: { width: '100%', height: '100%', zIndex: 10 },
-  podiumGlow: { position: 'absolute', bottom: 0, width: 250, height: 30, borderRadius: 100 },
-  podiumRing: { position: 'absolute', bottom: -10, width: 280, height: 40, borderRadius: 140, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  podiumInnerRing: { width: 220, height: 24, borderRadius: 110, borderWidth: 1 },
+  podiumGlow: { position: 'absolute', bottom: 0, width: 280, height: 34, borderRadius: 100 },
+  podiumRing: { position: 'absolute', bottom: -10, width: 310, height: 44, borderRadius: 155, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  podiumInnerRing: { width: 250, height: 28, borderRadius: 125, borderWidth: 1 },
   specsRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', borderBottomWidth: 1, paddingBottom: 12 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   motoName: { fontSize: 22, textTransform: 'uppercase' },
