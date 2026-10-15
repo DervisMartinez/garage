@@ -303,6 +303,49 @@ export const WalletTab = () => {
 
   const handlePickImage = async () => {
     setShowOptionsModal(false);
+
+    // On Web: native file selector supporting images and PDF
+    if (Platform.OS === 'web') {
+      try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*,application/pdf';
+        input.onchange = async (e: any) => {
+          const file = e.target?.files?.[0];
+          if (file) {
+            const objectUrl = URL.createObjectURL(file);
+            setFormImageUri(objectUrl);
+
+            // Auto-detect document title based on filename
+            const nameLower = (file.name || '').toLowerCase();
+            if (nameLower.includes('licencia')) {
+              setFormTitle('Licencia de Conducir');
+              setFormDocType('user');
+            } else if (nameLower.includes('seguro') || nameLower.includes('rcv') || nameLower.includes('poliza')) {
+              setFormTitle('Seguro / RCV');
+              setFormDocType('moto');
+            } else if (nameLower.includes('medico') || nameLower.includes('médico') || nameLower.includes('salud')) {
+              setFormTitle('Certificado Médico');
+              setFormDocType('user');
+            } else if (nameLower.includes('titulo') || nameLower.includes('título') || nameLower.includes('propiedad')) {
+              setFormTitle('Título de Propiedad');
+              setFormDocType('moto');
+              setFormIsPermanent(true);
+            } else if (nameLower.includes('carnet') || nameLower.includes('circulacion') || nameLower.includes('circulación')) {
+              setFormTitle('Carnet de Circulación');
+              setFormDocType('moto');
+            }
+
+            setShowFormModal(true);
+          }
+        };
+        input.click();
+        return;
+      } catch (err) {
+        // fallback
+      }
+    }
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -314,7 +357,7 @@ export const WalletTab = () => {
         setShowFormModal(true);
       }
     } catch (e) {
-      alert('No se pudo abrir la galería.');
+      alert('No se pudo abrir la galería o explorador de archivos.');
     }
   };
 
@@ -353,13 +396,21 @@ export const WalletTab = () => {
     try {
       let finalPublicUrl: string | null = null;
       if (formImageUri) {
-        const ext = formImageUri.substring(formImageUri.lastIndexOf('.') + 1) || 'jpg';
+        const blob = await (await fetch(formImageUri)).blob();
+        const mime = blob.type || 'image/jpeg';
+        let ext = 'jpg';
+        if (mime.includes('png')) ext = 'png';
+        else if (mime.includes('pdf')) ext = 'pdf';
+        else if (mime.includes('webp')) ext = 'webp';
+        else if (mime.includes('jpeg') || mime.includes('jpg')) ext = 'jpg';
+        else if (formImageUri.includes('.')) {
+          ext = formImageUri.substring(formImageUri.lastIndexOf('.') + 1).split('?')[0] || 'jpg';
+        }
         const fileName = `${Math.random().toString(36).substring(7)}.${ext}`;
         const path = `${userData.id}/${fileName}`;
-        const blob = await (await fetch(formImageUri)).blob();
         const { error: uploadError } = await supabase.storage
           .from('documents')
-          .upload(path, blob, { contentType: `image/${ext}` });
+          .upload(path, blob, { contentType: mime });
         if (uploadError) throw uploadError;
         const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path);
         finalPublicUrl = publicUrl;
@@ -604,14 +655,25 @@ export const WalletTab = () => {
           </View>
           
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: isDesktop ? 12 : 8, flexWrap: 'wrap' }}>
-            <TouchableOpacity 
-              onPress={handleOpenScanner}
-              style={[styles.headerActionBtn, { borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc', paddingVertical: isDesktop ? 9 : 7, paddingHorizontal: isDesktop ? 14 : 10 }]}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="qr-code-scanner" size={18} color="#00e3fd" />
-              <Text style={[styles.headerActionBtnText, { color: colors.onSurface, fontSize: isDesktop ? 12 : 11 }]}>Escanear QR</Text>
-            </TouchableOpacity>
+            {isDesktop ? (
+              <TouchableOpacity 
+                onPress={handlePickImage}
+                style={[styles.headerActionBtn, { borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc', paddingVertical: 9, paddingHorizontal: 14 }]}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="upload-file" size={18} color="#00e3fd" />
+                <Text style={[styles.headerActionBtnText, { color: colors.onSurface, fontSize: 12 }]}>Cargar Documento / Foto</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                onPress={handleOpenScanner}
+                style={[styles.headerActionBtn, { borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc', paddingVertical: 7, paddingHorizontal: 10 }]}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="qr-code-scanner" size={18} color="#00e3fd" />
+                <Text style={[styles.headerActionBtnText, { color: colors.onSurface, fontSize: 11 }]}>Escanear QR</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity 
               onPress={() => setShowOptionsModal(true)}
@@ -905,15 +967,17 @@ export const WalletTab = () => {
                 {/* ADD NEW DOCUMENT DASHED CARD */}
                 <TouchableOpacity
                   style={[styles.addDashedCard, { borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : '#d0d4dc' }]}
-                  onPress={() => setShowOptionsModal(true)}
+                  onPress={() => isDesktop ? handlePickImage() : setShowOptionsModal(true)}
                   activeOpacity={0.8}
                 >
                   <View style={styles.addDashedIconWrap}>
-                    <MaterialIcons name="add" size={26} color="#00e3fd" />
+                    <MaterialIcons name={isDesktop ? "cloud-upload" : "add"} size={26} color="#00e3fd" />
                   </View>
-                  <Text style={[styles.addDashedTitle, { color: colors.onSurface }]}>Registrar Otro Documento</Text>
+                  <Text style={[styles.addDashedTitle, { color: colors.onSurface }]}>
+                    {isDesktop ? 'Subir Nuevo Documento' : 'Registrar Otro Documento'}
+                  </Text>
                   <Text style={[styles.addDashedSubtitle, { color: colors.onSurfaceVariant }]}>
-                    Foto física o escaneo de código QR
+                    {isDesktop ? 'Cargar foto o archivo digital (PDF / Imagen) de tu equipo' : 'Foto física o escaneo de código QR'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -950,14 +1014,30 @@ export const WalletTab = () => {
                 {activeDoc.image_url ? (
                   <TouchableOpacity
                     style={styles.inspectorPhotoContainer}
-                    onPress={() => setSelectedDocImage(activeDoc.image_url)}
+                    onPress={() => {
+                      if (activeDoc.image_url.toLowerCase().includes('.pdf')) {
+                        Linking.openURL(activeDoc.image_url);
+                      } else {
+                        setSelectedDocImage(activeDoc.image_url);
+                      }
+                    }}
                     activeOpacity={0.85}
                   >
-                    <Image source={{ uri: activeDoc.image_url }} style={styles.inspectorPhoto} resizeMode="cover" />
-                    <View style={styles.photoZoomOverlay}>
-                      <MaterialIcons name="zoom-in" size={20} color="#ffffff" />
-                      <Text style={styles.photoZoomText}>Ver en tamaño completo</Text>
-                    </View>
+                    {activeDoc.image_url.toLowerCase().includes('.pdf') ? (
+                      <View style={[styles.inspectorPdfBox, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}>
+                        <MaterialIcons name="picture-as-pdf" size={46} color="#ba1a1a" />
+                        <Text style={[styles.inspectorPdfTitle, { color: colors.onSurface }]}>Documento PDF Adjunto</Text>
+                        <Text style={styles.inspectorPdfLink}>Abrir y visualizar archivo ↗</Text>
+                      </View>
+                    ) : (
+                      <>
+                        <Image source={{ uri: activeDoc.image_url }} style={styles.inspectorPhoto} resizeMode="cover" />
+                        <View style={styles.photoZoomOverlay}>
+                          <MaterialIcons name="zoom-in" size={20} color="#ffffff" />
+                          <Text style={styles.photoZoomText}>Ver en tamaño completo</Text>
+                        </View>
+                      </>
+                    )}
                   </TouchableOpacity>
                 ) : (
                   <View style={[styles.inspectorNoPhotoBox, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}>
@@ -965,6 +1045,14 @@ export const WalletTab = () => {
                     <Text style={[styles.inspectorNoPhotoText, { color: colors.onSurfaceVariant }]}>
                       Documento registrado sin fotografía digital
                     </Text>
+                    <TouchableOpacity
+                      onPress={handlePickImage}
+                      style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialIcons name="add-a-photo" size={16} color="#00e3fd" />
+                      <Text style={{ fontSize: 11, fontFamily: F.bold, color: '#00e3fd' }}>+ Adjuntar foto o archivo</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -1127,60 +1215,106 @@ export const WalletTab = () => {
             </Text>
 
             <View style={{ gap: 10, marginTop: 14 }}>
-              <TouchableOpacity 
-                onPress={() => {
-                  setShowOptionsModal(false);
-                  handleOpenScanner();
-                }}
-                style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
-              >
-                <MaterialIcons name="qr-code-scanner" size={22} color="#00e3fd" />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Escanear Código QR</Text>
-                  <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Captura automática de datos oficiales</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
-              </TouchableOpacity>
+              {isDesktop ? (
+                <>
+                  <TouchableOpacity 
+                    onPress={handlePickImage}
+                    style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
+                  >
+                    <MaterialIcons name="cloud-upload" size={24} color="#00e3fd" />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Cargar Foto o Documento</Text>
+                      <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Selecciona un archivo PDF o imagen de tu equipo</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+                  </TouchableOpacity>
 
-              <TouchableOpacity 
-                onPress={handleTakePhoto}
-                style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
-              >
-                <MaterialIcons name="camera-alt" size={22} color="#00ae78" />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Tomar Foto con Cámara</Text>
-                  <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Fotografía tu documento físico</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
-              </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={handleTakePhoto}
+                    style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
+                  >
+                    <MaterialIcons name="camera-alt" size={24} color="#00ae78" />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Tomar Foto con Cámara Web</Text>
+                      <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Fotografía tu documento con la cámara de tu equipo</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+                  </TouchableOpacity>
 
-              <TouchableOpacity 
-                onPress={handlePickImage}
-                style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
-              >
-                <MaterialIcons name="photo-library" size={22} color="#ffb703" />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Elegir de la Galería</Text>
-                  <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Selecciona una imagen guardada</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
-              </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setShowOptionsModal(false);
+                      setFormImageUri(null);
+                      setShowFormModal(true);
+                    }}
+                    style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
+                  >
+                    <MaterialIcons name="edit-note" size={24} color="#4169E1" />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Ingreso Manual</Text>
+                      <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Registra números y fechas sin foto ahora</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setShowOptionsModal(false);
+                      handleOpenScanner();
+                    }}
+                    style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
+                  >
+                    <MaterialIcons name="qr-code-scanner" size={22} color="#00e3fd" />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Escanear Código QR</Text>
+                      <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Captura automática de datos oficiales</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+                  </TouchableOpacity>
 
-              <TouchableOpacity 
-                onPress={() => {
-                  setShowOptionsModal(false);
-                  setFormImageUri(null);
-                  setShowFormModal(true);
-                }}
-                style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
-              >
-                <MaterialIcons name="edit-note" size={22} color="#4169E1" />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Ingreso Manual</Text>
-                  <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Registra números y fechas sin foto ahora</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
-              </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={handleTakePhoto}
+                    style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
+                  >
+                    <MaterialIcons name="camera-alt" size={22} color="#00ae78" />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Tomar Foto con Cámara</Text>
+                      <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Fotografía tu documento físico</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    onPress={handlePickImage}
+                    style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
+                  >
+                    <MaterialIcons name="photo-library" size={22} color="#ffb703" />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Elegir de la Galería</Text>
+                      <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Selecciona una imagen guardada</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setShowOptionsModal(false);
+                      setFormImageUri(null);
+                      setShowFormModal(true);
+                    }}
+                    style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
+                  >
+                    <MaterialIcons name="edit-note" size={22} color="#4169E1" />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Ingreso Manual</Text>
+                      <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Registra números y fechas sin foto ahora</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -1198,7 +1332,7 @@ export const WalletTab = () => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              {formImageUri && (
+              {formImageUri ? (
                 <View style={{ marginBottom: 14, position: 'relative' }}>
                   <Image source={{ uri: formImageUri }} style={{ width: '100%', height: 160, borderRadius: 14 }} resizeMode="cover" />
                   <TouchableOpacity 
@@ -1208,6 +1342,26 @@ export const WalletTab = () => {
                     <MaterialIcons name="close" size={16} color="#FFF" />
                   </TouchableOpacity>
                 </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={handlePickImage}
+                  style={[
+                    styles.formUploadBox,
+                    {
+                      borderColor: isDark ? 'rgba(0, 227, 253, 0.35)' : 'rgba(65, 105, 225, 0.35)',
+                      backgroundColor: isDark ? 'rgba(0, 227, 253, 0.05)' : 'rgba(39, 95, 227, 0.05)',
+                    }
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="cloud-upload" size={28} color="#00e3fd" />
+                  <Text style={[styles.formUploadTitle, { color: colors.onSurface }]}>
+                    {isDesktop ? 'Subir Foto o Documento Digital' : 'Adjuntar Foto del Documento'}
+                  </Text>
+                  <Text style={[styles.formUploadSub, { color: colors.onSurfaceVariant }]}>
+                    {isDesktop ? 'Haz clic aquí para seleccionar el archivo (PDF, JPG, PNG) de tu equipo' : 'Toca para elegir de tu galería o cámara'}
+                  </Text>
+                </TouchableOpacity>
               )}
 
               <Text style={[styles.inputLabel, { color: colors.onSurfaceVariant }]}>Tipo de Documento:</Text>
@@ -2070,5 +2224,43 @@ const styles = StyleSheet.create({
   scannerBottomBar: {
     paddingBottom: 40,
     alignItems: 'center',
+  },
+  formUploadBox: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 4,
+  },
+  formUploadTitle: {
+    fontSize: 12.5,
+    fontFamily: 'Montserrat_700Bold',
+    marginTop: 4,
+  },
+  formUploadSub: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_400Regular',
+    textAlign: 'center',
+  },
+  inspectorPdfBox: {
+    width: '100%',
+    height: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 14,
+  },
+  inspectorPdfTitle: {
+    fontSize: 13,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  inspectorPdfLink: {
+    fontSize: 11.5,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#00e3fd',
   },
 });

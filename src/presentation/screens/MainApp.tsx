@@ -664,12 +664,14 @@ export const MainApp = () => {
                 activeOpacity={0.8}
               >
                 <View style={[styles.quickIconBox, { backgroundColor: 'rgba(48,209,88,0.15)' }]}>
-                  <MaterialIcons name="qr-code-scanner" size={24} color="#30D158" />
+                  <MaterialIcons name={isDesktop ? "upload-file" : "qr-code-scanner"} size={24} color="#30D158" />
                 </View>
                 <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 15 }}>Escanear QR o Carnet</Text>
+                  <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 15 }}>
+                    {isDesktop ? 'Subir Documento o Carnet' : 'Escanear QR o Carnet'}
+                  </Text>
                   <Text style={{ fontFamily: F.regular, color: colors.onSurfaceVariant, fontSize: 12, marginTop: 2 }}>
-                    Adjuntar foto de documento o leer código QR
+                    {isDesktop ? 'Cargar archivo o foto de documento' : 'Adjuntar foto de documento o leer código QR'}
                   </Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
