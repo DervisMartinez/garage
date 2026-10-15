@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar, LogBox, Platform } from 'react-native';
 import { Stack } from 'expo-router';
@@ -43,34 +43,27 @@ function InnerLayout() {
 }
 
 export default function Layout() {
-  const [fontsLoaded, fontError] = useFonts({
-    Montserrat_400Regular,
-    Montserrat_500Medium,
-    Montserrat_600SemiBold,
-    Montserrat_700Bold,
-    Montserrat_800ExtraBold,
-  });
-
-  // Safety fallback for Web: if fonts take more than 1.5s or network is throttled, don't block the UI
-  const [fallbackReady, setFallbackReady] = useState(Platform.OS === 'web');
-
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      const timer = setTimeout(() => {
-        setFallbackReady(true);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
+  // On Web, fonts are loaded natively by CSS in +html.tsx (Google Fonts CDN).
+  // Passing {} on Web ensures FontObserver never runs and 12000ms timeout never fires.
+  const [fontsLoaded, fontError] = useFonts(
+    Platform.OS !== 'web'
+      ? {
+          Montserrat_400Regular,
+          Montserrat_500Medium,
+          Montserrat_600SemiBold,
+          Montserrat_700Bold,
+          Montserrat_800ExtraBold,
+        }
+      : {}
+  );
 
   useEffect(() => {
-    if (fontsLoaded || fontError || fallbackReady) {
+    if (fontsLoaded || fontError || Platform.OS === 'web') {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded, fontError, fallbackReady]);
+  }, [fontsLoaded, fontError]);
 
-  // If fonts are not ready and fallback has not elapsed, wait
-  if (!fontsLoaded && !fontError && !fallbackReady) {
+  if (!fontsLoaded && !fontError && Platform.OS !== 'web') {
     return null;
   }
 

@@ -22,6 +22,36 @@ export default function Root({ children }: PropsWithChildren) {
         <style
           dangerouslySetInnerHTML={{
             __html: `
+              @font-face {
+                font-family: 'Montserrat_400Regular';
+                src: local('Montserrat-Regular'), local('Montserrat');
+                font-weight: 400;
+                font-style: normal;
+              }
+              @font-face {
+                font-family: 'Montserrat_500Medium';
+                src: local('Montserrat-Medium'), local('Montserrat');
+                font-weight: 500;
+                font-style: normal;
+              }
+              @font-face {
+                font-family: 'Montserrat_600SemiBold';
+                src: local('Montserrat-SemiBold'), local('Montserrat');
+                font-weight: 600;
+                font-style: normal;
+              }
+              @font-face {
+                font-family: 'Montserrat_700Bold';
+                src: local('Montserrat-Bold'), local('Montserrat');
+                font-weight: 700;
+                font-style: normal;
+              }
+              @font-face {
+                font-family: 'Montserrat_800ExtraBold';
+                src: local('Montserrat-ExtraBold'), local('Montserrat');
+                font-weight: 800;
+                font-style: normal;
+              }
               html, body, #root {
                 height: 100%;
                 margin: 0;
