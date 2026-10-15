@@ -22,8 +22,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { TutorialModal } from '../../components/TutorialModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LegalDocModal, LegalDocType } from '../../components/LegalDocModal';
-import { getLatestConsent, ConsentRecord } from '../../../services/legalConsentService';
-import { LEGAL_CONSTANTS } from '../../../data/legal/legalConstants';
 
 export const ProfileTab = () => {
   const { myMoto, motos, selectMoto, deleteMoto, updateMoto, logout, setIsAddingMoto } = useMyMoto();
@@ -48,10 +46,9 @@ export const ProfileTab = () => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
 
-  // Legal & Consent Management
+  // Legal Modal Management
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [selectedLegalDoc, setSelectedLegalDoc] = useState<LegalDocType>('terms');
-  const [latestConsent, setLatestConsent] = useState<ConsentRecord | null>(null);
 
   const F = {
     bold: 'Montserrat_700Bold',
@@ -103,40 +100,7 @@ export const ProfileTab = () => {
           setLocalAvatarUri(meta.avatar_url);
           AsyncStorage.setItem('@user_avatar_url', meta.avatar_url);
         }
-
-        // 4. Sincronizar auditoría legal si está en metadatos
-        if (meta.legal_terms_accepted_at) {
-          setLatestConsent(prev => prev || ({
-            id: 'meta_consent',
-            email: data.user.email || '',
-            termsAccepted: true,
-            termsAcceptedAt: meta.legal_terms_accepted_at,
-            termsVersion: meta.legal_terms_version || LEGAL_CONSTANTS.CURRENT_TERMS_VERSION,
-            privacyAccepted: true,
-            privacyAcceptedAt: meta.legal_privacy_accepted_at || meta.legal_terms_accepted_at,
-            privacyVersion: meta.legal_privacy_version || LEGAL_CONSTANTS.CURRENT_PRIVACY_VERSION,
-            cookiesAcknowledged: true,
-            cookiesVersion: LEGAL_CONSTANTS.CURRENT_COOKIES_VERSION,
-            consentMethod: meta.legal_consent_method || 'explicit_separate_opt_in',
-            acceptanceContext: 'auth_registration',
-            ipAddress: meta.legal_consent_ip || 'Registrada en sesión',
-            deviceInfo: meta.legal_device_info || {
-              os: Platform.OS,
-              osVersion: Platform.Version,
-              brand: 'Dispositivo Registrado',
-              modelName: '',
-              deviceName: '',
-              isDevice: true,
-            },
-            recordedAt: meta.legal_terms_accepted_at,
-          }));
-        }
       }
-    });
-
-    // 5. Cargar último consentimiento desde almacenamiento local
-    getLatestConsent().then((consent) => {
-      if (consent) setLatestConsent(consent);
     });
   }, []);
 
@@ -663,68 +627,6 @@ export const ProfileTab = () => {
                 </View>
                 <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* AUDITORÍA DE CONSENTIMIENTO LEGAL (ACCOUNTABILITY RGPD) */}
-          <View style={[styles.cardSection, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <MaterialIcons name="verified-user" size={20} color={colors.tertiary} />
-              <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 15 }}>
-                Registro de tu Consentimiento Legal
-              </Text>
-            </View>
-
-            <View style={{ backgroundColor: colors.surfaceContainer, borderRadius: 14, padding: 12, gap: 6 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontFamily: F.semibold, color: colors.onSurfaceVariant, fontSize: 11, textTransform: 'uppercase' }}>
-                  Estado de Conformidad
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDark ? 'rgba(0,174,120,0.18)' : 'rgba(0,174,120,0.12)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
-                  <MaterialIcons name="check-circle" size={12} color={colors.tertiary} />
-                  <Text style={{ fontFamily: F.bold, color: colors.tertiary, fontSize: 11 }}>
-                    Aceptado y Verificado
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 11.5 }}>
-                  Fecha y Hora de Aceptación:
-                </Text>
-                <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 11.5 }}>
-                  {latestConsent?.termsAcceptedAt
-                    ? new Date(latestConsent.termsAcceptedAt).toLocaleString()
-                    : '15/10/2026, 14:45'}
-                </Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 11.5 }}>
-                  Versión Documental:
-                </Text>
-                <Text style={{ fontFamily: F.bold, color: colors.primary, fontSize: 11.5 }}>
-                  {latestConsent?.termsVersion || LEGAL_CONSTANTS.CURRENT_TERMS_VERSION}
-                </Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 11.5 }}>
-                  Método de Consentimiento:
-                </Text>
-                <Text style={{ fontFamily: F.semibold, color: colors.onSurface, fontSize: 11 }}>
-                  Doble casilla opt-in separada
-                </Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 11.5 }}>
-                  Dispositivo / IP de Registro:
-                </Text>
-                <Text style={{ fontFamily: F.semibold, color: colors.onSurfaceVariant, fontSize: 11 }}>
-                  {latestConsent?.deviceInfo?.brand || Platform.OS} • {latestConsent?.ipAddress || 'Verificada'}
-                </Text>
-              </View>
             </View>
           </View>
 
