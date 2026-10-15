@@ -27,7 +27,7 @@ import { LEGAL_CONSTANTS } from '../../../data/legal/legalConstants';
 
 export const ProfileTab = () => {
   const { myMoto, motos, selectMoto, deleteMoto, updateMoto, logout, setIsAddingMoto } = useMyMoto();
-  const { colors, mode, toggleTheme } = useTheme();
+  const { colors, mode, isDark, toggleTheme } = useTheme();
   
   const [userData, setUserData] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
