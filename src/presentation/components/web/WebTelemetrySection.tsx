@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useMyMoto } from '../../context/MotoContext';
@@ -21,6 +21,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
 }) => {
   const { colors, mode } = useTheme();
   const { myMoto, records } = useMyMoto();
+  const { width: windowWidth } = useWindowDimensions();
 
   const isDark = mode === 'dark';
 
@@ -126,7 +127,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
   if (!myMoto) return null;
 
   return (
-    <div id="telemetry-section" style={{ width: '100%', padding: '40px 48px' } as any}>
+    <View nativeID="telemetry-section" style={{ width: '100%', paddingVertical: windowWidth < 1200 ? 24 : 40, paddingHorizontal: windowWidth < 1200 ? 20 : 48 }}>
       <View style={styles.sectionHeaderRow}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -312,7 +313,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
         </View>
 
       </View>
-    </div>
+    </View>
   );
 };
 

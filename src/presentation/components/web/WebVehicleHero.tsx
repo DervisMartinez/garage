@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
@@ -28,6 +28,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
 }) => {
   const { colors, mode } = useTheme();
   const { myMoto, motos, selectMoto, records } = useMyMoto();
+  const { width: windowWidth } = useWindowDimensions();
 
   const isDark = mode === 'dark';
 
@@ -95,7 +96,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
     <View style={{ width: '100%', position: 'relative', overflow: 'hidden' }}>
       <LinearGradient
         colors={isDark ? ['#111319', '#141a29', '#0f1218'] : ['#f0f4fa', '#e4ecf8', '#edf2fa']}
-        style={styles.heroContainer}
+        style={[styles.heroContainer, { paddingHorizontal: windowWidth < 1200 ? 20 : 40, minHeight: windowWidth < 1200 ? 520 : 600 }]}
       >
         {/* ATMOSPHERIC BACKGROUND RADIAL GLOW */}
         <View style={{
@@ -125,7 +126,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
         </Text>
 
         {/* HERO MAIN ROW: LEFT ARROW, CENTER BIKE, RIGHT INFO, RIGHT ARROW */}
-        <View style={styles.heroContentRow}>
+        <View style={[styles.heroContentRow, { gap: windowWidth < 1200 ? 16 : 24 }]}>
           
           {/* CAROUSEL PREV ARROW */}
           <TouchableOpacity
@@ -152,7 +153,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
             {imageSource ? (
               <Image
                 source={imageSource}
-                style={styles.bikeImage}
+                style={[styles.bikeImage, { height: windowWidth < 1200 ? 370 : 450 }]}
                 resizeMode="contain"
               />
             ) : (
@@ -203,7 +204,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
           </TouchableOpacity>
 
           {/* RIGHT SIDE: VEHICLE TITLE, TELEMETRY SPECS & CTA BUTTONS */}
-          <View style={styles.heroInfoBlock}>
+          <View style={[styles.heroInfoBlock, { maxWidth: windowWidth < 1200 ? 350 : 420, paddingLeft: windowWidth < 1200 ? 6 : 12 }]}>
             
             {/* BRAND & MODEL HEADLINE */}
             <View style={styles.brandBadgeRow}>
@@ -217,12 +218,12 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
               )}
             </View>
 
-            <Text style={[styles.modelHeading, { color: colors.onSurface }]}>
+            <Text style={[styles.modelHeading, { color: colors.onSurface, fontSize: windowWidth < 1200 ? 28 : 36, lineHeight: windowWidth < 1200 ? 32 : 40, marginBottom: windowWidth < 1200 ? 12 : 20 }]}>
               {myMoto.model.toUpperCase()}
             </Text>
 
             {/* TELEMETRY READINGS */}
-            <View style={styles.telemetryQuickSpecs}>
+            <View style={[styles.telemetryQuickSpecs, { gap: windowWidth < 1200 ? 10 : 14, marginBottom: windowWidth < 1200 ? 16 : 26 }]}>
               <View style={styles.telemetrySpecItem}>
                 <Text style={[styles.specLabel, { color: colors.onSurfaceVariant }]}>ODÓMETRO TOTAL</Text>
                 <Text style={[styles.specValueMain, { color: isDark ? '#ffffff' : '#111319' }]}>

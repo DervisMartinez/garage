@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Text, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, Platform, useWindowDimensions } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -19,7 +19,13 @@ export const WebSidebarDock: React.FC<WebSidebarDockProps> = ({
   onOpenStats,
 }) => {
   const { colors, mode } = useTheme();
+  const { width } = useWindowDimensions();
   const isDark = mode === 'dark';
+
+  // On narrower desktop viewports (< 1200px), shortcuts are directly available in the top navbar
+  if (width < 1200) {
+    return null;
+  }
 
   return (
     <View style={{ position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute', left: 24, top: '50%', transform: [{ translateY: -120 }], zIndex: 90 }}>
