@@ -21,6 +21,7 @@ import { LegalDocModal, LegalDocType } from '../components/LegalDocModal';
 import { recordLegalConsent } from '../../services/legalConsentService';
 
 export const AuthScreen = () => {
+  // Theme and responsive state
   const { colors, mode, isDark } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
   const isDesktop = windowWidth >= 960;
