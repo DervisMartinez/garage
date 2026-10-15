@@ -681,7 +681,7 @@ export const WalletTab = () => {
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 6, paddingVertical: 2, alignItems: 'center' }}
+          contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2, paddingHorizontal: 4 }}
           style={[styles.filterBar, { backgroundColor: isDark ? '#191c21' : '#ececf0', borderColor: isDark ? 'rgba(64, 72, 92, 0.35)' : '#e0e0e6' }]}
         >
           <TouchableOpacity
@@ -1378,13 +1378,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_700Bold',
   },
   filterBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 4,
     borderRadius: 18,
     borderWidth: 1,
     alignSelf: 'flex-start',
-    gap: 4,
   },
   filterPill: {
     paddingVertical: 6,
