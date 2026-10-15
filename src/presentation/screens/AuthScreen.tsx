@@ -9,7 +9,8 @@ import {
   Platform, 
   ActivityIndicator, 
   ImageBackground, 
-  ScrollView 
+  ScrollView,
+  useWindowDimensions 
 } from 'react-native';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../data/supabaseClient';
@@ -20,7 +21,9 @@ import { LegalDocModal, LegalDocType } from '../components/LegalDocModal';
 import { recordLegalConsent } from '../../services/legalConsentService';
 
 export const AuthScreen = () => {
-  const { colors, mode } = useTheme();
+  const { colors, mode, isDark } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = windowWidth >= 960;
   
   // Auth state
   const [isLogin, setIsLogin] = useState(true);
@@ -55,8 +58,6 @@ export const AuthScreen = () => {
     regular: 'Montserrat_400Regular',
     extrabold: 'Montserrat_800ExtraBold',
   };
-
-  const isDark = mode === 'dark';
 
   // Tokens oficiales según DESIGN.md
   const tokens = {
@@ -221,11 +222,51 @@ export const AuthScreen = () => {
         >
           <ScrollView 
             style={{ flex: 1, width: '100%' }}
-            contentContainerStyle={styles.scrollContent} 
+            contentContainerStyle={isDesktop ? styles.desktopScrollContent : styles.scrollContent} 
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.cardContainer}>
+            <View style={isDesktop ? styles.desktopSplitLayout : { width: '100%', alignItems: 'center' }}>
+              {isDesktop && (
+                <View style={styles.desktopHeroColumn}>
+                  <View style={styles.brandHeroBadge}>
+                    <MaterialCommunityIcons name="engine" size={26} color="#00e3fd" />
+                    <Text style={styles.brandHeroBadgeText}>PRECISIÓN MOTORSPORT</Text>
+                  </View>
+                  <Text style={[styles.desktopMainHeading, { color: isDark ? '#ffffff' : '#111319' }]}>
+                    GARAGE
+                  </Text>
+                  <Text style={[styles.desktopSubHeading, { color: '#00e3fd' }]}>
+                    TELEMETRÍA & GESTIÓN EN LA NUBE
+                  </Text>
+                  <Text style={[styles.desktopDesc, { color: colors.onSurfaceVariant }]}>
+                    Plataforma técnica de precisión para motociclistas. Monitorea desgaste de componentes, activa protocolos SOS automatizados con GPS y custodia tu wallet digital de documentos.
+                  </Text>
+
+                  <View style={styles.heroFeatureList}>
+                    <View style={styles.heroFeatureRow}>
+                      <MaterialIcons name="speed" size={22} color="#00e3fd" />
+                      <Text style={[styles.heroFeatureText, { color: colors.onSurface }]}>
+                        Telemetría y ciclos de desgaste (aceite, frenos, cadena, cauchos)
+                      </Text>
+                    </View>
+                    <View style={styles.heroFeatureRow}>
+                      <MaterialIcons name="warning" size={22} color="#ffb4ab" />
+                      <Text style={[styles.heroFeatureText, { color: colors.onSurface }]}>
+                        Protocolo SOS con despacho automatizado de coordenadas
+                      </Text>
+                    </View>
+                    <View style={styles.heroFeatureRow}>
+                      <MaterialIcons name="account-balance-wallet" size={22} color="#4169E1" />
+                      <Text style={[styles.heroFeatureText, { color: colors.onSurface }]}>
+                        Digital Wallet para SOAT, Licencia y Carnet de circulación
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <View style={[styles.cardContainer, isDesktop && styles.desktopCardContainer]}>
               
               {/* BRAND HEADER & LOGO */}
               <View style={{ alignItems: 'center', marginBottom: 22 }}>
@@ -690,6 +731,7 @@ export const AuthScreen = () => {
               )}
 
             </View>
+            </View>
           </ScrollView>
         </LinearGradient>
       </ImageBackground>
@@ -712,6 +754,89 @@ export const AuthScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  desktopScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 48,
+    paddingVertical: 48,
+  },
+  desktopSplitLayout: {
+    flexDirection: 'row',
+    width: '100%',
+    maxWidth: 1100,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 48,
+  },
+  desktopHeroColumn: {
+    flex: 1.2,
+    maxWidth: 540,
+    paddingRight: 20,
+  },
+  brandHeroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  brandHeroBadgeText: {
+    color: '#00e3fd',
+    fontSize: 11,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 2,
+  },
+  desktopMainHeading: {
+    fontSize: 48,
+    fontFamily: 'Montserrat_800ExtraBold',
+    letterSpacing: -1,
+    lineHeight: 52,
+    marginBottom: 4,
+  },
+  desktopSubHeading: {
+    fontSize: 12.5,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1.5,
+    marginBottom: 16,
+  },
+  desktopDesc: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_400Regular',
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  heroFeatureList: {
+    gap: 14,
+  },
+  heroFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(29, 32, 37, 0.55)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 0.8,
+    borderColor: 'rgba(64, 72, 92, 0.35)',
+  },
+  heroFeatureText: {
+    fontSize: 12.5,
+    fontFamily: 'Montserrat_500Medium',
+    flex: 1,
+  },
+  desktopCardContainer: {
+    maxWidth: 440,
+    backgroundColor: 'rgba(25, 28, 33, 0.85)',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(64, 72, 92, 0.45)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 8,
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',

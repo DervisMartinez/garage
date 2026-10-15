@@ -204,7 +204,7 @@ export const SetupScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 24, paddingVertical: 40, flexGrow: 1, justifyContent: 'center' },
+  scroll: { padding: 24, paddingVertical: 40, flexGrow: 1, justifyContent: 'center', maxWidth: 640, width: '100%', alignSelf: 'center' },
   themeToggle: { position: 'absolute', top: 40, right: 24, padding: 8, borderRadius: 20, zIndex: 10 },
   header: { alignItems: 'center', marginBottom: 32 },
   title: { fontSize: 28, fontFamily: 'Montserrat_800ExtraBold', marginTop: 16 },
