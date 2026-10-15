@@ -8,12 +8,12 @@ import {
   Image, 
   Alert, 
   Modal, 
-  Dimensions, 
   TextInput,
   KeyboardAvoidingView,
   Platform,
   Linking,
-  ActivityIndicator
+  ActivityIndicator,
+  useWindowDimensions
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -22,8 +22,6 @@ import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../../data/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const { width } = Dimensions.get('window');
 
 type StatusFilter = 'all' | 'valid' | 'expiring' | 'expired';
 
@@ -45,15 +43,18 @@ interface ParsedDoc {
 export const WalletTab = () => {
   const { myMoto } = useMyMoto();
   const { colors, mode } = useTheme();
-  
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = windowWidth >= 920;
+  const isDark = mode === 'dark';
+
   const [documents, setDocuments] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [userData, setUserData] = useState<any>(null);
 
-  // Card viewing and expand
+  // Selected card for inspector on desktop & expanded on mobile
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedDocImage, setSelectedDocImage] = useState<string | null>(null);
-  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
-  
+
   // Modals
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -61,7 +62,7 @@ export const WalletTab = () => {
   const [torchOn, setTorchOn] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
-  // Document form fields for REAL data
+  // Document form fields
   const [formTitle, setFormTitle] = useState('Carnet de Circulación');
   const [formDocType, setFormDocType] = useState<'moto' | 'user'>('moto');
   const [formDocNumber, setFormDocNumber] = useState('');
@@ -84,6 +85,7 @@ export const WalletTab = () => {
     semibold: 'Montserrat_600SemiBold',
     medium: 'Montserrat_500Medium',
     regular: 'Montserrat_400Regular',
+    extrabold: 'Montserrat_800ExtraBold',
   };
 
   useEffect(() => {
@@ -105,6 +107,9 @@ export const WalletTab = () => {
       
       if (data) {
         setDocuments(data);
+        if (data.length > 0 && !selectedDocId) {
+          setSelectedDocId(data[0].id);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -133,7 +138,7 @@ export const WalletTab = () => {
       return {
         status: 'permanent',
         label: 'Permanente',
-        badgeBg: 'rgba(255,255,255,0.22)',
+        badgeBg: 'rgba(255,255,255,0.18)',
         badgeColor: '#FFFFFF',
       };
     }
@@ -142,8 +147,8 @@ export const WalletTab = () => {
       return {
         status: 'valid',
         label: 'Sin Vencimiento',
-        badgeBg: 'rgba(48, 209, 88, 0.3)',
-        badgeColor: '#30D158',
+        badgeBg: 'rgba(0, 174, 120, 0.2)',
+        badgeColor: '#00ae78',
       };
     }
 
@@ -152,8 +157,8 @@ export const WalletTab = () => {
       return {
         status: 'valid',
         label: 'Registrado',
-        badgeBg: 'rgba(48, 209, 88, 0.3)',
-        badgeColor: '#30D158',
+        badgeBg: 'rgba(0, 174, 120, 0.2)',
+        badgeColor: '#00ae78',
       };
     }
 
@@ -165,8 +170,8 @@ export const WalletTab = () => {
       return {
         status: 'expired',
         label: `Vencido (${Math.abs(diffDays)}d)`,
-        badgeBg: 'rgba(255, 69, 58, 0.35)',
-        badgeColor: '#FF453A',
+        badgeBg: 'rgba(186, 26, 26, 0.25)',
+        badgeColor: '#ffb4ab',
         daysRemaining: diffDays,
       };
     }
@@ -175,8 +180,8 @@ export const WalletTab = () => {
       return {
         status: 'expiring',
         label: `Vence en ${diffDays}d`,
-        badgeBg: 'rgba(255, 149, 0, 0.35)',
-        badgeColor: '#FF9500',
+        badgeBg: 'rgba(255, 183, 3, 0.25)',
+        badgeColor: '#ffb703',
         daysRemaining: diffDays,
       };
     }
@@ -185,9 +190,53 @@ export const WalletTab = () => {
     return {
       status: 'valid',
       label: `Vence: ${formattedDate}`,
-      badgeBg: 'rgba(48, 209, 88, 0.3)',
-      badgeColor: '#30D158',
+      badgeBg: 'rgba(0, 174, 120, 0.2)',
+      badgeColor: '#00ae78',
       daysRemaining: diffDays,
+    };
+  };
+
+  // Modern luxury motorsport palette (never plain neon)
+  const getCardStyle = (rawTitle: string) => {
+    const title = rawTitle.split('||')[0].trim().toLowerCase();
+    if (title.includes('licencia')) {
+      return { 
+        colors: ['#0a182e', '#11294d', '#1b4079'], 
+        accent: '#00e3fd',
+        icon: 'badge',
+        typeLabel: 'LICENCIA DE CONDUCIR'
+      };
+    }
+    if (title.includes('médico') || title.includes('medico')) {
+      return { 
+        colors: ['#072018', '#0c3528', '#14523e'], 
+        accent: '#00ae78',
+        icon: 'medical-services',
+        typeLabel: 'CERTIFICADO MÉDICO'
+      };
+    }
+    if (title.includes('seguro') || title.includes('rcv') || title.includes('póliza')) {
+      return { 
+        colors: ['#241208', '#3d1e0d', '#5a2d14'], 
+        accent: '#ffb703',
+        icon: 'security',
+        typeLabel: 'PÓLIZA DE SEGURO RCV'
+      };
+    }
+    if (title.includes('título') || title.includes('titulo')) {
+      return { 
+        colors: ['#14161a', '#1e2229', '#2e333d'], 
+        accent: '#c4cce0',
+        icon: 'description',
+        typeLabel: 'TÍTULO DE PROPIEDAD'
+      };
+    }
+    // Carnet de circulación / default
+    return { 
+      colors: ['#181426', '#261e3d', '#392c5c'], 
+      accent: '#8ca9ff',
+      icon: 'two-wheeler',
+      typeLabel: 'CARNET DE CIRCULACIÓN'
     };
   };
 
@@ -196,7 +245,7 @@ export const WalletTab = () => {
     if (!cameraPermission?.granted) {
       const { granted } = await requestCameraPermission();
       if (!granted) {
-        Alert.alert('Permiso requerido', 'Se requiere acceso a la cámara para escanear el código QR de tus documentos.');
+        alert('Se requiere acceso a la cámara para escanear el código QR de tus documentos.');
         return;
       }
     }
@@ -206,21 +255,17 @@ export const WalletTab = () => {
   // Handle scanned QR Code
   const handleBarcodeScanned = ({ data }: { data: string }) => {
     setScannerVisible(false);
-
-    // Heuristics to extract real data from transit / vehicle QR code
     let detectedTitle = 'Documento Escaneado';
     let detectedDocNum = '';
     let detectedExpiry = '';
     let isMotoDoc: 'moto' | 'user' = 'moto';
-
     const raw = data.trim();
 
-    // Check if INTT or transit doc
     if (raw.toLowerCase().includes('intt') || raw.toLowerCase().includes('vehiculo') || raw.toLowerCase().includes('placa')) {
-      detectedTitle = 'Carnet de Circulación / INTT';
+      detectedTitle = 'Carnet de Circulación';
       isMotoDoc = 'moto';
     } else if (raw.toLowerCase().includes('seguro') || raw.toLowerCase().includes('rcv') || raw.toLowerCase().includes('poliza')) {
-      detectedTitle = 'Póliza Seguro / RCV';
+      detectedTitle = 'Seguro / RCV';
       isMotoDoc = 'moto';
     } else if (raw.toLowerCase().includes('licencia') || raw.toLowerCase().includes('conducir')) {
       detectedTitle = 'Licencia de Conducir';
@@ -230,7 +275,6 @@ export const WalletTab = () => {
       isMotoDoc = 'user';
     }
 
-    // Try finding dates YYYY-MM-DD or DD/MM/YYYY
     const dateMatch = raw.match(/(\d{4}[-/.]\d{2}[-/.]\d{2})/);
     const dateMatchAlt = raw.match(/(\d{2}[-/.]\d{2}[-/.]\d{4})/);
     if (dateMatch) {
@@ -240,7 +284,6 @@ export const WalletTab = () => {
       detectedExpiry = `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
 
-    // Try finding document serial / license number
     const numMatch = raw.match(/(?:N°|No|NUM|DOC|REG|PLACA|V-|E-|J-)[:\s]*([A-Z0-9.-]{4,20})/i);
     if (numMatch) {
       detectedDocNum = numMatch[1].trim();
@@ -248,114 +291,97 @@ export const WalletTab = () => {
       detectedDocNum = raw;
     }
 
-    // Fill registration form with real data
     setFormTitle(detectedTitle);
     setFormDocType(isMotoDoc);
     setFormDocNumber(detectedDocNum);
     setFormExpiryDate(detectedExpiry);
-    setFormIsPermanent(false);
     setFormQrData(raw);
-    setFormImageUri(null);
-
-    // Open form modal to confirm and optionally add photo
     setShowFormModal(true);
-    Alert.alert(
-      'Código QR Detectado', 
-      'Se han extraído los datos del código QR. Verifica la información y añade una foto si lo deseas.'
-    );
   };
 
-  // Select Photo from Library
   const handlePickImage = async () => {
     setShowOptionsModal(false);
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
+        allowsEditing: true,
+        quality: 0.85,
       });
-      if (!result.canceled && result.assets[0]?.uri) {
+      if (!result.canceled && result.assets[0].uri) {
         setFormImageUri(result.assets[0].uri);
         setShowFormModal(true);
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo abrir la galería');
+      alert('No se pudo abrir la galería.');
     }
   };
 
-  // Take Photo with Camera
   const handleTakePhoto = async () => {
     setShowOptionsModal(false);
     try {
-      const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-      if (!granted) {
-        Alert.alert('Permiso necesario', 'Debes permitir el acceso a la cámara para fotografiar el documento.');
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Se requiere permiso de cámara.');
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
-        quality: 0.8,
+        allowsEditing: true,
+        quality: 0.85,
       });
-      if (!result.canceled && result.assets[0]?.uri) {
+      if (!result.canceled && result.assets[0].uri) {
         setFormImageUri(result.assets[0].uri);
         setShowFormModal(true);
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo activar la cámara');
+      alert('No se pudo activar la cámara.');
     }
   };
 
-  // Save the Document with REAL inputs
   const handleSaveDocument = async () => {
     if (!formTitle.trim()) {
-      Alert.alert('Datos requeridos', 'Por favor ingresa el título o tipo de documento.');
+      alert('Por favor ingresa el título del documento.');
       return;
     }
-
     if (!userData?.id) {
-      Alert.alert('Error', 'Sesión de usuario no detectada.');
+      alert('Sesión de usuario no detectada.');
       return;
     }
 
     setUploading(true);
     try {
       let finalPublicUrl: string | null = null;
-
-      // Upload actual photo if user selected one
       if (formImageUri) {
         const ext = formImageUri.substring(formImageUri.lastIndexOf('.') + 1) || 'jpg';
         const fileName = `${Math.random().toString(36).substring(7)}.${ext}`;
         const path = `${userData.id}/${fileName}`;
-
         const blob = await (await fetch(formImageUri)).blob();
         const { error: uploadError } = await supabase.storage
           .from('documents')
           .upload(path, blob, { contentType: `image/${ext}` });
-
         if (uploadError) throw uploadError;
-
         const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path);
         finalPublicUrl = publicUrl;
       }
 
-      // Format encoded title: "Title || Expiry || DocNumber || QrData"
       const expValue = formIsPermanent ? 'PERMANENTE' : (formExpiryDate.trim() || 'INDEFINIDO');
       const docNumValue = formDocNumber.trim() || 'S/N';
       const qrValue = formQrData.trim() || '';
-
       const compoundTitle = `${formTitle.trim()} || ${expValue} || ${docNumValue} || ${qrValue}`;
 
-      const { error: dbError } = await supabase.from('documents').insert({
+      const { data: inserted, error: dbError } = await supabase.from('documents').insert({
         user_id: userData.id,
         moto_id: formDocType === 'moto' ? (myMoto ? myMoto.id : null) : null,
         title: compoundTitle,
         type: formDocType,
         image_url: finalPublicUrl
-      });
+      }).select().single();
 
       if (dbError) throw dbError;
-
       await loadDocuments(userData.id);
+      if (inserted?.id) setSelectedDocId(inserted.id);
       setShowFormModal(false);
-      // Reset form
+
+      // Reset
       setFormTitle('Carnet de Circulación');
       setFormDocNumber('');
       setFormExpiryDate('');
@@ -363,15 +389,14 @@ export const WalletTab = () => {
       setFormQrData('');
       setFormImageUri(null);
 
-      Alert.alert('Éxito', 'Documento guardado con sus datos reales en tu Guantera Digital.');
+      alert('Documento guardado con éxito.');
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo guardar el documento.');
+      alert(e.message || 'No se pudo guardar el documento.');
     } finally {
       setUploading(false);
     }
   };
 
-  // Open Edit Expiration / Document Number Modal
   const handleOpenEdit = (doc: any) => {
     const parsed = parseDocTitle(doc.title);
     setEditingDoc(doc);
@@ -380,7 +405,6 @@ export const WalletTab = () => {
     setEditExpiryDate(parsed.expiryDate && parsed.expiryDate !== 'PERMANENTE' && parsed.expiryDate !== 'INDEFINIDO' ? parsed.expiryDate : '');
   };
 
-  // Save Edits to existing document
   const handleSaveEdit = async () => {
     if (!editingDoc) return;
     try {
@@ -388,38 +412,35 @@ export const WalletTab = () => {
       const expValue = editIsPermanent ? 'PERMANENTE' : (editExpiryDate.trim() || 'INDEFINIDO');
       const docNumValue = editDocNumber.trim() || 'S/N';
       const qrValue = parsed.qrData || '';
-
       const compoundTitle = `${parsed.cleanTitle} || ${expValue} || ${docNumValue} || ${qrValue}`;
 
       await supabase.from('documents').update({ title: compoundTitle }).eq('id', editingDoc.id);
       if (userData) await loadDocuments(userData.id);
       setEditingDoc(null);
-      Alert.alert('Actualizado', 'Datos del documento actualizados correctamente.');
+      alert('Datos del documento actualizados.');
     } catch (e) {
-      Alert.alert('Error', 'No se pudieron actualizar los datos del documento.');
+      alert('Error al actualizar.');
     }
   };
 
-  // Delete document
   const deleteDocument = async (id: string) => {
-    Alert.alert('Eliminar Documento', '¿Estás seguro que deseas eliminar este documento de tu billetera?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+    if (Platform.OS === 'web') {
+      const confirm = window.confirm('¿Estás seguro de eliminar este documento de tu billetera?');
+      if (confirm) {
+        await supabase.from('documents').delete().eq('id', id);
+        if (userData) loadDocuments(userData.id);
+        if (selectedDocId === id) setSelectedDocId(null);
+      }
+    } else {
+      Alert.alert('Eliminar Documento', '¿Estás seguro de eliminar este documento?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: async () => {
           await supabase.from('documents').delete().eq('id', id);
           if (userData) loadDocuments(userData.id);
-          setExpandedCardId(null);
-      }}
-    ]);
-  };
-
-  // Style cards dynamically
-  const getCardStyle = (rawTitle: string) => {
-    const title = rawTitle.split('||')[0].trim().toLowerCase();
-    if (title.includes('licencia')) return { colors: ['#4facfe', '#00f2fe'], icon: 'badge' };
-    if (title.includes('médico') || title.includes('medico')) return { colors: ['#43e97b', '#38f9d7'], icon: 'medical-services' };
-    if (title.includes('seguro') || title.includes('rcv') || title.includes('póliza')) return { colors: ['#fa709a', '#fee140'], icon: 'security' };
-    if (title.includes('título') || title.includes('titulo') || title.includes('carnet') || title.includes('circulación')) return { colors: ['#667eea', '#764ba2'], icon: 'description' };
-    return { colors: ['#30cfd0', '#330867'], icon: 'folder' };
+          if (selectedDocId === id) setSelectedDocId(null);
+        }}
+      ]);
+    }
   };
 
   // Filter calculations
@@ -442,265 +463,397 @@ export const WalletTab = () => {
     return true;
   });
 
+  // Selected document object
+  const activeDoc = documents.find(d => d.id === selectedDocId) || (documents.length > 0 ? documents[0] : null);
+  const activeParsed = activeDoc ? parseDocTitle(activeDoc.title) : null;
+  const activeStatus = activeDoc ? getDocumentStatus(activeDoc) : null;
+  const activeStyle = activeDoc ? getCardStyle(activeDoc.title) : null;
+
+  const pilotName = userData?.user_metadata?.first_name 
+    ? `${userData.user_metadata.first_name} ${userData.user_metadata.last_name || ''}`.trim().toUpperCase()
+    : 'PILOTO REGISTRADO';
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       
-      {/* HEADER: Guantera Digital y Acciones */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* 1. TOP HEADER & FILTER BAR */}
+      <View style={[styles.headerContainer, { maxWidth: 1240, width: '100%', alignSelf: 'center' }]}>
+        <View style={styles.headerTopRow}>
           <View>
-            <Text style={{ fontSize: 28, fontFamily: F.bold, color: colors.onSurface, letterSpacing: -0.5 }}>
-              Documentos
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <MaterialIcons name="account-balance-wallet" size={20} color="#4169E1" />
+              <Text style={styles.headerKicker}>GUANTERA DIGITAL • GARAGE VAULT</Text>
+            </View>
+            <Text style={[styles.headerTitle, { color: colors.onSurface }]}>
+              Documentos de Circulación
             </Text>
-            <Text style={{ fontSize: 13, fontFamily: F.medium, color: colors.onSurfaceVariant, marginTop: 2 }}>
-              Tus Documentos de Circulación Nacional 
+            <Text style={[styles.headerSubtitle, { color: colors.onSurfaceVariant }]}>
+              Credenciales oficiales, carnets digitales y pólizas vigentes
             </Text>
           </View>
           
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            {/* Botón Lector QR Activo */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <TouchableOpacity 
               onPress={handleOpenScanner}
-              style={[styles.headerIconBtn, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant }]}
-              activeOpacity={0.7}
-              accessibilityLabel="Escanea el Código QR"
+              style={[styles.headerActionBtn, { borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc' }]}
+              activeOpacity={0.8}
             >
-              <MaterialIcons name="qr-code-scanner" size={22} color={colors.primary} />
-              {counts.expiring > 0 && (
-                <View style={[styles.statusNotificationDot, { backgroundColor: '#FF9500' }]} />
-              )}
+              <MaterialIcons name="qr-code-scanner" size={18} color="#00e3fd" />
+              <Text style={[styles.headerActionBtnText, { color: colors.onSurface }]}>Escanear QR</Text>
             </TouchableOpacity>
 
-            {/* Botón Añadir Documento */}
             <TouchableOpacity 
               onPress={() => setShowOptionsModal(true)}
-              style={[styles.headerIconBtn, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant }]}
-              activeOpacity={0.7}
-              accessibilityLabel="Añadir Documento Nuevo"
+              style={styles.headerPrimaryBtn}
+              activeOpacity={0.8}
             >
-              <MaterialIcons name="add" size={24} color={colors.primary} />
+              <MaterialIcons name="add" size={18} color="#ffffff" />
+              <Text style={styles.headerPrimaryBtnText}>+ Añadir Documento</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* SUBMENU SEGMENTADO TIPO APPLE */}
-        <View style={[styles.filterBar, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant }]}>
+        {/* FILTER BAR PILLS */}
+        <View style={[styles.filterBar, { backgroundColor: isDark ? '#191c21' : '#ececf0', borderColor: isDark ? 'rgba(64, 72, 92, 0.35)' : '#e0e0e6' }]}>
           <TouchableOpacity
             onPress={() => setStatusFilter('all')}
-            style={[styles.filterPill, statusFilter === 'all' && { backgroundColor: colors.surfaceContainerHigh }]}
+            style={[styles.filterPill, statusFilter === 'all' && styles.filterPillActive]}
             activeOpacity={0.75}
           >
-            <Text style={[styles.filterPillText, { color: colors.onSurface, fontFamily: statusFilter === 'all' ? F.bold : F.medium }]}>
+            <Text style={[styles.filterPillText, { color: statusFilter === 'all' ? '#ffffff' : colors.onSurfaceVariant }]}>
               Todos ({counts.all})
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => setStatusFilter('valid')}
-            style={[styles.filterPill, statusFilter === 'valid' && { backgroundColor: colors.surfaceContainerHigh }]}
+            style={[styles.filterPill, statusFilter === 'valid' && styles.filterPillActive]}
             activeOpacity={0.75}
           >
-            <Text style={[styles.filterPillText, { color: statusFilter === 'valid' ? colors.onSurface : colors.onSurfaceVariant, fontFamily: statusFilter === 'valid' ? F.bold : F.medium }]}>
-              Vigentes <Text style={{ color: colors.secondary, fontFamily: F.bold }}>({counts.valid})</Text>
+            <Text style={[styles.filterPillText, { color: statusFilter === 'valid' ? '#ffffff' : colors.onSurfaceVariant }]}>
+              Vigentes <Text style={{ color: '#00ae78', fontFamily: F.bold }}>({counts.valid})</Text>
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => setStatusFilter('expiring')}
-            style={[styles.filterPill, statusFilter === 'expiring' && { backgroundColor: colors.surfaceContainerHigh }]}
+            style={[styles.filterPill, statusFilter === 'expiring' && styles.filterPillActive]}
             activeOpacity={0.75}
           >
-            <Text style={[styles.filterPillText, { color: statusFilter === 'expiring' ? colors.onSurface : colors.onSurfaceVariant, fontFamily: statusFilter === 'expiring' ? F.bold : F.medium }]}>
-              Por Vencer <Text style={{ color: '#FF9500', fontFamily: F.bold }}>({counts.expiring})</Text>
+            <Text style={[styles.filterPillText, { color: statusFilter === 'expiring' ? '#ffffff' : colors.onSurfaceVariant }]}>
+              Por Vencer <Text style={{ color: '#ffb703', fontFamily: F.bold }}>({counts.expiring})</Text>
             </Text>
           </TouchableOpacity>
 
           {counts.expired > 0 && (
             <TouchableOpacity
               onPress={() => setStatusFilter('expired')}
-              style={[styles.filterPill, statusFilter === 'expired' && { backgroundColor: colors.surfaceContainerHigh }]}
+              style={[styles.filterPill, statusFilter === 'expired' && styles.filterPillActive]}
               activeOpacity={0.75}
             >
-              <Text style={[styles.filterPillText, { color: statusFilter === 'expired' ? colors.onSurface : colors.onSurfaceVariant, fontFamily: statusFilter === 'expired' ? F.bold : F.medium }]}>
-                Vencidos <Text style={{ color: colors.error, fontFamily: F.bold }}>({counts.expired})</Text>
+              <Text style={[styles.filterPillText, { color: statusFilter === 'expired' ? '#ffffff' : colors.onSurfaceVariant }]}>
+                Vencidos <Text style={{ color: '#ffb4ab', fontFamily: F.bold }}>({counts.expired})</Text>
               </Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 4 }}>
+      {/* 2. BODY CONTENT: SPLIT DESKTOP OR MOBILE ACCORDION */}
+      <ScrollView 
+        contentContainerStyle={{ 
+          maxWidth: 1240, 
+          width: '100%', 
+          alignSelf: 'center', 
+          paddingHorizontal: 28, 
+          paddingBottom: 80 
+        }}
+        showsVerticalScrollIndicator={false}
+      >
         {uploading && (
-          <View style={{ backgroundColor: colors.primaryContainer, padding: 14, borderRadius: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={colors.onPrimaryContainer} />
-            <Text style={{ fontFamily: F.bold, color: colors.onPrimaryContainer, marginLeft: 12 }}>Procesando y guardando documento...</Text>
+          <View style={styles.uploadingBanner}>
+            <ActivityIndicator size="small" color="#00e3fd" />
+            <Text style={styles.uploadingText}>Subiendo y encriptando documento en Supabase Vault...</Text>
           </View>
         )}
 
         {filteredDocuments.length === 0 ? (
-          <View style={{ alignItems: 'center', padding: 40, backgroundColor: colors.surfaceContainerLow, borderRadius: 24, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.outline, marginTop: 20 }}>
-            <MaterialIcons name="folder-open" size={56} color={colors.onSurfaceVariant} />
-            <Text style={{ fontFamily: F.bold, color: colors.onSurface, marginTop: 12, fontSize: 16 }}>
-              {statusFilter === 'all' ? 'Tu billetera está vacía' : `Sin documentos en esta categoría`}
+          <View style={[styles.emptyContainer, { borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc' }]}>
+            <MaterialIcons name="credit-card" size={54} color="#4169E1" />
+            <Text style={[styles.emptyTitle, { color: colors.onSurface }]}>
+              {statusFilter === 'all' ? 'Tu Guantera Digital está vacía' : 'Sin documentos en esta categoría'}
             </Text>
-            <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, marginTop: 4, textAlign: 'center', fontSize: 13 }}>
-              {statusFilter === 'all' ? 'Usa el escáner QR o el botón + para añadir los documentos reales de tu vehículo.' : 'Cambia de filtro para ver tus otros documentos.'}
+            <Text style={[styles.emptySubtitle, { color: colors.onSurfaceVariant }]}>
+              Registra tu Licencia de Conducir, Certificado Médico, Carnet de Circulación o Póliza RCV para tenerlos siempre a mano y recibir alertas de vencimiento.
             </Text>
             
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
-              <TouchableOpacity
-                onPress={handleOpenScanner}
-                style={[styles.emptyActionBtn, { backgroundColor: colors.surfaceContainer }]}
-              >
-                <MaterialIcons name="qr-code-scanner" size={18} color={colors.primary} />
-                <Text style={{ fontFamily: F.bold, color: colors.primary, fontSize: 12, marginLeft: 6 }}>Escanear QR</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setShowOptionsModal(true)}
-                style={[styles.emptyActionBtn, { backgroundColor: colors.primary }]}
-              >
-                <MaterialIcons name="add-a-photo" size={18} color={colors.onPrimary} />
-                <Text style={{ fontFamily: F.bold, color: colors.onPrimary, fontSize: 12, marginLeft: 6 }}>Tomar Foto</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={() => setShowOptionsModal(true)}
+              style={styles.emptyAddBtn}
+            >
+              <MaterialIcons name="add" size={18} color="#ffffff" />
+              <Text style={styles.emptyAddBtnText}>Añadir Primer Documento</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          <View style={{ marginTop: 6, paddingBottom: expandedCardId ? 30 : 150 }}>
-            {filteredDocuments.map((doc, index) => {
-              const isExpanded = expandedCardId === doc.id;
-              const isAnyExpanded = expandedCardId !== null;
-              const cardData = getCardStyle(doc.title);
-              const parsed = parseDocTitle(doc.title);
-              const docStatus = getDocumentStatus(doc);
-              
-              const vehicleSubtitle = doc.type === 'moto' 
-                ? (myMoto ? `${myMoto.brand} ${myMoto.model}` : 'Vehículo Registrado')
-                : 'Documento Personal del Conductor';
+          <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 28, alignItems: 'flex-start', marginTop: 12 }}>
+            
+            {/* CARDS DECK / GRID (FIXED CARD PROPORTIONS) */}
+            <View style={{ flex: 1.3, width: '100%' }}>
+              <View style={[styles.cardsGrid, !isDesktop && { justifyContent: 'center' }]}>
+                {filteredDocuments.map((doc) => {
+                  const isSelected = isDesktop ? (selectedDocId === doc.id) : (selectedDocId === doc.id);
+                  const cardData = getCardStyle(doc.title);
+                  const parsed = parseDocTitle(doc.title);
+                  const docStatus = getDocumentStatus(doc);
+                  
+                  return (
+                    <TouchableOpacity
+                      key={doc.id}
+                      activeOpacity={0.9}
+                      onPress={() => setSelectedDocId(isSelected && !isDesktop ? null : doc.id)}
+                      style={[
+                        styles.physicalCard,
+                        isSelected && {
+                          borderColor: '#4169E1',
+                          borderWidth: 2,
+                          shadowColor: '#4169E1',
+                          shadowOpacity: 0.45,
+                          shadowRadius: 16,
+                          transform: [{ translateY: -4 }]
+                        }
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={cardData.colors as [string, string, ...string[]]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.cardGradient}
+                      >
+                        {/* Shimmer overlay pattern */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%)',
+                          borderRadius: '20px',
+                          pointerEvents: 'none',
+                        } as any} />
 
-              // Apple Wallet stacking logic
-              const marginTop = isExpanded ? 20 : (isAnyExpanded ? 20 : (index === 0 ? 0 : -140));
-              const display = isAnyExpanded && !isExpanded ? 'none' : 'flex';
+                        {/* CARD TOP ROW: EMV CHIP, CONTACTLESS ICON & LOGO */}
+                        <View style={styles.cardTopRow}>
+                          <View style={styles.emvChip}>
+                            <View style={styles.emvChipLine1} />
+                            <View style={styles.emvChipLine2} />
+                          </View>
 
-              return (
-                <TouchableOpacity 
-                  key={doc.id} 
-                  activeOpacity={0.92}
-                  onPress={() => setExpandedCardId(isExpanded ? null : doc.id)}
-                  style={{ 
-                    marginTop, 
-                    display: display as any, 
-                    shadowColor: '#000', 
-                    shadowOffset: { width: 0, height: -4 }, 
-                    shadowOpacity: 0.22, 
-                    shadowRadius: 16, 
-                    elevation: 12 
-                  }}
-                >
-                  <LinearGradient
-                    colors={cardData.colors as [string, string, ...string[]]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      minHeight: 230,
-                      borderRadius: 24,
-                      padding: 22,
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    {/* Card Top: Title, Vehicle Type, Status Pill */}
-                    <View>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <View style={{ flex: 1, paddingRight: 10 }}>
-                          <Text style={{ fontFamily: F.bold, color: '#FFF', fontSize: 20, letterSpacing: -0.3 }}>{parsed.cleanTitle}</Text>
-                          <Text style={{ fontFamily: F.semibold, color: 'rgba(255,255,255,0.88)', fontSize: 12, marginTop: 4 }}>
-                            {vehicleSubtitle}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <MaterialCommunityIcons name="contactless-payment" size={20} color="rgba(255,255,255,0.7)" />
+                            <View style={[styles.cardCategoryPill, { borderColor: cardData.accent }]}>
+                              <Text style={[styles.cardCategoryPillText, { color: cardData.accent }]}>
+                                {cardData.typeLabel}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* CARD CENTER: DOCUMENT TITLE & NUMBER */}
+                        <View style={{ marginVertical: 10 }}>
+                          <Text style={styles.cardCleanTitle} numberOfLines={1}>
+                            {parsed.cleanTitle}
                           </Text>
-                          {parsed.docNumber && parsed.docNumber !== 'S/N' && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                              <MaterialIcons name="fingerprint" size={13} color="rgba(255,255,255,0.85)" />
-                              <Text style={{ fontFamily: F.bold, color: '#FFF', fontSize: 11, marginLeft: 4, letterSpacing: 0.5 }}>
-                                N° {parsed.docNumber}
-                              </Text>
-                            </View>
-                          )}
+
+                          <Text style={styles.cardEmbossedNumber}>
+                            {parsed.docNumber && parsed.docNumber !== 'S/N' 
+                              ? parsed.docNumber 
+                              : 'V-•••••••••'}
+                          </Text>
                         </View>
-                        <View style={{ backgroundColor: 'rgba(255,255,255,0.22)', padding: 8, borderRadius: 14 }}>
-                          <MaterialIcons name={cardData.icon as any} size={26} color="#FFF" />
-                        </View>
-                      </View>
 
-                      {/* Status Badge Capsule */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: docStatus.badgeBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, marginTop: 12, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.35)' }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: docStatus.badgeColor, marginRight: 6 }} />
-                        <Text style={{ fontFamily: F.bold, color: '#FFF', fontSize: 11 }}>
-                          {docStatus.label}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Card Bottom: Action buttons when expanded */}
-                    {isExpanded && (
-                      <View style={{ marginTop: 16 }}>
-                        {/* QR Info Banner if available */}
-                        {parsed.qrData && (
-                          <View style={{ backgroundColor: 'rgba(0,0,0,0.25)', padding: 10, borderRadius: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 8 }}>
-                              <MaterialIcons name="qr-code" size={18} color="#FFF" />
-                              <Text style={{ fontFamily: F.medium, color: '#FFF', fontSize: 11, marginLeft: 6 }} numberOfLines={1}>
-                                QR Certificado: {parsed.qrData}
-                              </Text>
-                            </View>
-                            {parsed.qrData.startsWith('http') && (
-                              <TouchableOpacity onPress={() => Linking.openURL(parsed.qrData!)} style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 8 }}>
-                                <Text style={{ fontFamily: F.bold, color: '#FFF', fontSize: 10 }}>Abrir</Text>
-                              </TouchableOpacity>
-                            )}
-                          </View>
-                        )}
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <View style={{ flexDirection: 'row', gap: 8 }}>
-                            {doc.image_url && (
-                              <TouchableOpacity 
-                                onPress={() => setSelectedDocImage(doc.image_url)}
-                                style={styles.cardActionPill}
-                                activeOpacity={0.8}
-                              >
-                                <MaterialIcons name="visibility" size={16} color="#FFF" />
-                                <Text style={{ fontFamily: F.bold, color: '#FFF', marginLeft: 6, fontSize: 12 }}>Ver Foto</Text>
-                              </TouchableOpacity>
-                            )}
-
-                            <TouchableOpacity 
-                              onPress={() => handleOpenEdit(doc)}
-                              style={styles.cardActionPill}
-                              activeOpacity={0.8}
-                            >
-                              <MaterialIcons name="edit" size={16} color="#FFF" />
-                              <Text style={{ fontFamily: F.bold, color: '#FFF', marginLeft: 6, fontSize: 12 }}>Editar Datos</Text>
-                            </TouchableOpacity>
+                        {/* CARD FOOTER: HOLDER NAME & EXPIRATION STATUS */}
+                        <View style={styles.cardFooterRow}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={styles.cardHolderLabel}>TITULAR</Text>
+                            <Text style={styles.cardHolderName} numberOfLines={1}>
+                              {pilotName}
+                            </Text>
                           </View>
 
-                          <TouchableOpacity 
-                            onPress={() => deleteDocument(doc.id)}
-                            style={[styles.cardActionPill, { backgroundColor: 'rgba(255,69,58,0.3)', borderColor: 'rgba(255,69,58,0.5)' }]}
-                            activeOpacity={0.8}
-                          >
-                            <MaterialIcons name="delete" size={16} color="#FFF" />
-                          </TouchableOpacity>
+                          <View style={[styles.cardStatusCapsule, { backgroundColor: docStatus.badgeBg }]}>
+                            <View style={[styles.statusDot, { backgroundColor: docStatus.badgeColor }]} />
+                            <Text style={[styles.cardStatusText, { color: docStatus.badgeColor }]}>
+                              {docStatus.label}
+                            </Text>
+                          </View>
                         </View>
-                      </View>
-                    )}
-                  </LinearGradient>
+
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* ADD NEW DOCUMENT DASHED CARD (MATCHES PROPORTIONS) */}
+                <TouchableOpacity
+                  style={[styles.addDashedCard, { borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : '#d0d4dc' }]}
+                  onPress={() => setShowOptionsModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.addDashedIconWrap}>
+                    <MaterialIcons name="add" size={26} color="#00e3fd" />
+                  </View>
+                  <Text style={[styles.addDashedTitle, { color: colors.onSurface }]}>Registrar Otro Documento</Text>
+                  <Text style={[styles.addDashedSubtitle, { color: colors.onSurfaceVariant }]}>
+                    Foto física o escaneo de código QR
+                  </Text>
                 </TouchableOpacity>
-              );
-            })}
+              </View>
+            </View>
+
+            {/* DOCUMENT INSPECTOR (RIGHT COLUMN ON DESKTOP) */}
+            {activeDoc && activeParsed && activeStatus && (
+              <View style={[
+                styles.inspectorPanel, 
+                { 
+                  backgroundColor: isDark ? '#191c21' : '#ffffff',
+                  borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)'
+                }
+              ]}>
+                
+                {/* INSPECTOR HEADER */}
+                <View style={styles.inspectorHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inspectorPreTitle, { color: '#00e3fd' }]}>VISOR DE DOCUMENTO OFICIAL</Text>
+                    <Text style={[styles.inspectorDocTitle, { color: colors.onSurface }]}>
+                      {activeParsed.cleanTitle}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.inspectorStatusBadge, { backgroundColor: activeStatus.badgeBg }]}>
+                    <View style={[styles.statusDot, { backgroundColor: activeStatus.badgeColor }]} />
+                    <Text style={[styles.inspectorStatusText, { color: activeStatus.badgeColor }]}>
+                      {activeStatus.label}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* PHOTO PREVIEW (IF AVAILABLE) */}
+                {activeDoc.image_url ? (
+                  <TouchableOpacity
+                    style={styles.inspectorPhotoContainer}
+                    onPress={() => setSelectedDocImage(activeDoc.image_url)}
+                    activeOpacity={0.85}
+                  >
+                    <Image source={{ uri: activeDoc.image_url }} style={styles.inspectorPhoto} resizeMode="cover" />
+                    <View style={styles.photoZoomOverlay}>
+                      <MaterialIcons name="zoom-in" size={20} color="#ffffff" />
+                      <Text style={styles.photoZoomText}>Ver en tamaño completo</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.inspectorNoPhotoBox, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}>
+                    <MaterialIcons name="document-scanner" size={36} color={colors.onSurfaceVariant} />
+                    <Text style={[styles.inspectorNoPhotoText, { color: colors.onSurfaceVariant }]}>
+                      Documento registrado sin fotografía digital
+                    </Text>
+                  </View>
+                )}
+
+                {/* QR DATA DISPLAY (IF PRESENT) */}
+                {activeParsed.qrData && (
+                  <View style={[styles.qrBannerBox, { backgroundColor: isDark ? 'rgba(0, 227, 253, 0.08)' : 'rgba(39, 95, 227, 0.06)', borderColor: isDark ? 'rgba(0, 227, 253, 0.25)' : 'rgba(39, 95, 227, 0.2)' }]}>
+                    <MaterialIcons name="qr-code-2" size={22} color="#00e3fd" />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={[styles.qrBannerTitle, { color: colors.onSurface }]}>Código QR Verificado</Text>
+                      <Text style={[styles.qrBannerData, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
+                        {activeParsed.qrData}
+                      </Text>
+                    </View>
+                    {activeParsed.qrData.startsWith('http') && (
+                      <TouchableOpacity 
+                        onPress={() => Linking.openURL(activeParsed.qrData!)}
+                        style={styles.openUrlBtn}
+                      >
+                        <Text style={styles.openUrlBtnText}>Abrir ↗</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+
+                {/* DETAILS TABLE */}
+                <View style={styles.inspectorDetailsTable}>
+                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
+                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>N° DOCUMENTO</Text>
+                    <Text style={[styles.detailTableVal, { color: colors.onSurface }]}>
+                      {activeParsed.docNumber || 'S/N'}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
+                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>FECHA DE VENCIMIENTO</Text>
+                    <Text style={[styles.detailTableVal, { color: activeStatus.badgeColor }]}>
+                      {activeParsed.expiryDate || 'PERMANENTE'}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.detailTableRow, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#ececf0' }]}>
+                    <Text style={[styles.detailTableLabel, { color: colors.onSurfaceVariant }]}>VINCULACIÓN</Text>
+                    <Text style={[styles.detailTableVal, { color: colors.onSurface }]}>
+                      {activeDoc.type === 'moto' ? (myMoto ? `${myMoto.brand} ${myMoto.model}` : 'Vehículo') : 'Personal'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* ACTION BUTTONS */}
+                <View style={styles.inspectorActionsRow}>
+                  <TouchableOpacity
+                    style={[styles.inspectorEditBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc' }]}
+                    onPress={() => handleOpenEdit(activeDoc)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="edit" size={16} color={colors.onSurface} />
+                    <Text style={[styles.inspectorEditBtnText, { color: colors.onSurface }]}>Editar Datos</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.inspectorDeleteBtn}
+                    onPress={() => deleteDocument(activeDoc.id)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="delete" size={16} color="#ffb4ab" />
+                    <Text style={styles.inspectorDeleteBtnText}>Eliminar</Text>
+                  </TouchableOpacity>
+                </View>
+
+              </View>
+            )}
+
           </View>
         )}
       </ScrollView>
 
-      {/* MODAL: Escáner QR en Vivo */}
+      {/* MODAL: FULL SCREEN PHOTO VIEWER */}
+      {selectedDocImage && (
+        <Modal visible={true} transparent={true} animationType="fade">
+          <View style={styles.photoModalBackdrop}>
+            <TouchableOpacity 
+              style={styles.photoModalCloseBtn}
+              onPress={() => setSelectedDocImage(null)}
+            >
+              <MaterialIcons name="close" size={28} color="#ffffff" />
+            </TouchableOpacity>
+
+            <Image 
+              source={{ uri: selectedDocImage }} 
+              style={styles.fullScreenPhoto} 
+              resizeMode="contain" 
+            />
+          </View>
+        </Modal>
+      )}
+
+      {/* MODAL: LIVE QR SCANNER */}
       <Modal visible={scannerVisible} animationType="slide" presentationStyle="fullScreen">
         <View style={{ flex: 1, backgroundColor: '#000' }}>
           <CameraView
@@ -713,9 +866,7 @@ export const WalletTab = () => {
             onBarcodeScanned={handleBarcodeScanned}
           />
           
-          {/* Overlay UI para el escáner */}
           <View style={styles.scannerOverlay}>
-            {/* Top Bar */}
             <View style={styles.scannerTopBar}>
               <TouchableOpacity 
                 onPress={() => setScannerVisible(false)}
@@ -736,7 +887,6 @@ export const WalletTab = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Target Box */}
             <View style={styles.scannerTargetBox}>
               <View style={[styles.targetCorner, { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4 }]} />
               <View style={[styles.targetCorner, { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4 }]} />
@@ -744,165 +894,124 @@ export const WalletTab = () => {
               <View style={[styles.targetCorner, { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4 }]} />
             </View>
 
-            {/* Bottom Instruction */}
             <View style={styles.scannerBottomBar}>
               <Text style={{ fontFamily: F.semibold, color: '#FFF', fontSize: 14, textAlign: 'center' }}>
-                Apunta la cámara hacia el código QR de tu Carnet de Circulación, Póliza o Licencia
-              </Text>
-              <Text style={{ fontFamily: F.regular, color: 'rgba(255,255,255,0.7)', fontSize: 12, textAlign: 'center', marginTop: 6 }}>
-                Los datos reales serán capturados automáticamente
+                Apunta la cámara hacia el código QR de tu documento
               </Text>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* MODAL: Seleccionar Modo de Añadir Documento */}
-      <Modal visible={showOptionsModal} transparent={true} animationType="slide">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: colors.surfaceContainerLow, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, borderWidth: 0.5, borderColor: colors.outlineVariant }}>
-            <View style={{ width: 36, height: 5, borderRadius: 2.5, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: 16 }} />
-            
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 20 }}>Añadir Documentación</Text>
-              <TouchableOpacity onPress={() => setShowOptionsModal(false)} style={{ padding: 4 }}>
-                <MaterialIcons name="close" size={24} color={colors.onSurfaceVariant} />
+      {/* MODAL: SELECCIONAR MODO */}
+      <Modal visible={showOptionsModal} transparent={true} animationType="fade">
+        <View style={styles.modalBackdropCenter}>
+          <View style={[styles.dialogModalBox, { backgroundColor: isDark ? '#191c21' : '#ffffff', borderColor: isDark ? '#40485c' : '#d0d4dc' }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={[styles.dialogTitle, { color: colors.onSurface }]}>Añadir Documentación</Text>
+              <TouchableOpacity onPress={() => setShowOptionsModal(false)}>
+                <MaterialIcons name="close" size={20} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
             </View>
-            
-            <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 13, marginBottom: 20 }}>
-              ¿Cómo deseas registrar la documentación de tu vehículo?
+
+            <Text style={[styles.dialogSubtitle, { color: colors.onSurfaceVariant }]}>
+              ¿Cómo deseas registrar el documento?
             </Text>
 
-            <View style={{ gap: 12 }}>
-              {/* Opción 1: Escanear QR */}
+            <View style={{ gap: 10, marginTop: 14 }}>
               <TouchableOpacity 
                 onPress={() => {
                   setShowOptionsModal(false);
                   handleOpenScanner();
                 }}
-                style={[styles.addOptionCard, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant }]}
-                activeOpacity={0.7}
+                style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
               >
-                <View style={[styles.addOptionIconBox, { backgroundColor: 'rgba(0,122,255,0.15)' }]}>
-                  <MaterialIcons name="qr-code-scanner" size={26} color={colors.primary} />
+                <MaterialIcons name="qr-code-scanner" size={22} color="#00e3fd" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Escanear Código QR</Text>
+                  <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Captura automática de datos oficiales</Text>
                 </View>
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 15 }}>Escanear Código QR</Text>
-                  <Text style={{ fontFamily: F.regular, color: colors.onSurfaceVariant, fontSize: 12, marginTop: 2 }}>
-                    Captura los datos oficiales del código QR de tu documento
-                  </Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={22} color={colors.onSurfaceVariant} />
+                <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
 
-              {/* Opción 2: Tomar Foto con Cámara */}
               <TouchableOpacity 
                 onPress={handleTakePhoto}
-                style={[styles.addOptionCard, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant }]}
-                activeOpacity={0.7}
+                style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
               >
-                <View style={[styles.addOptionIconBox, { backgroundColor: 'rgba(48,209,88,0.15)' }]}>
-                  <MaterialIcons name="camera-alt" size={26} color="#30D158" />
+                <MaterialIcons name="camera-alt" size={22} color="#00ae78" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Tomar Foto con Cámara</Text>
+                  <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Fotografía tu documento físico</Text>
                 </View>
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 15 }}>Tomar Foto con Cámara</Text>
-                  <Text style={{ fontFamily: F.regular, color: colors.onSurfaceVariant, fontSize: 12, marginTop: 2 }}>
-                    Fotografía tu documento físico e ingresa sus datos reales
-                  </Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={22} color={colors.onSurfaceVariant} />
+                <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
 
-              {/* Opción 3: Subir de Galería */}
               <TouchableOpacity 
                 onPress={handlePickImage}
-                style={[styles.addOptionCard, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant }]}
-                activeOpacity={0.7}
+                style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
               >
-                <View style={[styles.addOptionIconBox, { backgroundColor: 'rgba(255,149,0,0.15)' }]}>
-                  <MaterialIcons name="photo-library" size={26} color="#FF9500" />
+                <MaterialIcons name="photo-library" size={22} color="#ffb703" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Elegir de la Galería</Text>
+                  <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Selecciona una imagen guardada</Text>
                 </View>
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 15 }}>Elegir de la Galería</Text>
-                  <Text style={{ fontFamily: F.regular, color: colors.onSurfaceVariant, fontSize: 12, marginTop: 2 }}>
-                    Selecciona una foto guardada de tu documento
-                  </Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={22} color={colors.onSurfaceVariant} />
+                <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
 
-              {/* Opción 4: Registro Manual sin foto inmediata */}
               <TouchableOpacity 
                 onPress={() => {
                   setShowOptionsModal(false);
                   setFormImageUri(null);
                   setShowFormModal(true);
                 }}
-                style={[styles.addOptionCard, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant }]}
-                activeOpacity={0.7}
+                style={[styles.optionRowBtn, { backgroundColor: isDark ? '#272a30' : '#ececf0' }]}
               >
-                <View style={[styles.addOptionIconBox, { backgroundColor: 'rgba(175,82,222,0.15)' }]}>
-                  <MaterialIcons name="edit-note" size={26} color="#AF52DE" />
+                <MaterialIcons name="edit-note" size={22} color="#4169E1" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.optionRowTitle, { color: colors.onSurface }]}>Ingreso Manual</Text>
+                  <Text style={[styles.optionRowSub, { color: colors.onSurfaceVariant }]}>Registra números y fechas sin foto ahora</Text>
                 </View>
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 15 }}>Ingresar Datos Manuales</Text>
-                  <Text style={{ fontFamily: F.regular, color: colors.onSurfaceVariant, fontSize: 12, marginTop: 2 }}>
-                    Registra los números y vigencia sin adjuntar foto ahora
-                  </Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={22} color={colors.onSurfaceVariant} />
+                <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
             </View>
-
-            <View style={{ height: 26 }} />
           </View>
         </View>
       </Modal>
 
-      {/* MODAL: Formulario de Datos Reales del Documento */}
-      <Modal visible={showFormModal} transparent={true} animationType="slide">
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' }}
-        >
-          <View style={{ backgroundColor: colors.surfaceContainerLow, borderTopLeftRadius: 32, borderTopRightRadius: 32, maxHeight: '90%', padding: 24, borderWidth: 0.5, borderColor: colors.outlineVariant }}>
-            <View style={{ width: 36, height: 5, borderRadius: 2.5, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: 14 }} />
-            
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 20 }}>Datos Reales del Documento</Text>
-              <TouchableOpacity onPress={() => setShowFormModal(false)} style={{ padding: 4 }}>
-                <MaterialIcons name="close" size={24} color={colors.onSurfaceVariant} />
+      {/* MODAL: FORMULARIO DE REGISTRO */}
+      <Modal visible={showFormModal} transparent={true} animationType="fade">
+        <View style={styles.modalBackdropCenter}>
+          <View style={[styles.dialogModalBox, { maxWidth: 520, maxHeight: '90%', backgroundColor: isDark ? '#191c21' : '#ffffff', borderColor: isDark ? '#40485c' : '#d0d4dc' }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={[styles.dialogTitle, { color: colors.onSurface }]}>Datos del Documento</Text>
+              <TouchableOpacity onPress={() => setShowFormModal(false)}>
+                <MaterialIcons name="close" size={20} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              
-              {/* Vista previa de foto si existe */}
+            <ScrollView showsVerticalScrollIndicator={false}>
               {formImageUri && (
-                <View style={{ marginBottom: 16, alignItems: 'center' }}>
-                  <Image source={{ uri: formImageUri }} style={{ width: '100%', height: 160, borderRadius: 16, backgroundColor: colors.surfaceContainer }} resizeMode="cover" />
+                <View style={{ marginBottom: 14, position: 'relative' }}>
+                  <Image source={{ uri: formImageUri }} style={{ width: '100%', height: 160, borderRadius: 14 }} resizeMode="cover" />
                   <TouchableOpacity 
                     onPress={() => setFormImageUri(null)}
-                    style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', padding: 6, borderRadius: 16 }}
+                    style={styles.removePhotoBtn}
                   >
                     <MaterialIcons name="close" size={16} color="#FFF" />
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* Selector de Tipo de Documento */}
-              <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.bold }]}>Tipo de Documento:</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              <Text style={[styles.inputLabel, { color: colors.onSurfaceVariant }]}>Tipo de Documento:</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                 {[
                   { label: 'Carnet de Circulación', type: 'moto' as const },
                   { label: 'Título de Propiedad', type: 'moto' as const, perm: true },
                   { label: 'Seguro / RCV', type: 'moto' as const },
                   { label: 'Licencia de Conducir', type: 'user' as const },
                   { label: 'Certificado Médico', type: 'user' as const },
-                  { label: 'Revisión Técnica', type: 'moto' as const },
                 ].map(item => {
-                  const isSelected = formTitle === item.label;
+                  const isSel = formTitle === item.label;
                   return (
                     <TouchableOpacity
                       key={item.label}
@@ -912,11 +1021,11 @@ export const WalletTab = () => {
                         if (item.perm) setFormIsPermanent(true);
                       }}
                       style={[
-                        styles.chipBtn,
-                        { borderColor: colors.outlineVariant, backgroundColor: isSelected ? colors.primary : colors.surfaceContainer }
+                        styles.docTypeChip,
+                        isSel && { backgroundColor: '#4169E1', borderColor: '#4169E1' }
                       ]}
                     >
-                      <Text style={{ fontFamily: F.bold, fontSize: 12, color: isSelected ? colors.onPrimary : colors.onSurface }}>
+                      <Text style={[styles.docTypeChipText, { color: isSel ? '#ffffff' : colors.onSurface }]}>
                         {item.label}
                       </Text>
                     </TouchableOpacity>
@@ -924,331 +1033,691 @@ export const WalletTab = () => {
                 })}
               </View>
 
-              {/* Campo: Título Personalizado */}
-              <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.bold }]}>Nombre o Título:</Text>
-              <TextInput 
-                value={formTitle}
-                onChangeText={setFormTitle}
-                placeholder="Ej. Carnet de Circulación"
-                placeholderTextColor={colors.onSurfaceVariant}
-                style={[styles.inputBox, { backgroundColor: colors.surfaceContainer, color: colors.onSurface, borderColor: colors.outlineVariant, fontFamily: F.medium }]}
-              />
-
-              {/* Campo: N° de Documento / Registro */}
-              <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.bold, marginTop: 14 }]}>
-                N° de Documento / Trámite / Serial (Real):
-              </Text>
+              <Text style={[styles.inputLabel, { color: colors.onSurfaceVariant }]}>N° de Documento / Serial:</Text>
               <TextInput 
                 value={formDocNumber}
                 onChangeText={setFormDocNumber}
                 placeholder="Ej. V-28.192.831 o N° 0482910"
                 placeholderTextColor={colors.onSurfaceVariant}
-                style={[styles.inputBox, { backgroundColor: colors.surfaceContainer, color: colors.onSurface, borderColor: colors.outlineVariant, fontFamily: F.medium }]}
+                style={[styles.textInput, { backgroundColor: isDark ? '#272a30' : '#ececf0', color: colors.onSurface }]}
               />
 
-              {/* Vigencia / Fecha de Vencimiento */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 }}>
-                <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.bold, marginBottom: 0 }]}>
-                  Fecha de Vencimiento:
-                </Text>
-
-                <TouchableOpacity 
-                  onPress={() => setFormIsPermanent(!formIsPermanent)}
-                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: formIsPermanent ? colors.secondaryContainer : colors.surfaceContainer, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 }}
-                >
-                  <MaterialIcons name={formIsPermanent ? "check-box" : "check-box-outline-blank"} size={18} color={formIsPermanent ? colors.secondary : colors.onSurfaceVariant} />
-                  <Text style={{ fontFamily: F.bold, fontSize: 11, color: colors.onSurface, marginLeft: 6 }}>Permanente</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 6 }}>
+                <Text style={[styles.inputLabel, { color: colors.onSurfaceVariant, marginBottom: 0 }]}>Fecha de Vencimiento:</Text>
+                <TouchableOpacity onPress={() => setFormIsPermanent(!formIsPermanent)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <MaterialIcons name={formIsPermanent ? "check-box" : "check-box-outline-blank"} size={18} color="#00e3fd" />
+                  <Text style={{ fontSize: 11, fontFamily: F.bold, color: '#00e3fd' }}>Permanente</Text>
                 </TouchableOpacity>
               </View>
 
               {!formIsPermanent && (
-                <>
-                  <TextInput 
-                    value={formExpiryDate}
-                    onChangeText={setFormExpiryDate}
-                    placeholder="AAAA-MM-DD (Ej. 2026-12-31)"
-                    placeholderTextColor={colors.onSurfaceVariant}
-                    style={[styles.inputBox, { backgroundColor: colors.surfaceContainer, color: colors.onSurface, borderColor: colors.outlineVariant, fontFamily: F.medium }]}
-                  />
-
-                  {/* Botones de sugerencia de vigencia rápida */}
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-                    {[
-                      { label: '+6 Meses', months: 6 },
-                      { label: '+1 Año', months: 12 },
-                      { label: '+2 Años', months: 24 },
-                      { label: '+5 Años', months: 60 },
-                    ].map(btn => (
-                      <TouchableOpacity
-                        key={btn.label}
-                        onPress={() => {
-                          const d = new Date();
-                          d.setMonth(d.getMonth() + btn.months);
-                          setFormExpiryDate(d.toISOString().split('T')[0]);
-                        }}
-                        style={[styles.quickDateBtn, { backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant }]}
-                      >
-                        <Text style={{ fontFamily: F.semibold, fontSize: 11, color: colors.primary }}>{btn.label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </>
+                <TextInput 
+                  value={formExpiryDate}
+                  onChangeText={setFormExpiryDate}
+                  placeholder="AAAA-MM-DD (Ej. 2026-12-31)"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                  style={[styles.textInput, { backgroundColor: isDark ? '#272a30' : '#ececf0', color: colors.onSurface }]}
+                />
               )}
 
-              {/* QR Data Info si fue capturado */}
-              {formQrData ? (
-                <View style={{ marginTop: 16, padding: 12, backgroundColor: 'rgba(0,122,255,0.1)', borderRadius: 14, borderWidth: 0.5, borderColor: colors.primary }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialIcons name="verified" size={18} color={colors.primary} />
-                    <Text style={{ fontFamily: F.bold, color: colors.primary, fontSize: 12, marginLeft: 6 }}>Código QR Certificado</Text>
-                  </View>
-                  <Text style={{ fontFamily: F.regular, color: colors.onSurface, fontSize: 11, marginTop: 4 }} numberOfLines={2}>
-                    {formQrData}
-                  </Text>
-                </View>
-              ) : null}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+                <TouchableOpacity 
+                  onPress={() => setShowFormModal(false)}
+                  style={[styles.formBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc', borderWidth: 1 }]}
+                >
+                  <Text style={[styles.formBtnText, { color: colors.onSurface }]}>Cancelar</Text>
+                </TouchableOpacity>
 
-              {/* Botón Guardar */}
-              <TouchableOpacity
-                onPress={handleSaveDocument}
-                disabled={uploading}
-                style={[styles.saveMainBtn, { backgroundColor: colors.primary, marginTop: 22 }]}
-              >
-                {uploading ? (
-                  <ActivityIndicator color={colors.onPrimary} />
-                ) : (
-                  <Text style={{ fontFamily: F.bold, color: colors.onPrimary, fontSize: 16 }}>Guardar en Billetera</Text>
-                )}
-              </TouchableOpacity>
-
+                <TouchableOpacity 
+                  onPress={handleSaveDocument}
+                  style={[styles.formBtn, { backgroundColor: '#4169E1' }]}
+                >
+                  <Text style={[styles.formBtnText, { color: '#ffffff' }]}>Guardar Documento</Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
-      {/* MODAL: Editar Fecha / N° de Documento Existente */}
-      <Modal visible={!!editingDoc} transparent={true} animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <View style={{ width: '100%', maxWidth: 360, backgroundColor: colors.surfaceContainerLow, borderRadius: 28, padding: 24, borderWidth: 0.5, borderColor: colors.outlineVariant }}>
-            <View style={{ width: 36, height: 5, borderRadius: 2.5, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: 16 }} />
-            
-            <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 18, textAlign: 'center' }}>
-              Editar Datos del Documento
-            </Text>
-            <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 12, textAlign: 'center', marginTop: 4, marginBottom: 18 }}>
-              {editingDoc ? parseDocTitle(editingDoc.title).cleanTitle : ''}
-            </Text>
+      {/* MODAL: EDITAR DATOS */}
+      {editingDoc && (
+        <Modal visible={true} transparent={true} animationType="fade">
+          <View style={styles.modalBackdropCenter}>
+            <View style={[styles.dialogModalBox, { backgroundColor: isDark ? '#191c21' : '#ffffff', borderColor: isDark ? '#40485c' : '#d0d4dc' }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <Text style={[styles.dialogTitle, { color: colors.onSurface }]}>Editar Documento</Text>
+                <TouchableOpacity onPress={() => setEditingDoc(null)}>
+                  <MaterialIcons name="close" size={20} color={colors.onSurfaceVariant} />
+                </TouchableOpacity>
+              </View>
 
-            <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.bold }]}>
-              N° de Documento Real:
-            </Text>
-            <TextInput 
-              value={editDocNumber}
-              onChangeText={setEditDocNumber}
-              placeholder="Ej. V-28.192.831"
-              placeholderTextColor={colors.onSurfaceVariant}
-              style={[styles.inputBox, { backgroundColor: colors.surfaceContainer, color: colors.onSurface, borderColor: colors.outlineVariant, fontFamily: F.medium, marginBottom: 14 }]}
-            />
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.bold, marginBottom: 0 }]}>
-                Fecha de Vencimiento:
-              </Text>
-
-              <TouchableOpacity 
-                onPress={() => setEditIsPermanent(!editIsPermanent)}
-                style={{ flexDirection: 'row', alignItems: 'center' }}
-              >
-                <MaterialIcons name={editIsPermanent ? "check-box" : "check-box-outline-blank"} size={18} color={editIsPermanent ? colors.primary : colors.onSurfaceVariant} />
-                <Text style={{ fontFamily: F.bold, fontSize: 11, color: colors.onSurface, marginLeft: 6 }}>Permanente</Text>
-              </TouchableOpacity>
-            </View>
-
-            {!editIsPermanent && (
+              <Text style={[styles.inputLabel, { color: colors.onSurfaceVariant }]}>N° de Documento:</Text>
               <TextInput 
-                value={editExpiryDate}
-                onChangeText={setEditExpiryDate}
-                placeholder="AAAA-MM-DD"
+                value={editDocNumber}
+                onChangeText={setEditDocNumber}
+                placeholder="Ej. V-28.192.831"
                 placeholderTextColor={colors.onSurfaceVariant}
-                style={[styles.inputBox, { backgroundColor: colors.surfaceContainer, color: colors.onSurface, borderColor: colors.outlineVariant, fontFamily: F.medium, marginBottom: 18 }]}
+                style={[styles.textInput, { backgroundColor: isDark ? '#272a30' : '#ececf0', color: colors.onSurface }]}
               />
-            )}
 
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-              <TouchableOpacity
-                onPress={() => setEditingDoc(null)}
-                style={{ flex: 1, height: 48, borderRadius: 14, borderWidth: 0.5, borderColor: colors.outlineVariant, justifyContent: 'center', alignItems: 'center' }}
-              >
-                <Text style={{ fontFamily: F.bold, color: colors.onSurface }}>Cancelar</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 6 }}>
+                <Text style={[styles.inputLabel, { color: colors.onSurfaceVariant, marginBottom: 0 }]}>Fecha de Vencimiento:</Text>
+                <TouchableOpacity onPress={() => setEditIsPermanent(!editIsPermanent)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <MaterialIcons name={editIsPermanent ? "check-box" : "check-box-outline-blank"} size={18} color="#00e3fd" />
+                  <Text style={{ fontSize: 11, fontFamily: F.bold, color: '#00e3fd' }}>Permanente</Text>
+                </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity
-                onPress={handleSaveEdit}
-                style={{ flex: 1, height: 48, borderRadius: 14, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }}
-              >
-                <Text style={{ fontFamily: F.bold, color: colors.onPrimary }}>Guardar</Text>
-              </TouchableOpacity>
+              {!editIsPermanent && (
+                <TextInput 
+                  value={editExpiryDate}
+                  onChangeText={setEditExpiryDate}
+                  placeholder="AAAA-MM-DD"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                  style={[styles.textInput, { backgroundColor: isDark ? '#272a30' : '#ececf0', color: colors.onSurface }]}
+                />
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+                <TouchableOpacity 
+                  onPress={() => setEditingDoc(null)}
+                  style={[styles.formBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc', borderWidth: 1 }]}
+                >
+                  <Text style={[styles.formBtnText, { color: colors.onSurface }]}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={handleSaveEdit}
+                  style={[styles.formBtn, { backgroundColor: '#4169E1' }]}
+                >
+                  <Text style={[styles.formBtnText, { color: '#ffffff' }]}>Guardar Cambios</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-
-      {/* MODAL: Ver Documento en Pantalla Completa */}
-      <Modal visible={!!selectedDocImage} transparent={true} animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', justifyContent: 'center', alignItems: 'center' }}>
-          <TouchableOpacity 
-            style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }} 
-            onPress={() => setSelectedDocImage(null)}
-          >
-            <MaterialIcons name="close" size={26} color="#FFF" />
-          </TouchableOpacity>
-          {selectedDocImage && (
-            <Image source={{ uri: selectedDocImage }} style={{ width: '94%', height: '84%' }} resizeMode="contain" />
-          )}
-        </View>
-      </Modal>
+        </Modal>
+      )}
 
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  headerIconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 0.5,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerContainer: {
+    paddingHorizontal: 28,
+    paddingTop: 24,
+    paddingBottom: 14,
   },
-  statusNotificationDot: {
-    position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  headerKicker: {
+    color: '#4169E1',
+    fontSize: 10.5,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1.5,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontFamily: 'Montserrat_800ExtraBold',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Montserrat_500Medium',
+    marginTop: 2,
+  },
+  headerActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  headerActionBtnText: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  headerPrimaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#4169E1',
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    shadowColor: '#4169E1',
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+  },
+  headerPrimaryBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontFamily: 'Montserrat_700Bold',
   },
   filterBar: {
     flexDirection: 'row',
-    gap: 6,
-    marginTop: 16,
+    alignItems: 'center',
     padding: 4,
-    borderRadius: 16,
-    borderWidth: 0.5,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    gap: 4,
   },
   filterPill: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+  },
+  filterPillActive: {
+    backgroundColor: '#4169E1',
   },
   filterPillText: {
-    fontSize: 11,
-    letterSpacing: -0.2,
+    fontSize: 11.5,
+    fontFamily: 'Montserrat_600SemiBold',
   },
-  emptyActionBtn: {
+  uploadingBanner: {
+    backgroundColor: 'rgba(0, 227, 253, 0.12)',
+    borderColor: 'rgba(0, 227, 253, 0.35)',
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 14,
+  },
+  uploadingText: {
+    color: '#00e3fd',
+    fontSize: 12,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 48,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 24,
+    marginTop: 24,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: 'Montserrat_700Bold',
+    marginTop: 14,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    fontFamily: 'Montserrat_400Regular',
+    textAlign: 'center',
+    maxWidth: 460,
+    lineHeight: 19,
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  emptyAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#4169E1',
     paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 16,
   },
-  cardActionPill: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  emptyAddBtnText: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  cardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20,
+  },
+  physicalCard: {
+    width: 370,
+    height: 230,
     borderRadius: 20,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  cardGradient: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'space-between',
+    position: 'relative',
+  },
+  cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  scannerOverlay: {
+  emvChip: {
+    width: 42,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: '#d4af37',
+    borderWidth: 1,
+    borderColor: '#ffd700',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  emvChipLine1: {
+    width: '100%',
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  emvChipLine2: {
+    width: 1,
+    height: '100%',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     position: 'absolute',
-    top: 0,
+  },
+  cardCategoryPill: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  cardCategoryPillText: {
+    fontSize: 9,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.8,
+  },
+  cardCleanTitle: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontFamily: 'Montserrat_800ExtraBold',
+    letterSpacing: -0.3,
+  },
+  cardEmbossedNumber: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14.5,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 2,
+    marginTop: 6,
+  },
+  cardFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  cardHolderLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 8.5,
+    fontFamily: 'Montserrat_600SemiBold',
+    letterSpacing: 1,
+  },
+  cardHolderName: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  cardStatusCapsule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 5,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  cardStatusText: {
+    fontSize: 9.5,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.5,
+  },
+  addDashedCard: {
+    width: 370,
+    height: 230,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  addDashedIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 227, 253, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  addDashedTitle: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  addDashedSubtitle: {
+    fontSize: 11.5,
+    fontFamily: 'Montserrat_400Regular',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  inspectorPanel: {
+    flex: 1,
+    minWidth: 360,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  inspectorHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 12,
+  },
+  inspectorPreTitle: {
+    fontSize: 10,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 1.5,
+    marginBottom: 2,
+  },
+  inspectorDocTitle: {
+    fontSize: 20,
+    fontFamily: 'Montserrat_800ExtraBold',
+    letterSpacing: -0.3,
+  },
+  inspectorStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    gap: 6,
+  },
+  inspectorStatusText: {
+    fontSize: 10.5,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  inspectorPhotoContainer: {
+    width: '100%',
+    height: 190,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: 16,
+  },
+  inspectorPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  photoZoomOverlay: {
+    position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingVertical: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  photoZoomText: {
+    color: '#ffffff',
+    fontSize: 11.5,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  inspectorNoPhotoBox: {
+    width: '100%',
+    height: 110,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 16,
+  },
+  inspectorNoPhotoText: {
+    fontSize: 11.5,
+    fontFamily: 'Montserrat_500Medium',
+  },
+  qrBannerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  qrBannerTitle: {
+    fontSize: 11.5,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  qrBannerData: {
+    fontSize: 10.5,
+    fontFamily: 'Montserrat_400Regular',
+    marginTop: 1,
+  },
+  openUrlBtn: {
+    backgroundColor: 'rgba(0, 227, 253, 0.2)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  openUrlBtnText: {
+    color: '#00e3fd',
+    fontSize: 11,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  inspectorDetailsTable: {
+    marginBottom: 20,
+  },
+  detailTableRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 54,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  detailTableLabel: {
+    fontSize: 10.5,
+    fontFamily: 'Montserrat_600SemiBold',
+    letterSpacing: 0.8,
+  },
+  detailTableVal: {
+    fontSize: 12.5,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  inspectorActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  inspectorEditBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  inspectorEditBtnText: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  inspectorDeleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(186, 26, 26, 0.15)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+  },
+  inspectorDeleteBtnText: {
+    color: '#ffb4ab',
+    fontSize: 12,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  photoModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  photoModalCloseBtn: {
+    position: 'absolute',
+    top: 30,
+    right: 30,
+    zIndex: 10,
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+  },
+  fullScreenPhoto: {
+    width: '90%',
+    height: '80%',
+  },
+  modalBackdropCenter: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  dialogModalBox: {
+    width: '100%',
+    maxWidth: 440,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+  },
+  dialogTitle: {
+    fontSize: 18,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  dialogSubtitle: {
+    fontSize: 12.5,
+    fontFamily: 'Montserrat_400Regular',
+  },
+  optionRowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+  },
+  optionRowTitle: {
+    fontSize: 13.5,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  optionRowSub: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_400Regular',
+    marginTop: 2,
+  },
+  removePhotoBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 6,
+    borderRadius: 14,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  docTypeChip: {
+    borderWidth: 1,
+    borderColor: 'rgba(64, 72, 92, 0.4)',
+    borderRadius: 14,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  docTypeChipText: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  textInput: {
+    height: 46,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 13.5,
+    fontFamily: 'Montserrat_500Medium',
+    marginBottom: 10,
+  },
+  formBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  formBtnText: {
+    fontSize: 12.5,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  scannerOverlay: {
+    ...StyleSheet.absoluteFill as any,
+    justifyContent: 'space-between',
+    padding: 24,
   },
   scannerTopBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 40,
   },
   scannerCircleBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   scannerTargetBox: {
-    width: width * 0.72,
-    height: width * 0.72,
+    width: 250,
+    height: 250,
     alignSelf: 'center',
     position: 'relative',
   },
   targetCorner: {
     position: 'absolute',
-    width: 32,
-    height: 32,
-    borderColor: '#0A84FF',
+    width: 28,
+    height: 28,
+    borderColor: '#00e3fd',
   },
   scannerBottomBar: {
-    backgroundColor: 'rgba(0,0,0,0.68)',
-    padding: 18,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  addOptionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 0.5,
-  },
-  addOptionIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fieldLabel: {
-    fontSize: 12,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  chipBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 0.5,
-  },
-  inputBox: {
-    height: 46,
-    borderRadius: 14,
-    borderWidth: 0.5,
-    paddingHorizontal: 14,
-    fontSize: 14,
-  },
-  quickDateBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 0.5,
-  },
-  saveMainBtn: {
-    height: 52,
-    borderRadius: 16,
-    justifyContent: 'center',
+    paddingBottom: 40,
     alignItems: 'center',
   },
 });

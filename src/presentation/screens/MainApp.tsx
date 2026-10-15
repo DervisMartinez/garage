@@ -36,6 +36,7 @@ import { WebTelemetrySection } from '../components/web/WebTelemetrySection';
 import { TechnicalSheetModal } from '../components/TechnicalSheetModal';
 import { VehicleStatsAndCalendarModal } from '../components/VehicleStatsAndCalendarModal';
 import { EmergencyCrashModal } from '../components/EmergencyCrashModal';
+import { MotoInspectionModal } from '../components/MotoInspectionModal';
 import { getMotoSpecs } from '../../data/specs';
 
 export const MainApp = () => {
@@ -60,6 +61,7 @@ export const MainApp = () => {
   const [specsModalVisible, setSpecsModalVisible] = useState(false);
   const [statsModalVisible, setStatsModalVisible] = useState(false);
   const [sosModalVisible, setSosModalVisible] = useState(false);
+  const [inspectionModalVisible, setInspectionModalVisible] = useState(false);
 
   const desktopScrollRef = useRef<ScrollView>(null);
 
@@ -220,6 +222,7 @@ export const MainApp = () => {
                 onOpenQuickFuel={() => setQuickFuelVisible(true)}
                 onOpenSOS={() => setSosModalVisible(true)}
                 onScrollToTelemetry={scrollToTelemetry}
+                onOpenInspection={() => setInspectionModalVisible(true)}
               />
 
               {/* TELEMETRY & WEAR GRID */}
@@ -282,6 +285,13 @@ export const MainApp = () => {
           visible={sosModalVisible}
           onClose={() => setSosModalVisible(false)}
           manualTrigger={true}
+        />
+
+        {/* MODAL: INSPECCIÓN INTERACTIVA 3D DE LA MOTO */}
+        <MotoInspectionModal
+          visible={inspectionModalVisible}
+          onClose={() => setInspectionModalVisible(false)}
+          onOpenQuickService={() => setActiveTab('services')}
         />
 
         {/* MODAL: ACTUALIZAR ODÓMETRO */}

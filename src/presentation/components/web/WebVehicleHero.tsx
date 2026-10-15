@@ -14,6 +14,7 @@ interface WebVehicleHeroProps {
   onOpenQuickFuel: () => void;
   onOpenSOS: () => void;
   onScrollToTelemetry: () => void;
+  onOpenInspection?: () => void;
 }
 
 export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
@@ -23,6 +24,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
   onOpenQuickFuel,
   onOpenSOS,
   onScrollToTelemetry,
+  onOpenInspection,
 }) => {
   const { colors, mode } = useTheme();
   const { myMoto, motos, selectMoto, records } = useMyMoto();
@@ -140,8 +142,13 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
             <MaterialIcons name="chevron-left" size={32} color={colors.onSurface} />
           </TouchableOpacity>
 
-          {/* CENTER: MOTORCYCLE SHOWCASE WITH SOFT SHADOW */}
-          <View style={styles.bikeShowcaseContainer}>
+          {/* CENTER: MOTORCYCLE SHOWCASE WITH SOFT SHADOW & 3D INSPECTION */}
+          <TouchableOpacity 
+            style={styles.bikeShowcaseContainer}
+            onPress={onOpenInspection}
+            activeOpacity={0.9}
+            accessibilityLabel="Abrir inspección interactiva 3D"
+          >
             {imageSource ? (
               <Image
                 source={imageSource}
@@ -157,19 +164,43 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
               </View>
             )}
 
+            {/* FLOATING 3D INSPECTION BADGE */}
+            <View style={{
+              position: 'absolute',
+              top: 8,
+              alignSelf: 'center',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 5,
+              backgroundColor: isDark ? 'rgba(17, 25, 40, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              borderRadius: 20,
+              borderWidth: 0.8,
+              borderColor: '#00e3fd',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.25,
+              shadowRadius: 8,
+              elevation: 6,
+              zIndex: 10,
+            }}>
+              <MaterialIcons name="3d-rotation" size={14} color="#00e3fd" />
+              <Text style={{ fontFamily: F.bold, fontSize: 10.5, color: isDark ? '#ffffff' : '#111319', letterSpacing: 0.5 }}>
+                TOCA PARA INSPECCIONAR EN 3D
+              </Text>
+            </View>
+
             {/* SOFT GROUND SHADOW (Like in technical presentation) */}
-            <div style={{
+            <View style={{
               width: '75%',
-              height: '24px',
-              margin: '0 auto',
-              marginTop: '-18px',
-              borderRadius: '50%',
-              background: isDark 
-                ? 'radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.2) 60%, transparent 80%)'
-                : 'radial-gradient(ellipse at center, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.08) 60%, transparent 80%)',
-              filter: 'blur(8px)',
+              height: 24,
+              marginHorizontal: 'auto',
+              marginTop: -18,
+              borderRadius: 12,
+              backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)',
             } as any} />
-          </View>
+          </TouchableOpacity>
 
           {/* RIGHT SIDE: VEHICLE TITLE, TELEMETRY SPECS & CTA BUTTONS */}
           <View style={styles.heroInfoBlock}>
@@ -268,6 +299,20 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
 
         {/* BOTTOM SUB-NAVIGATION PILLS (Matching + TOP FEATURES, + GALLERY, + SPECS in reference) */}
         <View style={styles.subPillsRow}>
+          {onOpenInspection && (
+            <TouchableOpacity
+              style={[styles.subPill, { 
+                borderColor: '#00e3fd', 
+                backgroundColor: isDark ? 'rgba(0, 227, 253, 0.12)' : 'rgba(0, 227, 253, 0.08)' 
+              }]}
+              onPress={onOpenInspection}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="3d-rotation" size={14} color="#00e3fd" style={{ marginRight: 6 }} />
+              <Text style={[styles.subPillText, { color: '#00e3fd', fontFamily: F.bold }]}>+ INSPECCIÓN 3D & PIEZAS</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[styles.subPill, { borderColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]}
             onPress={onScrollToTelemetry}

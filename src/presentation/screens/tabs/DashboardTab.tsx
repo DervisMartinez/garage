@@ -11,6 +11,7 @@ import { TutorialModal } from '../../components/TutorialModal';
 import { TechnicalSheetModal } from '../../components/TechnicalSheetModal';
 import { VehicleStatsAndCalendarModal } from '../../components/VehicleStatsAndCalendarModal';
 import { EmergencyCrashModal } from '../../components/EmergencyCrashModal';
+import { MotoInspectionModal } from '../../components/MotoInspectionModal';
 import { useCrashDetection } from '../../hooks/useCrashDetection';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -72,6 +73,7 @@ export const DashboardTab = () => {
   const [techSheetVisible, setTechSheetVisible] = useState(false);
   const [statsCalVisible, setStatsCalVisible] = useState(false);
   const [statsCalInitialTab, setStatsCalInitialTab] = useState<'calendar' | 'stats'>('calendar');
+  const [inspectionVisible, setInspectionVisible] = useState(false);
   const [newOdo, setNewOdo] = useState('');
   const [lastOilOdo, setLastOilOdo] = useState('');
   const [oilType, setOilType] = useState('Mineral');
@@ -366,7 +368,13 @@ export const DashboardTab = () => {
                 motos.map((moto, index) => {
                   const catMoto = MOTO_CATALOG.find(m => m.brand === moto.brand && m.model === moto.model);
                   return (
-                    <View key={moto.id} style={{ width: slideWidth, height: 180, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                    <TouchableOpacity 
+                      key={moto.id} 
+                      onPress={() => setInspectionVisible(true)}
+                      activeOpacity={0.9}
+                      accessibilityLabel="Toca para inspeccionar tu moto en 3D"
+                      style={{ width: slideWidth, height: 180, justifyContent: 'center', alignItems: 'center', position: 'relative' }}
+                    >
                       {moto.imageUrl ? (
                         <Image source={{ uri: moto.imageUrl }} style={{ width: '92%', height: 160, zIndex: 5 }} resizeMode="contain" />
                       ) : catMoto?.imageRes ? (
@@ -382,7 +390,29 @@ export const DashboardTab = () => {
                       <View style={[styles.podiumRing, { borderColor: mode === 'dark' ? 'rgba(10, 132, 255, 0.35)' : 'rgba(0, 122, 255, 0.2)', bottom: -4 }]}>
                         <View style={[styles.podiumInnerRing, { borderColor: mode === 'dark' ? 'rgba(10, 132, 255, 0.2)' : 'rgba(0, 122, 255, 0.12)' }]} />
                       </View>
-                    </View>
+
+                      {/* 3D Interactive Inspection Badge */}
+                      <View style={{
+                        position: 'absolute',
+                        top: 2,
+                        right: 22,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                        backgroundColor: mode === 'dark' ? 'rgba(10, 132, 255, 0.25)' : 'rgba(0, 122, 255, 0.15)',
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 12,
+                        borderWidth: 0.8,
+                        borderColor: colors.primary,
+                        zIndex: 10,
+                      }}>
+                        <MaterialIcons name="3d-rotation" size={12} color={colors.primary} />
+                        <Text style={{ fontFamily: F.bold, fontSize: 9.5, color: colors.primary, letterSpacing: 0.4 }}>
+                          3D
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
                   );
                 })
               ) : (
@@ -789,6 +819,14 @@ export const DashboardTab = () => {
         visible={crashTriggered}
         onClose={dismissCrashAlert}
         manualTrigger={isManualTrigger}
+      />
+      <MotoInspectionModal
+        visible={inspectionVisible}
+        onClose={() => setInspectionVisible(false)}
+        onOpenQuickService={(comp) => {
+          if (comp === 'oil') setOilSetupVisible(true);
+          else setModalVisible(true);
+        }}
       />
     </SafeAreaView>
   );
