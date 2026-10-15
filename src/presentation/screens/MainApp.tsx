@@ -383,6 +383,7 @@ export const MainApp = () => {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ flex: 1, paddingBottom: 68 + insets.bottom }}>
           {activeTab === 'moto' && <DashboardTab />}
+          {activeTab === 'specs' && <SpecsTab onNavigateToServices={() => setActiveTab('services')} />}
           {activeTab === 'services' && <ServicesTab />}
           {activeTab === 'history' && <HistoryTab />}
           {activeTab === 'wallet' && <WalletTab />}
