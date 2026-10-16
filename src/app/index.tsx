@@ -4,6 +4,7 @@ import { useMyMoto } from '@/presentation/context/MotoContext';
 import { SetupScreen } from '@/presentation/screens/SetupScreen';
 import { MainApp } from '@/presentation/screens/MainApp';
 import { AuthScreen } from '@/presentation/screens/AuthScreen';
+import { LandingScreen } from '@/presentation/screens/LandingScreen';
 import { supabase } from '@/data/supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -43,33 +44,71 @@ export default function HomeScreen() {
   // Mantenemos un mínimo de tiempo para que se aprecie la animación (opcional, 1.5s)
   const [minWaitDone, setMinWaitDone] = useState(false);
 
+  // Estado de navegación inicial: 'landing' (Portada de entrada) | 'auth' (Login/Register) | 'app' (Garaje activo)
+  const [viewState, setViewState] = useState<'landing' | 'auth' | 'app'>('landing');
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
+      if (session) {
+        setViewState('app');
+      }
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session) {
+        setViewState('app');
+      } else {
+        setViewState('landing');
+      }
     });
 
     setTimeout(() => {
       setMinWaitDone(true);
     }, 1500);
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   if (authLoading || !isLoaded || !minWaitDone) {
     return <PreloadScreen />;
   }
 
-  if (!session) {
-    return <AuthScreen />;
+  // 1. Portada de Entrada (Landing estilo portada de referencia)
+  if (viewState === 'landing') {
+    return (
+      <LandingScreen
+        isLoggedIn={Boolean(session)}
+        onEnter={() => {
+          if (session) {
+            setViewState('app');
+          } else {
+            setViewState('auth');
+          }
+        }}
+      />
+    );
   }
 
+  // 2. Pantalla de Acceso / Registro
+  if (!session || viewState === 'auth') {
+    return (
+      <AuthScreen
+        onBack={() => setViewState('landing')}
+      />
+    );
+  }
+
+  // 3. Configuración inicial si no tiene moto registrada
   if (!myMoto || isAddingMoto) {
     return <SetupScreen />;
   }
 
+  // 4. Panel principal de la app
   return <MainApp />;
 }
 

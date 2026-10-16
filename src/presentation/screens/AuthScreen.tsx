@@ -20,7 +20,11 @@ import { LegalConsentCheckboxes } from '../components/LegalConsentCheckboxes';
 import { LegalDocModal, LegalDocType } from '../components/LegalDocModal';
 import { recordLegalConsent } from '../../services/legalConsentService';
 
-export const AuthScreen = () => {
+interface Props {
+  onBack?: () => void;
+}
+
+export const AuthScreen: React.FC<Props> = ({ onBack }) => {
   // Theme and responsive state
   const { colors, mode, isDark } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
@@ -269,6 +273,32 @@ export const AuthScreen = () => {
 
               <View style={[styles.cardContainer, isDesktop && styles.desktopCardContainer]}>
               
+              {/* BACK TO LANDING BUTTON */}
+              {onBack && (
+                <TouchableOpacity
+                  onPress={onBack}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    alignSelf: 'flex-start',
+                    marginBottom: 16,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 16,
+                    backgroundColor: isDark ? 'rgba(0, 227, 253, 0.08)' : 'rgba(65, 105, 225, 0.08)',
+                    borderWidth: 0.8,
+                    borderColor: isDark ? 'rgba(0, 227, 253, 0.3)' : 'rgba(65, 105, 225, 0.25)',
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons name="arrow-back" size={16} color={isDark ? '#00e3fd' : '#4169E1'} />
+                  <Text style={{ fontFamily: F.bold, color: isDark ? '#00e3fd' : '#4169E1', fontSize: 12 }}>
+                    Volver a Portada
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {/* BRAND HEADER & LOGO */}
               <View style={{ alignItems: 'center', marginBottom: 22 }}>
                 <View style={[styles.logoBadge, { backgroundColor: tokens.surfaceCard, borderColor: tokens.outline }]}>
