@@ -43,19 +43,13 @@ function InnerLayout() {
 }
 
 export default function Layout() {
-  // On Web, fonts are loaded natively by CSS in +html.tsx (Google Fonts CDN).
-  // Passing {} on Web ensures FontObserver never runs and 12000ms timeout never fires.
-  const [fontsLoaded, fontError] = useFonts(
-    Platform.OS !== 'web'
-      ? {
-          Montserrat_400Regular,
-          Montserrat_500Medium,
-          Montserrat_600SemiBold,
-          Montserrat_700Bold,
-          Montserrat_800ExtraBold,
-        }
-      : {}
-  );
+  const [fontsLoaded, fontError] = useFonts({
+    Montserrat_400Regular,
+    Montserrat_500Medium,
+    Montserrat_600SemiBold,
+    Montserrat_700Bold,
+    Montserrat_800ExtraBold,
+  });
 
   useEffect(() => {
     if (fontsLoaded || fontError || Platform.OS === 'web') {

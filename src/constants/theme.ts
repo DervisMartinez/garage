@@ -28,25 +28,27 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
+    sans: 'Montserrat_500Medium',
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
+    rounded: 'Montserrat_600SemiBold',
+    bold: 'Montserrat_700Bold',
+    extrabold: 'Montserrat_800ExtraBold',
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: 'Montserrat_500Medium',
     serif: 'serif',
-    rounded: 'normal',
+    rounded: 'Montserrat_600SemiBold',
+    bold: 'Montserrat_700Bold',
+    extrabold: 'Montserrat_800ExtraBold',
     mono: 'monospace',
   },
   web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
+    sans: 'Montserrat_500Medium',
+    serif: "'Montserrat', Georgia, serif",
+    rounded: 'Montserrat_600SemiBold',
+    bold: 'Montserrat_700Bold',
+    extrabold: 'Montserrat_800ExtraBold',
     mono: 'var(--font-mono)',
   },
 });

@@ -23,40 +23,86 @@ export default function Root({ children }: PropsWithChildren) {
           dangerouslySetInnerHTML={{
             __html: `
               @font-face {
-                font-family: 'Montserrat_400Regular';
-                src: local('Montserrat-Regular'), local('Montserrat');
-                font-weight: 400;
+                font-family: 'Montserrat';
                 font-style: normal;
+                font-weight: 400;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Ew-.ttf') format('truetype');
+              }
+              @font-face {
+                font-family: 'Montserrat';
+                font-style: normal;
+                font-weight: 500;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtZ6Ew-.ttf') format('truetype');
+              }
+              @font-face {
+                font-family: 'Montserrat';
+                font-style: normal;
+                font-weight: 600;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCu170w-.ttf') format('truetype');
+              }
+              @font-face {
+                font-family: 'Montserrat';
+                font-style: normal;
+                font-weight: 700;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCuM70w-.ttf') format('truetype');
+              }
+              @font-face {
+                font-family: 'Montserrat';
+                font-style: normal;
+                font-weight: 800;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCvr70w-.ttf') format('truetype');
+              }
+              @font-face {
+                font-family: 'Montserrat_400Regular';
+                font-style: normal;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Ew-.ttf') format('truetype');
               }
               @font-face {
                 font-family: 'Montserrat_500Medium';
-                src: local('Montserrat-Medium'), local('Montserrat');
-                font-weight: 500;
                 font-style: normal;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtZ6Ew-.ttf') format('truetype');
               }
               @font-face {
                 font-family: 'Montserrat_600SemiBold';
-                src: local('Montserrat-SemiBold'), local('Montserrat');
-                font-weight: 600;
                 font-style: normal;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCu170w-.ttf') format('truetype');
               }
               @font-face {
                 font-family: 'Montserrat_700Bold';
-                src: local('Montserrat-Bold'), local('Montserrat');
-                font-weight: 700;
                 font-style: normal;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCuM70w-.ttf') format('truetype');
               }
               @font-face {
                 font-family: 'Montserrat_800ExtraBold';
-                src: local('Montserrat-ExtraBold'), local('Montserrat');
-                font-weight: 800;
                 font-style: normal;
+                font-display: swap;
+                src: url('https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCvr70w-.ttf') format('truetype');
+              }
+              *, *::before, *::after {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
               }
               html, body, #root {
                 height: 100%;
                 margin: 0;
                 padding: 0;
                 background-color: #111319;
+                font-family: Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              }
+              /* Enforce Montserrat on React Native Web text & inputs */
+              [dir="auto"],
+              [class*="r-14gqq1x"],
+              [class*="r-fdjwn4"],
+              input, textarea, button, select {
                 font-family: Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
               }
             `,
