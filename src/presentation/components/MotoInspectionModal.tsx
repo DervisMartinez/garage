@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Image,
   Animated,
-  PanResponder,
   useWindowDimensions,
   Platform,
   Easing,
@@ -18,7 +17,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useMyMoto } from '../context/MotoContext';
 import { MOTO_CATALOG } from '../../data/catalog';
 import { calculateWearPercentage, COMPONENT_NAMES, ComponentType } from '../../constants/telemetry';
-import { getMotoSpecs } from '../../data/specs';
+import { getMotoSpecs, MotoSpecs } from '../../data/specs';
 
 interface Props {
   visible: boolean;
@@ -127,25 +126,19 @@ export const MotoInspectionModal: React.FC<Props> = ({
 }) => {
   const { colors, mode } = useTheme();
   const { myMoto, records } = useMyMoto();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
 
   const isDark = mode === 'dark';
   const isDesktop = windowWidth >= 900;
+  const useNativeDriver = Platform.OS !== 'web';
 
   // Selected Hotspot for detail inspection card
   const [selectedHotspot, setSelectedHotspot] = useState<HotspotDef | null>(HOTSPOTS[0]);
   const [showHotspots, setShowHotspots] = useState(true);
-  const [isFlipped, setIsFlipped] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [isAutoSpinning, setIsAutoSpinning] = useState(false);
 
-  // 3D Motion & Pan Animated Values
-  const panX = useRef(new Animated.Value(0)).current;
-  const panY = useRef(new Animated.Value(0)).current;
-  const rotY = useRef(new Animated.Value(0)).current;
-  const rotX = useRef(new Animated.Value(0)).current;
+  // Animated Values for zoom and hotspot pulse
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Radar pulse animation for hotspots
@@ -156,72 +149,19 @@ export const MotoInspectionModal: React.FC<Props> = ({
           toValue: 1.45,
           duration: 1100,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 900,
           easing: Easing.in(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     );
     pulseLoop.start();
     return () => pulseLoop.stop();
-  }, [pulseAnim]);
-
-  // Auto-spin animation
-  useEffect(() => {
-    let spinLoop: Animated.CompositeAnimation | null = null;
-    if (isAutoSpinning) {
-      spinLoop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(spinAnim, {
-            toValue: 1,
-            duration: 6000,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(spinAnim, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      spinLoop.start();
-    } else {
-      spinAnim.stopAnimation();
-      spinAnim.setValue(0);
-    }
-    return () => {
-      spinLoop?.stop();
-    };
-  }, [isAutoSpinning, spinAnim]);
-
-  // PanResponder to allow dragging and rotating the motorcycle
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: (evt, gestureState) => {
-        // Horizontal drag rotates the bike in 3D
-        rotY.setValue(gestureState.dx * 0.22);
-        // Vertical drag tilts the bike and moves it slightly
-        rotX.setValue(-gestureState.dy * 0.12);
-        panX.setValue(gestureState.dx * 0.35);
-        panY.setValue(gestureState.dy * 0.35);
-      },
-      onPanResponderRelease: () => {
-        // Smoothly spring back to rest position
-        Animated.parallel([
-          Animated.spring(panX, { toValue: 0, friction: 6, tension: 70, useNativeDriver: true }),
-          Animated.spring(panY, { toValue: 0, friction: 6, tension: 70, useNativeDriver: true }),
-          Animated.spring(rotY, { toValue: 0, friction: 5, tension: 60, useNativeDriver: true }),
-          Animated.spring(rotX, { toValue: 0, friction: 5, tension: 60, useNativeDriver: true }),
-        ]).start();
-      },
-    })
-  ).current;
+  }, [pulseAnim, useNativeDriver]);
 
   // Resolve Image Source
   const imageSource = useMemo(() => {
@@ -248,11 +188,114 @@ export const MotoInspectionModal: React.FC<Props> = ({
     return map;
   }, [myMoto, records]);
 
-  // Specs
+  // Factory Specifications (OEM)
   const specs = useMemo(() => {
     if (!myMoto) return null;
     return getMotoSpecs(myMoto.brand, myMoto.model);
   }, [myMoto]);
+
+  // Comprehensive Dossier for Selected Hotspot
+  const dossier = useMemo(() => {
+    if (!myMoto || !selectedHotspot) return null;
+
+    const wear = wearMap[selectedHotspot.id] ?? 85;
+    const statusColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';
+    const statusText = wear >= 60 ? 'ÓPTIMO' : wear >= 30 ? 'PREVENTIVO' : 'CRÍTICO';
+
+    const compRecords = records.filter((r) => r.type === selectedHotspot.id);
+    const lastRecord = compRecords.length > 0
+      ? compRecords.reduce((prev, curr) => (prev.odometer > curr.odometer ? prev : curr))
+      : null;
+    const lastOdo = lastRecord
+      ? lastRecord.odometer
+      : (myMoto.isFromAgency ? 0 : Math.max(0, myMoto.currentOdometer - 1500));
+    const kmSince = Math.max(0, myMoto.currentOdometer - lastOdo);
+
+    let oemSpecs: { label: string; value: string; icon: string }[] = [];
+    let intervalNominal = 3000;
+
+    switch (selectedHotspot.id) {
+      case 'oil':
+        oemSpecs = [
+          { label: 'Viscosidad OEM', value: specs?.oilTypeRecommended || '20W-50 4T JASO MA2', icon: 'opacity' },
+          { label: 'Capacidad Cárter', value: specs?.oilCapacity || '1.0 Litro', icon: 'local-gas-station' },
+          { label: 'Frecuencia Sugerida', value: specs?.maintenanceIntervalOil || 'Cada 2,500 - 3,000 km', icon: 'schedule' },
+        ];
+        intervalNominal = 3000;
+        break;
+      case 'brakes_front':
+        oemSpecs = [
+          { label: 'Sistema', value: specs?.brakesFront || 'Disco hidráulico ventilado 240mm', icon: 'build' },
+          { label: 'Espesor Mínimo', value: 'Min 2.0 mm pastillas', icon: 'straighten' },
+          { label: 'Fluido Hidráulico', value: 'DOT 3 / DOT 4', icon: 'invert-colors' },
+        ];
+        intervalNominal = 6000;
+        break;
+      case 'brakes_rear':
+        oemSpecs = [
+          { label: 'Sistema', value: specs?.brakesRear || 'Tambor mecánico con zapatas', icon: 'build' },
+          { label: 'Juego Libre Pedal', value: '20 - 30 mm holgura', icon: 'straighten' },
+          { label: 'Inspección', value: 'Revisión cada 3,000 km', icon: 'schedule' },
+        ];
+        intervalNominal = 6000;
+        break;
+      case 'tires_front':
+        oemSpecs = [
+          { label: 'Medida Delantera', value: specs?.frontTireSize || '2.75 - 18', icon: 'album' },
+          { label: 'Presión en Frío', value: specs?.frontTirePressure || '28 PSI', icon: 'speed' },
+          { label: 'Profundidad Canales', value: 'Min 1.6 mm banda', icon: 'straighten' },
+        ];
+        intervalNominal = 12000;
+        break;
+      case 'tires_rear':
+        oemSpecs = [
+          { label: 'Medida Trasera', value: specs?.rearTireSize || '90/90 - 18', icon: 'album' },
+          { label: 'Presión en Frío', value: specs?.rearTirePressure || '32 PSI', icon: 'speed' },
+          { label: 'Profundidad Canales', value: 'Min 2.0 mm (Tracción)', icon: 'straighten' },
+        ];
+        intervalNominal = 10000;
+        break;
+      case 'chain':
+        oemSpecs = [
+          { label: 'Paso de Cadena', value: specs?.chainType || 'Paso 428H reforzada', icon: 'link' },
+          { label: 'Tensión / Flecha', value: '20 - 30 mm holgura', icon: 'straighten' },
+          { label: 'Lubricación', value: 'Cada 500 km / lluvia', icon: 'opacity' },
+        ];
+        intervalNominal = 10000;
+        break;
+      case 'air_filter':
+        oemSpecs = [
+          { label: 'Admisión', value: 'Elemento lavable / papel', icon: 'air' },
+          { label: 'Mantenimiento', value: 'Sopleteo o reemplazo', icon: 'build' },
+          { label: 'Frecuencia', value: 'Cada 4,000 km', icon: 'schedule' },
+        ];
+        intervalNominal = 4000;
+        break;
+      case 'spark_plugs':
+        oemSpecs = [
+          { label: 'Referencia OEM', value: specs?.sparkPlug || 'NGK D8EA', icon: 'flash-on' },
+          { label: 'Luz de Electrodo', value: '0.7 - 0.8 mm', icon: 'straighten' },
+          { label: 'Diagnóstico Visual', value: 'Color café claro en punta', icon: 'search' },
+        ];
+        intervalNominal = 6000;
+        break;
+    }
+
+    const estKmRemaining = Math.max(0, Math.round(intervalNominal * (wear / 100)));
+
+    return {
+      wear,
+      statusColor,
+      statusText,
+      lastOdo,
+      kmSince,
+      estKmRemaining,
+      lastDate: lastRecord
+        ? new Date(lastRecord.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+        : (myMoto.isFromAgency ? 'De Agencia' : 'Registro Inicial'),
+      oemSpecs,
+    };
+  }, [myMoto, selectedHotspot, wearMap, records, specs]);
 
   const handleZoom = (level: number) => {
     setZoomLevel(level);
@@ -260,26 +303,13 @@ export const MotoInspectionModal: React.FC<Props> = ({
       toValue: level,
       friction: 6,
       tension: 80,
-      useNativeDriver: true,
+      useNativeDriver,
     }).start();
   };
 
-  const handleToggleFlip = () => {
-    setIsFlipped((prev) => !prev);
-  };
-
   const handleResetView = () => {
-    setIsAutoSpinning(false);
-    setIsFlipped(false);
     setZoomLevel(1);
-    Animated.parallel([
-      Animated.spring(panX, { toValue: 0, friction: 6, tension: 70, useNativeDriver: true }),
-      Animated.spring(panY, { toValue: 0, friction: 6, tension: 70, useNativeDriver: true }),
-      Animated.spring(rotY, { toValue: 0, friction: 6, tension: 70, useNativeDriver: true }),
-      Animated.spring(rotX, { toValue: 0, friction: 6, tension: 70, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }),
-      Animated.timing(spinAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start();
+    Animated.spring(scaleAnim, { toValue: 1, friction: 6, tension: 80, useNativeDriver }).start();
   };
 
   const F = {
@@ -290,22 +320,6 @@ export const MotoInspectionModal: React.FC<Props> = ({
     extrabold: 'Montserrat_800ExtraBold',
   };
 
-  // Interpolated 3D Rotation
-  const spinInterpolation = spinAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: ['0deg', '180deg', '360deg'],
-  });
-
-  const rotYInterpolation = rotY.interpolate({
-    inputRange: [-100, 0, 100],
-    outputRange: ['-35deg', '0deg', '35deg'],
-  });
-
-  const rotXInterpolation = rotX.interpolate({
-    inputRange: [-100, 0, 100],
-    outputRange: ['-18deg', '0deg', '18deg'],
-  });
-
   if (!myMoto) return null;
 
   return (
@@ -314,12 +328,13 @@ export const MotoInspectionModal: React.FC<Props> = ({
         
         {/* ATMOSPHERIC BACKGROUND GRID & RADIAL COCKPIT GLOW */}
         <View style={styles.backgroundGridOverlay} pointerEvents="none" />
-        <View style={[styles.cockpitRadialGlow, { backgroundColor: isDark ? 'rgba(65, 105, 225, 0.12)' : 'rgba(39, 95, 227, 0.08)' }]} pointerEvents="none" />
-
-        {/* WATERMARK MODEL BACKGROUND */}
-        <Text style={[styles.watermarkText, { color: isDark ? 'rgba(255, 255, 255, 0.035)' : 'rgba(0, 0, 0, 0.04)' }]} pointerEvents="none">
-          {myMoto.model}
-        </Text>
+        <View
+          style={[
+            styles.cockpitRadialGlow,
+            { backgroundColor: isDark ? 'rgba(65, 105, 225, 0.12)' : 'rgba(39, 95, 227, 0.08)' },
+          ]}
+          pointerEvents="none"
+        />
 
         {/* TOP TECHNICAL HUD BAR */}
         <View style={[styles.topHudBar, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.35)' : 'rgba(0,0,0,0.08)' }]}>
@@ -334,7 +349,7 @@ export const MotoInspectionModal: React.FC<Props> = ({
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 }}>
                 <View style={[styles.statusLiveDot, { backgroundColor: '#00ae78' }]} />
                 <Text style={{ fontFamily: F.bold, color: '#00ae78', fontSize: 10.5, letterSpacing: 0.8 }}>
-                  INSPECCIÓN 3D EN TIEMPO REAL
+                  INSPECCIÓN TÉCNICA INTERACTIVA
                 </Text>
                 <Text style={{ color: colors.onSurfaceVariant, fontSize: 10 }}>•</Text>
                 <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 10.5 }}>
@@ -355,301 +370,527 @@ export const MotoInspectionModal: React.FC<Props> = ({
           </TouchableOpacity>
         </View>
 
-        {/* MAIN INTERACTIVE CANVAS AREA */}
-        <View style={styles.canvasContainer}>
-          
-          {/* TOUCH GESTURE AREA WITH 3D ROTATION */}
-          <View 
-            style={styles.gestureCatchArea} 
-            {...panResponder.panHandlers}
+        {/* QUICK COMPONENT SELECTOR RIBBON */}
+        <View style={[styles.chipsRibbonBar, { borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.25)' : 'rgba(0,0,0,0.06)' }]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsScrollContent}
           >
-            <Animated.View
-              style={[
-                styles.bikeTransformWrapper,
-                {
-                  transform: [
-                    { translateX: panX },
-                    { translateY: panY },
-                    { perspective: 1200 },
-                    { rotateY: isAutoSpinning ? spinInterpolation : rotYInterpolation },
-                    { rotateX: rotXInterpolation },
-                    { scale: scaleAnim },
-                    { scaleX: isFlipped ? -1 : 1 },
-                  ],
-                },
-              ]}
-            >
-              {/* IMAGEN DE LA MOTO */}
-              {imageSource ? (
-                <Image
-                  source={imageSource}
-                  style={styles.bikeImage}
-                  resizeMode="contain"
-                />
-              ) : (
-                <View style={styles.placeholderContainer}>
-                  <MaterialIcons name="two-wheeler" size={160} color="#4169E1" />
-                  <Text style={{ fontFamily: F.bold, color: colors.onSurfaceVariant, marginTop: 12 }}>
-                    {myMoto.brand} {myMoto.model}
+            {HOTSPOTS.map((h) => {
+              const isSelected = selectedHotspot?.id === h.id;
+              const wear = wearMap[h.id] ?? 85;
+              const statusDotColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';
+
+              return (
+                <TouchableOpacity
+                  key={h.id}
+                  onPress={() => setSelectedHotspot(h)}
+                  activeOpacity={0.8}
+                  style={[
+                    styles.componentChip,
+                    {
+                      backgroundColor: isSelected
+                        ? (isDark ? 'rgba(0, 227, 253, 0.15)' : 'rgba(65, 105, 225, 0.12)')
+                        : (isDark ? 'rgba(29, 34, 46, 0.5)' : '#ffffff'),
+                      borderColor: isSelected ? '#00e3fd' : (isDark ? 'rgba(64, 72, 92, 0.4)' : '#e0e4ec'),
+                    },
+                  ]}
+                >
+                  <View style={[styles.chipStatusDot, { backgroundColor: statusDotColor }]} />
+                  <Text
+                    style={{
+                      fontFamily: isSelected ? F.bold : F.medium,
+                      fontSize: 11.5,
+                      color: isSelected ? (isDark ? '#00e3fd' : '#275fe3') : colors.onSurface,
+                    }}
+                  >
+                    {h.title}
                   </Text>
-                </View>
-              )}
+                  <Text
+                    style={{
+                      fontFamily: F.bold,
+                      fontSize: 10,
+                      color: statusDotColor,
+                      marginLeft: 2,
+                    }}
+                  >
+                    {wear}%
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
-              {/* SOMBRA SUAVE DE CONTACTO BAJO LA MOTO */}
-              <View style={[styles.groundShadow, { backgroundColor: isDark ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.22)' }]} />
+        {/* MAIN BODY AREA: DESKTOP SPLIT OR MOBILE STACK */}
+        <View style={[styles.mainBodyContainer, { flexDirection: isDesktop ? 'row' : 'column' }]}>
+          
+          {/* LEFT SECTION: MOTORCYCLE INTERACTIVE CANVAS */}
+          <View style={[styles.canvasContainer, { flex: isDesktop ? 1.15 : 1 }]}>
+            
+            {/* WATERMARK MODEL BACKGROUND */}
+            <Text
+              style={[
+                styles.watermarkText,
+                { color: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.035)' },
+              ]}
+              pointerEvents="none"
+            >
+              {myMoto.model}
+            </Text>
 
-              {/* PUNTOS TÁCTILES / HOTSPOTS EN LAS PARTES DE LA MOTO */}
-              {showHotspots && (
-                <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-                  {HOTSPOTS.map((h) => {
-                    const wear = wearMap[h.id] ?? 85;
-                    const isSelected = selectedHotspot?.id === h.id;
+            {/* STABLE 2D SCALABLE MOTORCYCLE WRAPPER */}
+            <View style={styles.bikeWrapperBox}>
+              <Animated.View
+                style={[
+                  styles.bikeTransformWrapper,
+                  {
+                    transform: [{ scale: scaleAnim }],
+                  },
+                ]}
+              >
+                {/* IMAGEN DE LA MOTO */}
+                {imageSource ? (
+                  <Image
+                    source={imageSource}
+                    style={styles.bikeImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={styles.placeholderContainer}>
+                    <MaterialIcons name="two-wheeler" size={160} color="#4169E1" />
+                    <Text style={{ fontFamily: F.bold, color: colors.onSurfaceVariant, marginTop: 12 }}>
+                      {myMoto.brand} {myMoto.model}
+                    </Text>
+                  </View>
+                )}
 
-                    const statusColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';
+                {/* SOMBRA SUAVE DE CONTACTO BAJO LA MOTO */}
+                <View
+                  style={[
+                    styles.groundShadow,
+                    { backgroundColor: isDark ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.22)' },
+                  ]}
+                />
 
-                    // Si está invertida la vista, espejamos la coordenada X para mantener la precisión anatómica
-                    const leftPos = isFlipped ? 100 - h.leftPct : h.leftPct;
+                {/* PUNTOS TÁCTILES / HOTSPOTS EN LAS PARTES DE LA MOTO */}
+                {showHotspots && (
+                  <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+                    {HOTSPOTS.map((h) => {
+                      const wear = wearMap[h.id] ?? 85;
+                      const isSelected = selectedHotspot?.id === h.id;
+                      const statusColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';
+                      const leftPos = h.leftPct;
 
-                    return (
-                      <TouchableOpacity
-                        key={h.id}
-                        onPress={() => setSelectedHotspot(h)}
-                        activeOpacity={0.85}
-                        style={[
-                          styles.hotspotNode,
-                          {
-                            top: `${h.topPct}%`,
-                            left: `${leftPos}%`,
-                          },
-                        ]}
-                      >
-                        {/* Radar Pulse Concentric Ring */}
-                        <Animated.View
+                      return (
+                        <TouchableOpacity
+                          key={h.id}
+                          onPress={() => setSelectedHotspot(h)}
+                          activeOpacity={0.85}
                           style={[
-                            styles.pulseRing,
+                            styles.hotspotNode,
                             {
-                              borderColor: statusColor,
-                              transform: [{ scale: pulseAnim }],
-                              opacity: isSelected ? 0.9 : 0.6,
-                            },
-                          ]}
-                        />
-
-                        {/* Glowing Center Pin */}
-                        <View
-                          style={[
-                            styles.hotspotPin,
-                            {
-                              backgroundColor: isSelected ? statusColor : (isDark ? '#191c21' : '#ffffff'),
-                              borderColor: statusColor,
+                              top: `${h.topPct}%`,
+                              left: `${leftPos}%`,
                             },
                           ]}
                         >
-                          {h.iconFamily === 'community' ? (
-                            <MaterialCommunityIcons
-                              name={h.icon as any}
-                              size={12}
-                              color={isSelected ? '#ffffff' : statusColor}
-                            />
-                          ) : (
-                            <MaterialIcons
-                              name={h.icon as any}
-                              size={12}
-                              color={isSelected ? '#ffffff' : statusColor}
-                            />
-                          )}
+                          {/* Pulsing Concentric Ring */}
+                          <Animated.View
+                            style={[
+                              styles.pulseRing,
+                              {
+                                borderColor: isSelected ? '#00e3fd' : statusColor,
+                                transform: [{ scale: pulseAnim }],
+                                opacity: isSelected ? 0.95 : 0.6,
+                                borderWidth: isSelected ? 2 : 1.4,
+                              },
+                            ]}
+                          />
+
+                          {/* Glowing Center Pin */}
+                          <View
+                            style={[
+                              styles.hotspotPin,
+                              {
+                                backgroundColor: isSelected ? statusColor : (isDark ? '#191c21' : '#ffffff'),
+                                borderColor: isSelected ? '#00e3fd' : statusColor,
+                                borderWidth: isSelected ? 2.2 : 1.8,
+                              },
+                            ]}
+                          >
+                            {h.iconFamily === 'community' ? (
+                              <MaterialCommunityIcons
+                                name={h.icon as any}
+                                size={12}
+                                color={isSelected ? '#ffffff' : statusColor}
+                              />
+                            ) : (
+                              <MaterialIcons
+                                name={h.icon as any}
+                                size={12}
+                                color={isSelected ? '#ffffff' : statusColor}
+                              />
+                            )}
+                          </View>
+
+                          {/* Floating Percentage Badge */}
+                          <View
+                            style={[
+                              styles.percentBadge,
+                              {
+                                backgroundColor: statusColor,
+                                borderColor: isSelected ? '#ffffff' : statusColor,
+                              },
+                            ]}
+                          >
+                            <Text style={{ fontFamily: F.extrabold, fontSize: 9, color: '#ffffff' }}>
+                              {wear}%
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </Animated.View>
+            </View>
+
+            {/* INSTRUCTION PILL */}
+            <View style={styles.instructionBanner} pointerEvents="none">
+              <MaterialIcons name="touch-app" size={14} color="#00e3fd" />
+              <Text style={{ fontFamily: F.medium, color: colors.onSurface, fontSize: 11 }}>
+                Toca los puntos luminosos para inspeccionar cada pieza
+              </Text>
+            </View>
+
+            {/* FLOATING ACTION TOOLBAR (HUD & ZOOM CONTROLS) */}
+            <View
+              style={[
+                styles.floatingControlsBar,
+                {
+                  backgroundColor: isDark ? 'rgba(23, 27, 36, 0.92)' : 'rgba(255, 255, 255, 0.94)',
+                  borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0,0,0,0.1)',
+                },
+              ]}
+            >
+              {/* TOGGLE PUNTOS */}
+              <TouchableOpacity
+                onPress={() => setShowHotspots(!showHotspots)}
+                style={[styles.toolBtn, showHotspots && styles.toolBtnActive]}
+                accessibilityLabel="Alternar puntos de inspección"
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="visibility" size={17} color={showHotspots ? '#00e3fd' : colors.onSurfaceVariant} />
+                <Text
+                  style={[
+                    styles.toolBtnText,
+                    { color: showHotspots ? '#00e3fd' : colors.onSurfaceVariant, fontFamily: F.bold },
+                  ]}
+                >
+                  {showHotspots ? 'HUD ON' : 'HUD OFF'}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={[styles.toolDivider, { backgroundColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]} />
+
+              {/* ZOOM CONTROLS */}
+              <TouchableOpacity
+                onPress={() => handleZoom(1)}
+                style={[styles.toolBtn, zoomLevel === 1 && styles.toolBtnActive]}
+                accessibilityLabel="Zoom 1x"
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.toolBtnText,
+                    { color: zoomLevel === 1 ? '#00e3fd' : colors.onSurfaceVariant, fontFamily: F.bold },
+                  ]}
+                >
+                  1.0x
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleZoom(1.4)}
+                style={[styles.toolBtn, zoomLevel === 1.4 && styles.toolBtnActive]}
+                accessibilityLabel="Zoom 1.4x"
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.toolBtnText,
+                    { color: zoomLevel === 1.4 ? '#00e3fd' : colors.onSurfaceVariant, fontFamily: F.bold },
+                  ]}
+                >
+                  1.4x
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleZoom(1.8)}
+                style={[styles.toolBtn, zoomLevel === 1.8 && styles.toolBtnActive]}
+                accessibilityLabel="Zoom 1.8x"
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.toolBtnText,
+                    { color: zoomLevel === 1.8 ? '#00e3fd' : colors.onSurfaceVariant, fontFamily: F.bold },
+                  ]}
+                >
+                  1.8x
+                </Text>
+              </TouchableOpacity>
+
+              <View style={[styles.toolDivider, { backgroundColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]} />
+
+              {/* RESET VIEW */}
+              <TouchableOpacity
+                onPress={handleResetView}
+                style={styles.toolBtn}
+                accessibilityLabel="Restablecer posición inicial"
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="restart-alt" size={18} color={colors.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* RIGHT / BOTTOM SECTION: HIGH-PRECISION TECHNICAL DOSSIER */}
+          {selectedHotspot && dossier && (
+            <View style={[styles.dossierWrapper, { flex: isDesktop ? 0.85 : undefined }]}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.dossierScrollContent}
+              >
+                <View
+                  style={[
+                    styles.dossierCard,
+                    {
+                      backgroundColor: isDark ? 'rgba(19, 23, 31, 0.96)' : '#ffffff',
+                      borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#e2e6ee',
+                    },
+                  ]}
+                >
+                  {/* CARD HEADER */}
+                  <View style={styles.detailCardHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                      <View
+                        style={[
+                          styles.partIconCircle,
+                          {
+                            backgroundColor: isDark ? 'rgba(65, 105, 225, 0.16)' : 'rgba(39, 95, 227, 0.1)',
+                            borderColor: dossier.statusColor,
+                          },
+                        ]}
+                      >
+                        {selectedHotspot.iconFamily === 'community' ? (
+                          <MaterialCommunityIcons name={selectedHotspot.icon as any} size={22} color="#4169E1" />
+                        ) : (
+                          <MaterialIcons name={selectedHotspot.icon as any} size={22} color="#4169E1" />
+                        )}
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: F.extrabold, color: colors.onSurface, fontSize: 17 }}>
+                          {selectedHotspot.title}
+                        </Text>
+                        <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 12 }}>
+                          {selectedHotspot.sub}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* STATUS BADGE PILL */}
+                    <View
+                      style={[
+                        styles.statusBadgePill,
+                        {
+                          backgroundColor: isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.05)',
+                          borderColor: dossier.statusColor,
+                        },
+                      ]}
+                    >
+                      <View style={[styles.statusMiniDot, { backgroundColor: dossier.statusColor }]} />
+                      <Text style={{ fontFamily: F.extrabold, color: dossier.statusColor, fontSize: 11 }}>
+                        {dossier.wear}% • {dossier.statusText}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* WEAR PROGRESS BAR GAUGE */}
+                  <View style={{ marginVertical: 14 }}>
+                    <View
+                      style={[
+                        styles.trackBar,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.fillBar,
+                          { width: `${dossier.wear}%`, backgroundColor: dossier.statusColor },
+                        ]}
+                      />
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
+                      <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 10.5 }}>
+                        0% (Desgaste Total)
+                      </Text>
+                      <Text style={{ fontFamily: F.bold, color: dossier.statusColor, fontSize: 11 }}>
+                        {dossier.wear}% de Vida Útil Restante
+                      </Text>
+                      <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 10.5 }}>
+                        100% (Nuevo)
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* TELEMETRY STATS TRIPLE PILLS */}
+                  <View style={styles.telemetryStatsRow}>
+                    <View
+                      style={[
+                        styles.telemetryMiniStat,
+                        {
+                          backgroundColor: isDark ? 'rgba(29, 34, 46, 0.65)' : '#f4f6fa',
+                          borderColor: isDark ? 'rgba(64, 72, 92, 0.35)' : '#e5e9f0',
+                        },
+                      ]}
+                    >
+                      <Text style={{ fontFamily: F.medium, fontSize: 10, color: colors.onSurfaceVariant, textTransform: 'uppercase' }}>
+                        Último Servicio
+                      </Text>
+                      <Text style={{ fontFamily: F.extrabold, fontSize: 13, color: colors.onSurface, marginTop: 2 }}>
+                        {dossier.lastOdo.toLocaleString()} km
+                      </Text>
+                      <Text style={{ fontFamily: F.regular, fontSize: 10, color: colors.onSurfaceVariant }}>
+                        {dossier.lastDate}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.telemetryMiniStat,
+                        {
+                          backgroundColor: isDark ? 'rgba(29, 34, 46, 0.65)' : '#f4f6fa',
+                          borderColor: isDark ? 'rgba(64, 72, 92, 0.35)' : '#e5e9f0',
+                        },
+                      ]}
+                    >
+                      <Text style={{ fontFamily: F.medium, fontSize: 10, color: colors.onSurfaceVariant, textTransform: 'uppercase' }}>
+                        Rodado con Pieza
+                      </Text>
+                      <Text style={{ fontFamily: F.extrabold, fontSize: 13, color: colors.onSurface, marginTop: 2 }}>
+                        {dossier.kmSince.toLocaleString()} km
+                      </Text>
+                      <Text style={{ fontFamily: F.regular, fontSize: 10, color: '#00ae78' }}>
+                        En odómetro actual
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.telemetryMiniStat,
+                        {
+                          backgroundColor: isDark ? 'rgba(29, 34, 46, 0.65)' : '#f4f6fa',
+                          borderColor: isDark ? 'rgba(64, 72, 92, 0.35)' : '#e5e9f0',
+                        },
+                      ]}
+                    >
+                      <Text style={{ fontFamily: F.medium, fontSize: 10, color: colors.onSurfaceVariant, textTransform: 'uppercase' }}>
+                        Estimado Restante
+                      </Text>
+                      <Text style={{ fontFamily: F.extrabold, fontSize: 13, color: dossier.statusColor, marginTop: 2 }}>
+                        ~{dossier.estKmRemaining.toLocaleString()} km
+                      </Text>
+                      <Text style={{ fontFamily: F.regular, fontSize: 10, color: colors.onSurfaceVariant }}>
+                        Antes de servicio
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* FACTORY OEM SPECIFICATIONS GRID */}
+                  <View style={{ marginTop: 14 }}>
+                    <Text
+                      style={{
+                        fontFamily: F.bold,
+                        fontSize: 11,
+                        letterSpacing: 0.8,
+                        color: colors.onSurfaceVariant,
+                        textTransform: 'uppercase',
+                        marginBottom: 8,
+                      }}
+                    >
+                      Especificaciones Técnicas OEM ({myMoto.brand} {myMoto.model})
+                    </Text>
+
+                    <View style={styles.oemGrid}>
+                      {dossier.oemSpecs.map((item, idx) => (
+                        <View
+                          key={idx}
+                          style={[
+                            styles.oemCardItem,
+                            {
+                              backgroundColor: isDark ? 'rgba(29, 34, 46, 0.45)' : '#f8fafc',
+                              borderColor: isDark ? 'rgba(64, 72, 92, 0.3)' : '#e6eaf0',
+                            },
+                          ]}
+                        >
+                          <MaterialIcons name={item.icon as any} size={15} color="#00e3fd" />
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontFamily: F.medium, fontSize: 10, color: colors.onSurfaceVariant }}>
+                              {item.label}
+                            </Text>
+                            <Text style={{ fontFamily: F.bold, fontSize: 12, color: colors.onSurface, marginTop: 1 }}>
+                              {item.value}
+                            </Text>
+                          </View>
                         </View>
+                      ))}
+                    </View>
+                  </View>
 
-                        {/* Floating Percentage Badge */}
-                        <View style={[styles.percentBadge, { backgroundColor: statusColor }]}>
-                          <Text style={{ fontFamily: F.extrabold, fontSize: 9, color: '#ffffff' }}>
-                            {wear}%
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-            </Animated.View>
-          </View>
+                  {/* TECHNICAL TIP BANNER */}
+                  <View
+                    style={[
+                      styles.tipBox,
+                      {
+                        backgroundColor: isDark ? 'rgba(29, 34, 46, 0.65)' : '#f4f6fa',
+                        borderColor: isDark ? 'rgba(64, 72, 92, 0.35)' : '#e5e9f0',
+                        marginTop: 14,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons name="lightbulb" size={17} color="#ffb703" />
+                    <Text style={{ fontFamily: F.medium, color: colors.onSurface, fontSize: 11.5, flex: 1, lineHeight: 17 }}>
+                      {selectedHotspot.tip}
+                    </Text>
+                  </View>
 
-          {/* INSTRUCTION PILL */}
-          <View style={styles.instructionBanner} pointerEvents="none">
-            <MaterialIcons name="touch-app" size={14} color="#00e3fd" />
-            <Text style={{ fontFamily: F.medium, color: colors.onSurface, fontSize: 11 }}>
-              Arrastra para girar 3D • Toca los puntos luminosos para auditar piezas
-            </Text>
-          </View>
-
-          {/* FLOATING ACTION TOOLBAR (CONTROLES 3D & ZOOM) */}
-          <View style={[styles.floatingControlsBar, { backgroundColor: isDark ? 'rgba(23, 27, 36, 0.88)' : 'rgba(255, 255, 255, 0.92)', borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0,0,0,0.1)' }]}>
-            
-            {/* TOGGLE PUNTOS */}
-            <TouchableOpacity
-              onPress={() => setShowHotspots(!showHotspots)}
-              style={[styles.toolBtn, showHotspots && styles.toolBtnActive]}
-              accessibilityLabel="Alternar puntos de inspección"
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="visibility" size={17} color={showHotspots ? '#00e3fd' : colors.onSurfaceVariant} />
-              <Text style={[styles.toolBtnText, { color: showHotspots ? '#00e3fd' : colors.onSurfaceVariant, fontFamily: F.bold }]}>
-                {showHotspots ? 'HUD ON' : 'HUD OFF'}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={[styles.toolDivider, { backgroundColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]} />
-
-            {/* VOLTEAR LADO */}
-            <TouchableOpacity
-              onPress={handleToggleFlip}
-              style={[styles.toolBtn, isFlipped && styles.toolBtnActive]}
-              accessibilityLabel="Invertir lado de la moto"
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="flip" size={17} color={isFlipped ? '#00e3fd' : colors.onSurfaceVariant} />
-              <Text style={[styles.toolBtnText, { color: isFlipped ? '#00e3fd' : colors.onSurfaceVariant, fontFamily: F.bold }]}>
-                Voltear
-              </Text>
-            </TouchableOpacity>
-
-            <View style={[styles.toolDivider, { backgroundColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]} />
-
-            {/* AUTO SPIN 360 */}
-            <TouchableOpacity
-              onPress={() => setIsAutoSpinning(!isAutoSpinning)}
-              style={[styles.toolBtn, isAutoSpinning && styles.toolBtnActive]}
-              accessibilityLabel="Giro continuo 360"
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="360" size={18} color={isAutoSpinning ? '#00e3fd' : colors.onSurfaceVariant} />
-              <Text style={[styles.toolBtnText, { color: isAutoSpinning ? '#00e3fd' : colors.onSurfaceVariant, fontFamily: F.bold }]}>
-                360°
-              </Text>
-            </TouchableOpacity>
-
-            <View style={[styles.toolDivider, { backgroundColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]} />
-
-            {/* ZOOM TOGGLES */}
-            <TouchableOpacity
-              onPress={() => handleZoom(zoomLevel === 1 ? 1.4 : zoomLevel === 1.4 ? 1.8 : 1)}
-              style={[styles.toolBtn, zoomLevel > 1 && styles.toolBtnActive]}
-              accessibilityLabel="Nivel de zoom"
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="zoom-in" size={18} color={zoomLevel > 1 ? '#00e3fd' : colors.onSurfaceVariant} />
-              <Text style={[styles.toolBtnText, { color: zoomLevel > 1 ? '#00e3fd' : colors.onSurfaceVariant, fontFamily: F.bold }]}>
-                {zoomLevel}x
-              </Text>
-            </TouchableOpacity>
-
-            <View style={[styles.toolDivider, { backgroundColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]} />
-
-            {/* RESET VIEW */}
-            <TouchableOpacity
-              onPress={handleResetView}
-              style={styles.toolBtn}
-              accessibilityLabel="Restablecer posición inicial"
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="restart-alt" size={18} color={colors.onSurfaceVariant} />
-            </TouchableOpacity>
-
-          </View>
-        </View>
-
-        {/* BOTTOM INSPECTION DETAIL CARD (ESTADO DE LA PARTE TOCADA) */}
-        {selectedHotspot && (
-          <View style={[styles.bottomDetailPanel, { backgroundColor: isDark ? 'rgba(19, 23, 31, 0.96)' : 'rgba(255, 255, 255, 0.97)', borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0,0,0,0.1)' }]}>
-            
-            <View style={styles.detailCardHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={[styles.partIconCircle, { backgroundColor: isDark ? 'rgba(65, 105, 225, 0.16)' : 'rgba(39, 95, 227, 0.12)' }]}>
-                  {selectedHotspot.iconFamily === 'community' ? (
-                    <MaterialCommunityIcons name={selectedHotspot.icon as any} size={20} color="#4169E1" />
-                  ) : (
-                    <MaterialIcons name={selectedHotspot.icon as any} size={20} color="#4169E1" />
+                  {/* REGISTER MAINTENANCE CTA */}
+                  {onOpenQuickService && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        onClose();
+                        onOpenQuickService(selectedHotspot.id);
+                      }}
+                      style={styles.actionServiceBtn}
+                      activeOpacity={0.85}
+                    >
+                      <MaterialIcons name="build" size={16} color="#ffffff" />
+                      <Text style={{ fontFamily: F.bold, color: '#ffffff', fontSize: 13, textTransform: 'uppercase' }}>
+                        Registrar Mantenimiento de {selectedHotspot.title}
+                      </Text>
+                    </TouchableOpacity>
                   )}
                 </View>
-
-                <View>
-                  <Text style={{ fontFamily: F.extrabold, color: colors.onSurface, fontSize: 16 }}>
-                    {selectedHotspot.title}
-                  </Text>
-                  <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 11.5 }}>
-                    {selectedHotspot.sub}
-                  </Text>
-                </View>
-              </View>
-
-              {/* WEAR STATUS PILL */}
-              {(() => {
-                const wear = wearMap[selectedHotspot.id] ?? 85;
-                const statusColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';
-                const statusText = wear >= 60 ? 'ÓPTIMO' : wear >= 30 ? 'PREVENTIVO' : 'CRÍTICO';
-                return (
-                  <View style={[styles.statusBadgePill, { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.06)', borderColor: statusColor }]}>
-                    <View style={[styles.statusMiniDot, { backgroundColor: statusColor }]} />
-                    <Text style={{ fontFamily: F.extrabold, color: statusColor, fontSize: 11 }}>
-                      {wear}% • {statusText}
-                    </Text>
-                  </View>
-                );
-              })()}
+              </ScrollView>
             </View>
+          )}
 
-            {/* WEAR PROGRESS BAR */}
-            {(() => {
-              const wear = wearMap[selectedHotspot.id] ?? 85;
-              const statusColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';
-              return (
-                <View style={{ marginVertical: 10 }}>
-                  <View style={[styles.trackBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }]}>
-                    <View style={[styles.fillBar, { width: `${wear}%`, backgroundColor: statusColor }]} />
-                  </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                    <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 11 }}>
-                      0% (Desgaste Total)
-                    </Text>
-                    <Text style={{ fontFamily: F.bold, color: statusColor, fontSize: 11 }}>
-                      {wear}% de Vida Útil Restante
-                    </Text>
-                    <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 11 }}>
-                      100% (Nuevo)
-                    </Text>
-                  </View>
-                </View>
-              );
-            })()}
-
-            {/* TECHNICAL ADVICE & SERVICE CTA */}
-            <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 10, alignItems: isDesktop ? 'center' : 'stretch', marginTop: 4 }}>
-              <View style={[styles.tipBox, { flex: 1, backgroundColor: isDark ? 'rgba(29, 34, 46, 0.6)' : '#f4f6fa' }]}>
-                <MaterialIcons name="lightbulb" size={15} color="#ffb703" />
-                <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 11, flex: 1, lineHeight: 16 }}>
-                  {selectedHotspot.tip}
-                </Text>
-              </View>
-
-              {onOpenQuickService && (
-                <TouchableOpacity
-                  onPress={() => {
-                    onClose();
-                    onOpenQuickService(selectedHotspot.id);
-                  }}
-                  style={styles.actionServiceBtn}
-                  activeOpacity={0.85}
-                >
-                  <MaterialIcons name="build" size={15} color="#ffffff" />
-                  <Text style={{ fontFamily: F.bold, color: '#ffffff', fontSize: 12 }}>
-                    Registrar Mantenimiento
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-          </View>
-        )}
+        </View>
 
       </View>
     </Modal>
@@ -665,26 +906,16 @@ const styles = StyleSheet.create({
   backgroundGridOverlay: {
     ...StyleSheet.absoluteFill as any,
     opacity: 0.04,
-    backgroundColor: 'transparent',
   },
   cockpitRadialGlow: {
     position: 'absolute',
-    top: '25%',
-    left: '25%',
+    top: '20%',
+    left: '20%',
     width: 600,
     height: 450,
     borderRadius: 300,
-    filter: 'blur(60px)',
+    ...(Platform.OS === 'web' ? { filter: 'blur(70px)' } : {}),
   } as any,
-  watermarkText: {
-    position: 'absolute',
-    bottom: '22%',
-    alignSelf: 'center',
-    fontSize: 140,
-    fontFamily: 'Montserrat_800ExtraBold',
-    letterSpacing: 10,
-    textTransform: 'uppercase',
-  },
   topHudBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -714,13 +945,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  canvasContainer: {
+  chipsRibbonBar: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 0.8,
+    zIndex: 15,
+  },
+  chipsScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  componentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 6,
+  },
+  chipStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  mainBodyContainer: {
     flex: 1,
+  },
+  canvasContainer: {
+    position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
+    minHeight: 280,
   },
-  gestureCatchArea: {
+  watermarkText: {
+    position: 'absolute',
+    bottom: '15%',
+    alignSelf: 'center',
+    fontSize: 120,
+    fontFamily: 'Montserrat_800ExtraBold',
+    letterSpacing: 8,
+    textTransform: 'uppercase',
+  },
+  bikeWrapperBox: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
@@ -729,7 +998,7 @@ const styles = StyleSheet.create({
   bikeTransformWrapper: {
     width: '88%',
     maxWidth: 680,
-    height: 320,
+    height: 300,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -748,9 +1017,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -15,
     width: '78%',
-    height: 26,
-    borderRadius: 13,
-    filter: 'blur(10px)',
+    height: 24,
+    borderRadius: 12,
+    ...(Platform.OS === 'web' ? { filter: 'blur(10px)' } : {}),
     zIndex: 1,
   } as any,
   hotspotNode: {
@@ -767,13 +1036,11 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    borderWidth: 1.5,
   },
   hotspotPin: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    borderWidth: 1.8,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -790,31 +1057,30 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 6,
     borderWidth: 0.8,
-    borderColor: '#ffffff',
   },
   instructionBanner: {
     position: 'absolute',
-    top: 14,
+    top: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(29, 34, 46, 0.65)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: 'rgba(29, 34, 46, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 18,
     borderWidth: 0.5,
     borderColor: 'rgba(64, 72, 92, 0.4)',
   },
   floatingControlsBar: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 28,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 24,
     borderWidth: 1,
-    gap: 8,
+    gap: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
@@ -827,22 +1093,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 5,
+    borderRadius: 14,
   },
   toolBtnActive: {
-    backgroundColor: 'rgba(0, 227, 253, 0.12)',
+    backgroundColor: 'rgba(0, 227, 253, 0.14)',
   },
   toolBtnText: {
     fontSize: 11,
   },
   toolDivider: {
     width: 1,
-    height: 18,
+    height: 16,
   },
-  bottomDetailPanel: {
-    marginHorizontal: 16,
-    marginBottom: Platform.OS === 'ios' ? 24 : 16,
+  dossierWrapper: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    zIndex: 30,
+  },
+  dossierScrollContent: {
+    paddingVertical: 4,
+  },
+  dossierCard: {
     padding: 16,
     borderRadius: 22,
     borderWidth: 1,
@@ -850,27 +1122,28 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
-    elevation: 12,
-    zIndex: 30,
+    elevation: 10,
   },
   detailCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
   },
   partIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
   },
   statusBadgePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 14,
     borderWidth: 1,
   },
@@ -888,22 +1161,47 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 3.5,
   },
+  telemetryStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginVertical: 4,
+  },
+  telemetryMiniStat: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  oemGrid: {
+    gap: 6,
+  },
+  oemCardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
   tipBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 14,
+    borderWidth: 1,
   },
   actionServiceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: '#4169E1',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 14,
+    marginTop: 14,
   },
 });
