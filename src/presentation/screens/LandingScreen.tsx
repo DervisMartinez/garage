@@ -13,6 +13,8 @@ import {
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useMyMoto } from '../context/MotoContext';
+import { LegalDocModal, LegalDocType } from '../components/LegalDocModal';
+import { TutorialModal } from '../components/TutorialModal';
 
 interface Props {
   onEnter: () => void;
@@ -96,16 +98,23 @@ export const LandingScreen: React.FC<Props> = ({
   onOpenWallet,
   isLoggedIn = false,
 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors, mode, toggleTheme } = useTheme();
+  const isDark = mode === 'dark';
   const { myMoto } = useMyMoto();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const isDesktop = windowWidth >= 960;
   const isTablet = windowWidth >= 640 && windowWidth < 960;
+  const isMobile = windowWidth < 640;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scrollRef = useRef<ScrollView>(null);
+
+  // Legal & Tutorial Modals state
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [selectedLegalDoc, setSelectedLegalDoc] = useState<LegalDocType>('terms');
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const currentMoto = FEATURED_MOTOS[currentIndex];
 
@@ -129,6 +138,11 @@ export const LandingScreen: React.FC<Props> = ({
     scrollRef.current?.scrollTo({ y: offsetY, animated: true });
   };
 
+  const openLegal = (doc: LegalDocType) => {
+    setSelectedLegalDoc(doc);
+    setShowLegalModal(true);
+  };
+
   const F = {
     bold: 'Montserrat_700Bold',
     semibold: 'Montserrat_600SemiBold',
@@ -137,8 +151,30 @@ export const LandingScreen: React.FC<Props> = ({
     extrabold: 'Montserrat_800ExtraBold',
   };
 
+  // Color tokens responsive to Dark / Light Mode
+  const T = {
+    rootBg: isDark ? '#0b0d13' : '#f5f7fa',
+    heroBg: isDark ? '#0c1017' : '#ffffff',
+    skyGradient: isDark ? '#0c1219' : 'rgba(235, 242, 252, 0.95)',
+    mountain1: isDark ? '#162230' : '#e2e8f0',
+    mountain2: isDark ? '#1b2a3b' : '#cbd5e1',
+    mountain3: isDark ? '#141f2c' : '#e2e8f0',
+    giantText: isDark ? 'rgba(255, 255, 255, 0.94)' : 'rgba(17, 19, 25, 0.88)',
+    textPrimary: isDark ? '#ffffff' : '#111319',
+    textSecondary: isDark ? '#9aa5b8' : '#5c6779',
+    textMuted: isDark ? '#6b7588' : '#8893a7',
+    borderHairline: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+    borderSubtle: isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.12)',
+    accentCyan: '#00e3fd',
+    accentBlue: isDark ? '#4169E1' : '#275FE3',
+    cardBg: isDark ? '#151a24' : '#ffffff',
+    cardBgAlt: isDark ? '#11151e' : '#f8fafd',
+    statsStripBg: isDark ? '#080a0f' : '#ffffff',
+    footerBg: isDark ? '#07090d' : '#edf2f9',
+  };
+
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: T.rootBg }]}>
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
@@ -147,25 +183,24 @@ export const LandingScreen: React.FC<Props> = ({
         {/* ========================================================================= */}
         {/* HERO SECTION (PORTADA PRINCIPAL BASADA EN LA IMAGEN DE REFERENCIA) */}
         {/* ========================================================================= */}
-        <View style={[styles.heroContainer, { minHeight: Math.max(680, windowHeight) }]}>
+        <View style={[styles.heroContainer, { minHeight: Math.max(680, windowHeight), backgroundColor: T.heroBg }]}>
           
-          {/* ATMOSPHERIC SKY & MOUNTAIN HORIZON GRADIENT */}
-          <View style={styles.atmosphericSkyLayer} pointerEvents="none" />
+          {/* ATMOSPHERIC SKY & HORIZON GRADIENT */}
+          <View style={[styles.atmosphericSkyLayer, { backgroundColor: T.skyGradient }]} pointerEvents="none" />
           
           {/* MOUNTAIN SILHOUETTE VECTORS IN BACKGROUND */}
           <View style={styles.mountainRidgeContainer} pointerEvents="none">
-            {/* SVG Ridge Peaks */}
-            <View style={styles.mountainBackPeak} />
-            <View style={styles.mountainMainPeak} />
-            <View style={styles.mountainRightPeak} />
+            <View style={[styles.mountainBackPeak, { backgroundColor: T.mountain1 }]} />
+            <View style={[styles.mountainMainPeak, { backgroundColor: T.mountain2 }]} />
+            <View style={[styles.mountainRightPeak, { backgroundColor: T.mountain3 }]} />
           </View>
 
           {/* GROUND MIST & RADIAL AMBIENT GLOW */}
-          <View style={styles.groundMistGlow} pointerEvents="none" />
+          <View style={[styles.groundMistGlow, { backgroundColor: isDark ? 'rgba(12, 16, 23, 0.95)' : 'rgba(255, 255, 255, 0.92)' }]} pointerEvents="none" />
           <View
             style={[
               styles.radialCockpitLight,
-              { backgroundColor: currentMoto.colorAccent },
+              { backgroundColor: currentMoto.colorAccent, opacity: isDark ? 0.12 : 0.08 },
             ]}
             pointerEvents="none"
           />
@@ -178,7 +213,7 @@ export const LandingScreen: React.FC<Props> = ({
                 <MaterialCommunityIcons name="engine" size={22} color="#00e3fd" />
               </View>
               <View>
-                <Text style={styles.brandLogoText}>GARAGE</Text>
+                <Text style={[styles.brandLogoText, { color: T.textPrimary }]}>GARAGE</Text>
                 <Text style={styles.brandSubLogoText}>MOTO OS • V1.0</Text>
               </View>
             </View>
@@ -191,7 +226,9 @@ export const LandingScreen: React.FC<Props> = ({
                   style={styles.navLinkItem}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.navLinkText, { color: '#ffffff' }]}>Inicio</Text>
+                  <Text style={[styles.navLinkText, { color: isDark ? '#ffffff' : T.accentBlue, fontFamily: F.bold }]}>
+                    Inicio
+                  </Text>
                   <View style={styles.navActiveIndicator} />
                 </TouchableOpacity>
 
@@ -200,7 +237,7 @@ export const LandingScreen: React.FC<Props> = ({
                   style={styles.navLinkItem}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.navLinkText}>Telemetría</Text>
+                  <Text style={[styles.navLinkText, { color: T.textSecondary }]}>Telemetría</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -211,7 +248,7 @@ export const LandingScreen: React.FC<Props> = ({
                   style={styles.navLinkItem}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.navLinkText}>Ficha Técnica</Text>
+                  <Text style={[styles.navLinkText, { color: T.textSecondary }]}>Ficha Técnica</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -222,7 +259,7 @@ export const LandingScreen: React.FC<Props> = ({
                   style={styles.navLinkItem}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.navLinkText}>Billetera Digital</Text>
+                  <Text style={[styles.navLinkText, { color: T.textSecondary }]}>Billetera Digital</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -230,30 +267,57 @@ export const LandingScreen: React.FC<Props> = ({
                   style={styles.navLinkItem}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.navLinkText}>Taller & SOS</Text>
+                  <Text style={[styles.navLinkText, { color: T.textSecondary }]}>Taller & SOS</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {/* RIGHT ACTION: ACCEDER / MI GARAJE */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {/* RIGHT ACTIONS: THEME TOGGLE & ACCEDER / MI GARAJE */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              
+              {/* THEME TOGGLE BUTTON */}
+              <TouchableOpacity
+                style={[
+                  styles.themeToggleBtn,
+                  {
+                    borderColor: T.borderSubtle,
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+                  }
+                ]}
+                onPress={toggleTheme}
+                activeOpacity={0.75}
+                accessibilityLabel={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              >
+                <MaterialIcons 
+                  name={isDark ? 'wb-sunny' : 'nightlight-round'} 
+                  size={18} 
+                  color={isDark ? '#ffb703' : '#4169E1'} 
+                />
+              </TouchableOpacity>
+
+              {/* ACCEDER / MI GARAJE BUTTON */}
               <TouchableOpacity
                 onPress={onEnter}
                 style={[
                   styles.navActionBtn,
-                  isLoggedIn && { backgroundColor: 'rgba(0, 227, 253, 0.15)', borderColor: '#00e3fd' },
+                  {
+                    borderColor: isLoggedIn ? '#00e3fd' : T.borderSubtle,
+                    backgroundColor: isLoggedIn 
+                      ? (isDark ? 'rgba(0, 227, 253, 0.15)' : 'rgba(0, 174, 120, 0.12)') 
+                      : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'),
+                  }
                 ]}
                 activeOpacity={0.8}
               >
                 <MaterialIcons
                   name={isLoggedIn ? 'two-wheeler' : 'login'}
                   size={16}
-                  color={isLoggedIn ? '#00e3fd' : '#ffffff'}
+                  color={isLoggedIn ? (isDark ? '#00e3fd' : '#00ae78') : T.textPrimary}
                 />
                 <Text
                   style={[
                     styles.navActionBtnText,
-                    isLoggedIn && { color: '#00e3fd' },
+                    { color: isLoggedIn ? (isDark ? '#00e3fd' : '#00ae78') : T.textPrimary },
                   ]}
                 >
                   {isLoggedIn ? (myMoto ? `${myMoto.brand} ${myMoto.model}` : 'Mi Garaje') : 'Acceder'}
@@ -265,12 +329,13 @@ export const LandingScreen: React.FC<Props> = ({
           {/* ---------------- CENTER COMPOSITION: GIANT "GARAGE" + MOTORCYCLE DEPTH OVERLAP ---------------- */}
           <View style={styles.centerHeroStage}>
             
-            {/* LAYER 1: GIANT TYPOGRAPHY IN BACKGROUND (EXACTLY AS "Explore" IN REFERENCE) */}
+            {/* LAYER 1: GIANT TYPOGRAPHY IN BACKGROUND (EXACTLY AS IN REFERENCE IMAGE) */}
             <View style={styles.giantTextWrapper} pointerEvents="none">
               <Text
                 style={[
                   styles.giantText,
                   {
+                    color: T.giantText,
                     fontSize: isDesktop ? 168 : isTablet ? 110 : 66,
                     letterSpacing: isDesktop ? 14 : isTablet ? 8 : 4,
                   },
@@ -303,29 +368,41 @@ export const LandingScreen: React.FC<Props> = ({
               />
               
               {/* CONTACT GROUND SHADOW */}
-              <View style={styles.motoGroundShadow} />
+              <View style={[styles.motoGroundShadow, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.2)' }]} />
             </Animated.View>
 
-            {/* LAYER 3: TAGLINE & PILL CTA (PLACED ON BOTTOM HALF OF STAGE) */}
+            {/* LAYER 3: TAGLINE & PILL CTA BUTTON */}
             <View style={styles.taglineAndCtaBox}>
-              <Text style={styles.heroQuoteText}>
+              <Text style={[styles.heroQuoteText, { color: T.textPrimary }]}>
                 {currentMoto.quote}
               </Text>
-              <Text style={styles.heroSubQuoteText}>
+              <Text style={[styles.heroSubQuoteText, { color: T.textSecondary }]}>
                 {currentMoto.spanishQuote}
               </Text>
 
               {/* THE ICONIC PILL CTA BUTTON (EXACT SHAPE & GLOW FROM REFERENCE IMAGE) */}
               <TouchableOpacity
                 onPress={onEnter}
-                style={styles.heroPillBtn}
+                style={[
+                  styles.heroPillBtn,
+                  {
+                    borderColor: isDark ? 'rgba(0, 227, 253, 0.75)' : '#275FE3',
+                    backgroundColor: isDark ? 'rgba(18, 24, 34, 0.82)' : 'rgba(255, 255, 255, 0.95)',
+                    shadowColor: isDark ? '#00e3fd' : '#275FE3',
+                  }
+                ]}
                 activeOpacity={0.82}
               >
-                <View style={styles.pillInnerGlow} />
-                <Text style={styles.heroPillBtnText}>
+                <View style={[styles.pillInnerGlow, { backgroundColor: isDark ? 'rgba(0, 227, 253, 0.08)' : 'rgba(39, 95, 227, 0.08)' }]} />
+                <Text style={[styles.heroPillBtnText, { color: isDark ? '#ffffff' : '#275FE3' }]}>
                   {isLoggedIn ? 'ENTRAR AL GARAJE' : 'EXPLORAR GARAJE'}
                 </Text>
-                <MaterialIcons name="arrow-forward" size={17} color="#ffffff" style={{ marginLeft: 6 }} />
+                <MaterialIcons 
+                  name="arrow-forward" 
+                  size={17} 
+                  color={isDark ? '#00e3fd' : '#275FE3'} 
+                  style={{ marginLeft: 6 }} 
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -333,70 +410,112 @@ export const LandingScreen: React.FC<Props> = ({
           {/* ---------------- BOTTOM STATUS BAR (FROM REFERENCE IMAGE) ---------------- */}
           <View style={styles.bottomStatusBar}>
             
-            {/* LEFT: SLIDER / MODEL SWITCHER (< 5 > STYLE) */}
+            {/* LEFT: SLIDER / MODEL SWITCHER (< 01 > STYLE) */}
             <View style={styles.sliderControlsBox}>
               <TouchableOpacity
                 onPress={handlePrev}
-                style={styles.sliderArrowBtn}
+                style={[
+                  styles.sliderArrowBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                    borderColor: T.borderSubtle,
+                  }
+                ]}
                 activeOpacity={0.7}
                 accessibilityLabel="Modelo anterior"
               >
-                <MaterialIcons name="chevron-left" size={24} color="#ffffff" />
+                <MaterialIcons name="chevron-left" size={24} color={T.textPrimary} />
               </TouchableOpacity>
 
               <View style={styles.sliderCounterBadge}>
-                <Text style={styles.sliderCounterText}>
+                <Text style={[styles.sliderCounterText, { color: T.textPrimary }]}>
                   {currentMoto.index}
                 </Text>
               </View>
 
               <TouchableOpacity
                 onPress={handleNext}
-                style={styles.sliderArrowBtn}
+                style={[
+                  styles.sliderArrowBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                    borderColor: T.borderSubtle,
+                  }
+                ]}
                 activeOpacity={0.7}
                 accessibilityLabel="Modelo siguiente"
               >
-                <MaterialIcons name="chevron-right" size={24} color="#ffffff" />
+                <MaterialIcons name="chevron-right" size={24} color={T.textPrimary} />
               </TouchableOpacity>
 
               {/* Active Model Indicator Tag */}
-              <View style={styles.activeModelTagPill}>
+              <View style={[
+                styles.activeModelTagPill,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+                  borderColor: T.borderSubtle,
+                }
+              ]}>
                 <View style={[styles.modelDot, { backgroundColor: currentMoto.colorAccent }]} />
-                <Text style={styles.activeModelText}>
+                <Text style={[styles.activeModelText, { color: T.textPrimary }]}>
                   {currentMoto.brand} • {currentMoto.model} ({currentMoto.hp} • {currentMoto.displacement})
                 </Text>
               </View>
             </View>
 
-            {/* RIGHT: COMMUNITY & SOCIAL ICONS (FROM REFERENCE IMAGE) */}
+            {/* RIGHT: COMMUNITY & SOCIAL ICONS */}
             <View style={styles.socialIconsRow}>
               <TouchableOpacity
-                style={styles.socialBtn}
+                style={[
+                  styles.socialBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+                    borderColor: T.borderSubtle,
+                  }
+                ]}
                 activeOpacity={0.7}
                 accessibilityLabel="Comunidad WhatsApp"
               >
-                <MaterialCommunityIcons name="whatsapp" size={19} color="rgba(255, 255, 255, 0.75)" />
+                <MaterialCommunityIcons name="whatsapp" size={19} color={T.textSecondary} />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.socialBtn}
+                style={[
+                  styles.socialBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+                    borderColor: T.borderSubtle,
+                  }
+                ]}
                 activeOpacity={0.7}
                 accessibilityLabel="Instagram"
               >
-                <MaterialCommunityIcons name="instagram" size={19} color="rgba(255, 255, 255, 0.75)" />
+                <MaterialCommunityIcons name="instagram" size={19} color={T.textSecondary} />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.socialBtn}
+                style={[
+                  styles.socialBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+                    borderColor: T.borderSubtle,
+                  }
+                ]}
                 activeOpacity={0.7}
                 accessibilityLabel="Twitter / X"
               >
-                <MaterialCommunityIcons name="twitter" size={19} color="rgba(255, 255, 255, 0.75)" />
+                <MaterialCommunityIcons name="twitter" size={19} color={T.textSecondary} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => scrollToSection(windowHeight * 0.95)}
-                style={styles.socialBtn}
+                style={[
+                  styles.socialBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+                    borderColor: T.borderSubtle,
+                  }
+                ]}
                 activeOpacity={0.7}
                 accessibilityLabel="Explorar características"
               >
@@ -411,32 +530,32 @@ export const LandingScreen: React.FC<Props> = ({
         {/* ========================================================================= */}
         {/* PLATFORM VALUE STATS STRIP */}
         {/* ========================================================================= */}
-        <View style={styles.statsStrip}>
+        <View style={[styles.statsStrip, { backgroundColor: T.statsStripBg, borderColor: T.borderHairline }]}>
           <View style={styles.statStripItem}>
             <Text style={[styles.statStripNumber, { color: '#00e3fd' }]}>+15,000</Text>
-            <Text style={styles.statStripLabel}>Km monitoreados en tiempo real</Text>
+            <Text style={[styles.statStripLabel, { color: T.textSecondary }]}>Km monitoreados en tiempo real</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: T.borderHairline }]} />
           <View style={styles.statStripItem}>
             <Text style={[styles.statStripNumber, { color: '#00ae78' }]}>8 Puntos</Text>
-            <Text style={styles.statStripLabel}>Auditoría mecánica por telemetría</Text>
+            <Text style={[styles.statStripLabel, { color: T.textSecondary }]}>Auditoría mecánica por telemetría</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: T.borderHairline }]} />
           <View style={styles.statStripItem}>
-            <Text style={[styles.statStripNumber, { color: '#4169E1' }]}>100%</Text>
-            <Text style={styles.statStripLabel}>Billetera digital sin papeles rotos</Text>
+            <Text style={[styles.statStripNumber, { color: T.accentBlue }]}>100%</Text>
+            <Text style={[styles.statStripLabel, { color: T.textSecondary }]}>Billetera digital sin papeles rotos</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: T.borderHairline }]} />
           <View style={styles.statStripItem}>
             <Text style={[styles.statStripNumber, { color: '#ffb703' }]}>0 Multas</Text>
-            <Text style={styles.statStripLabel}>Alertas de vencimiento preventivo</Text>
+            <Text style={[styles.statStripLabel, { color: T.textSecondary }]}>Alertas de vencimiento preventivo</Text>
           </View>
         </View>
 
         {/* ========================================================================= */}
         {/* FEATURE 1: TELEMETRÍA PREDICTIVA EN TIEMPO REAL */}
         {/* ========================================================================= */}
-        <View style={[styles.featureSection, { backgroundColor: '#0c0f16' }]}>
+        <View style={[styles.featureSection, { backgroundColor: T.cardBgAlt, borderBottomColor: T.borderHairline }]}>
           <View style={[styles.featureContentRow, { flexDirection: isDesktop ? 'row' : 'column' }]}>
             
             {/* TEXT INFO */}
@@ -446,26 +565,26 @@ export const LandingScreen: React.FC<Props> = ({
                 <Text style={styles.featureCategoryBadgeText}>TELEMETRÍA PREDICTIVA</Text>
               </View>
 
-              <Text style={styles.featureTitle}>
+              <Text style={[styles.featureTitle, { color: T.textPrimary }]}>
                 Auditoría viva del desgaste de cada componente
               </Text>
               
-              <Text style={styles.featureDescription}>
-                Olvídate de calcular mentalmente cuándo te toca el cambio de aceite o pastillas de freno. GARAGE calcula en tiempo real el desgaste anatómico de tu moto basándose en tu odómetro y tolerancias de fábrica.
+              <Text style={[styles.featureDescription, { color: T.textSecondary }]}>
+                Calculamos la vida útil de tu aceite 4T, pastillas de freno, cadena reforzada y neumáticos en base al odómetro real acumulado.
               </Text>
 
               <View style={styles.bulletList}>
                 <View style={styles.bulletItem}>
                   <MaterialIcons name="check-circle" size={18} color="#00ae78" />
-                  <Text style={styles.bulletText}>Aceite 4T, bujía, filtro de aire y cadena calibrados en vivo</Text>
+                  <Text style={[styles.bulletText, { color: T.textPrimary }]}>Alertas preventivas antes del fallo de la pieza</Text>
                 </View>
                 <View style={styles.bulletItem}>
                   <MaterialIcons name="check-circle" size={18} color="#00ae78" />
-                  <Text style={styles.bulletText}>Semáforo dinámico de alerta: Óptimo, Preventivo y Crítico</Text>
+                  <Text style={[styles.bulletText, { color: T.textPrimary }]}>Especificación exacta de lubricante según tu manual (JASO MA2)</Text>
                 </View>
                 <View style={styles.bulletItem}>
                   <MaterialIcons name="check-circle" size={18} color="#00ae78" />
-                  <Text style={styles.bulletText}>Visor interactivo con puntos de inspección luminosos</Text>
+                  <Text style={[styles.bulletText, { color: T.textPrimary }]}>Registro histórico y exportable de cada cambio realizado</Text>
                 </View>
               </View>
 
@@ -475,61 +594,62 @@ export const LandingScreen: React.FC<Props> = ({
                 activeOpacity={0.8}
               >
                 <Text style={[styles.featureActionBtnText, { color: '#00e3fd' }]}>
-                  PROBAR VISOR MECÁNICO
+                  PROBAR TELEMETRÍA
                 </Text>
                 <MaterialIcons name="arrow-forward" size={16} color="#00e3fd" />
               </TouchableOpacity>
             </View>
 
-            {/* PREVIEW CARD */}
-            <View style={[styles.featureCardPreview, { flex: 1, marginTop: isDesktop ? 0 : 28 }]}>
-              <View style={styles.telemetryMockHeader}>
-                <MaterialCommunityIcons name="engine" size={24} color="#00e3fd" />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: F.bold, color: '#ffffff', fontSize: 15 }}>
-                    Ciclos de Mantenimiento Sugerido
-                  </Text>
-                  <Text style={{ fontFamily: F.regular, color: '#8b94a5', fontSize: 11 }}>
-                    Odómetro: 14,250 km • Modo Activo
-                  </Text>
-                </View>
+            {/* PREVIEW CARD: TELEMETRY */}
+            <View style={[
+              styles.featureCardPreview, 
+              { 
+                flex: 1, 
+                marginTop: isDesktop ? 0 : 28,
+                backgroundColor: T.cardBg,
+                borderColor: T.borderHairline,
+              }
+            ]}>
+              <View style={[styles.telemetryMockHeader, { borderBottomColor: T.borderHairline }]}>
                 <View style={styles.livePulseDot} />
+                <Text style={{ fontFamily: F.bold, color: T.textPrimary, fontSize: 13, letterSpacing: 0.8 }}>
+                  ESTADO EN VIVO • {currentMoto.brand} {currentMoto.model}
+                </Text>
               </View>
 
-              {/* ITEM ROWS */}
               <View style={styles.mockBarRow}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <Text style={{ fontFamily: F.semibold, color: '#ffffff', fontSize: 13 }}>Aceite de Motor 4T</Text>
+                  <Text style={{ fontFamily: F.semibold, color: T.textPrimary, fontSize: 13 }}>Aceite de Motor 4T</Text>
                   <Text style={{ fontFamily: F.bold, color: '#00ae78', fontSize: 12 }}>85% • ÓPTIMO</Text>
                 </View>
-                <View style={styles.mockTrack}>
+                <View style={[styles.mockTrack, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' }]}>
                   <View style={[styles.mockFill, { width: '85%', backgroundColor: '#00ae78' }]} />
                 </View>
               </View>
 
               <View style={styles.mockBarRow}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <Text style={{ fontFamily: F.semibold, color: '#ffffff', fontSize: 13 }}>Frenos Delanteros</Text>
+                  <Text style={{ fontFamily: F.semibold, color: T.textPrimary, fontSize: 13 }}>Frenos Delanteros</Text>
                   <Text style={{ fontFamily: F.bold, color: '#ffb703', fontSize: 12 }}>42% • PREVENTIVO</Text>
                 </View>
-                <View style={styles.mockTrack}>
+                <View style={[styles.mockTrack, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' }]}>
                   <View style={[styles.mockFill, { width: '42%', backgroundColor: '#ffb703' }]} />
                 </View>
               </View>
 
               <View style={styles.mockBarRow}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <Text style={{ fontFamily: F.semibold, color: '#ffffff', fontSize: 13 }}>Cadena de Transmisión</Text>
+                  <Text style={{ fontFamily: F.semibold, color: T.textPrimary, fontSize: 13 }}>Cadena de Transmisión</Text>
                   <Text style={{ fontFamily: F.bold, color: '#ba1a1a', fontSize: 12 }}>18% • CRÍTICO</Text>
                 </View>
-                <View style={styles.mockTrack}>
+                <View style={[styles.mockTrack, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' }]}>
                   <View style={[styles.mockFill, { width: '18%', backgroundColor: '#ba1a1a' }]} />
                 </View>
               </View>
 
-              <View style={styles.mockCardFooter}>
+              <View style={[styles.mockCardFooter, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' }]}>
                 <MaterialIcons name="lightbulb" size={16} color="#ffb703" />
-                <Text style={{ fontFamily: F.medium, color: '#c4cce0', fontSize: 11.5, flex: 1, lineHeight: 16 }}>
+                <Text style={{ fontFamily: F.medium, color: T.textSecondary, fontSize: 11.5, flex: 1, lineHeight: 16 }}>
                   Sugerencia: Tensa y lubrica la cadena cada 500 km para prevenir el desgaste prematuro de la catalina.
                 </Text>
               </View>
@@ -541,59 +661,72 @@ export const LandingScreen: React.FC<Props> = ({
         {/* ========================================================================= */}
         {/* FEATURE 2: BILLETERA DIGITAL & CARNET VIRTUAL */}
         {/* ========================================================================= */}
-        <View style={[styles.featureSection, { backgroundColor: '#11151e' }]}>
+        <View style={[styles.featureSection, { backgroundColor: T.heroBg, borderBottomColor: T.borderHairline }]}>
           <View style={[styles.featureContentRow, { flexDirection: isDesktop ? 'row-reverse' : 'column' }]}>
             
             {/* TEXT INFO */}
             <View style={{ flex: 1, paddingLeft: isDesktop ? 40 : 0 }}>
               <View style={[styles.featureCategoryBadge, { borderColor: 'rgba(65, 105, 225, 0.4)' }]}>
-                <MaterialIcons name="account-balance-wallet" size={14} color="#4169E1" />
-                <Text style={[styles.featureCategoryBadgeText, { color: '#8ca9ff' }]}>DIGITAL WALLET</Text>
+                <MaterialIcons name="account-balance-wallet" size={14} color={T.accentBlue} />
+                <Text style={[styles.featureCategoryBadgeText, { color: T.accentBlue }]}>DIGITAL WALLET</Text>
               </View>
 
-              <Text style={styles.featureTitle}>
+              <Text style={[styles.featureTitle, { color: T.textPrimary }]}>
                 Todos tus documentos al día y con código QR
               </Text>
               
-              <Text style={styles.featureDescription}>
+              <Text style={[styles.featureDescription, { color: T.textSecondary }]}>
                 Lleva el carnet de circulación, póliza de RCV, licencia de conducir, certificado médico y cédula digitalizados en tu teléfono con visualizador de fotos y contador de vencimiento.
               </Text>
 
               <View style={styles.bulletList}>
                 <View style={styles.bulletItem}>
                   <MaterialIcons name="check-circle" size={18} color="#00ae78" />
-                  <Text style={styles.bulletText}>Alertas inteligentes 30 y 15 días antes del vencimiento</Text>
+                  <Text style={[styles.bulletText, { color: T.textPrimary }]}>Alertas inteligentes 30 y 15 días antes del vencimiento</Text>
                 </View>
                 <View style={styles.bulletItem}>
                   <MaterialIcons name="check-circle" size={18} color="#00ae78" />
-                  <Text style={styles.bulletText}>Visualizador ampliado con zoom y descarga de fotos</Text>
+                  <Text style={[styles.bulletText, { color: T.textPrimary }]}>Visualizador ampliado con zoom y descarga de fotos</Text>
                 </View>
                 <View style={styles.bulletItem}>
                   <MaterialIcons name="check-circle" size={18} color="#00ae78" />
-                  <Text style={styles.bulletText}>Respaldo seguro en la nube con Supabase</Text>
+                  <Text style={[styles.bulletText, { color: T.textPrimary }]}>Respaldo seguro en la nube con Supabase</Text>
                 </View>
               </View>
 
               <TouchableOpacity
                 onPress={onEnter}
-                style={[styles.featureActionBtn, { borderColor: '#4169E1' }]}
+                style={[styles.featureActionBtn, { borderColor: T.accentBlue }]}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.featureActionBtnText, { color: '#8ca9ff' }]}>
+                <Text style={[styles.featureActionBtnText, { color: T.accentBlue }]}>
                   VER BILLETERA DIGITAL
                 </Text>
-                <MaterialIcons name="arrow-forward" size={16} color="#8ca9ff" />
+                <MaterialIcons name="arrow-forward" size={16} color={T.accentBlue} />
               </TouchableOpacity>
             </View>
 
             {/* PREVIEW CARD: DIGITAL WALLET */}
-            <View style={[styles.featureCardPreview, { flex: 1, marginTop: isDesktop ? 0 : 28 }]}>
-              {/* WALLET CARD SIMULATION */}
-              <View style={styles.walletCardMock}>
+            <View style={[
+              styles.featureCardPreview, 
+              { 
+                flex: 1, 
+                marginTop: isDesktop ? 0 : 28,
+                backgroundColor: T.cardBg,
+                borderColor: T.borderHairline,
+              }
+            ]}>
+              <View style={[
+                styles.walletCardMock,
+                {
+                  backgroundColor: isDark ? '#1b2230' : '#f0f4fa',
+                  borderColor: isDark ? 'rgba(65, 105, 225, 0.35)' : 'rgba(39, 95, 227, 0.25)',
+                }
+              ]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <MaterialCommunityIcons name="card-account-details-outline" size={20} color="#00e3fd" />
-                    <Text style={{ fontFamily: F.bold, color: '#ffffff', fontSize: 13, letterSpacing: 0.5 }}>
+                    <Text style={{ fontFamily: F.bold, color: T.textPrimary, fontSize: 13, letterSpacing: 0.5 }}>
                       REPÚBLICA BOLIVARIANA DE VENEZUELA
                     </Text>
                   </View>
@@ -603,22 +736,22 @@ export const LandingScreen: React.FC<Props> = ({
                 </View>
 
                 <View style={{ marginVertical: 14 }}>
-                  <Text style={{ fontFamily: F.medium, color: '#8b94a5', fontSize: 11 }}>DOCUMENTO OFICIAL</Text>
-                  <Text style={{ fontFamily: F.extrabold, color: '#ffffff', fontSize: 17, marginTop: 2 }}>
+                  <Text style={{ fontFamily: F.medium, color: T.textSecondary, fontSize: 11 }}>DOCUMENTO OFICIAL</Text>
+                  <Text style={{ fontFamily: F.extrabold, color: T.textPrimary, fontSize: 17, marginTop: 2 }}>
                     CERTIFICADO DE CIRCULACIÓN
                   </Text>
-                  <Text style={{ fontFamily: F.bold, color: '#00e3fd', fontSize: 13, marginTop: 4 }}>
+                  <Text style={{ fontFamily: F.bold, color: T.accentBlue, fontSize: 13, marginTop: 4 }}>
                     PLACA: AB1C23D • SERIAL: EK150-84920
                   </Text>
                 </View>
 
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.8, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.8, borderTopColor: T.borderHairline, paddingTop: 10 }}>
                   <View>
-                    <Text style={{ fontFamily: F.medium, color: '#8b94a5', fontSize: 10 }}>TITULAR</Text>
-                    <Text style={{ fontFamily: F.bold, color: '#ffffff', fontSize: 12 }}>DERVIS MARTINEZ</Text>
+                    <Text style={{ fontFamily: F.medium, color: T.textSecondary, fontSize: 10 }}>TITULAR</Text>
+                    <Text style={{ fontFamily: F.bold, color: T.textPrimary, fontSize: 12 }}>##### #####</Text>
                   </View>
                   <View>
-                    <Text style={{ fontFamily: F.medium, color: '#8b94a5', fontSize: 10 }}>VENCIMIENTO</Text>
+                    <Text style={{ fontFamily: F.medium, color: T.textSecondary, fontSize: 10 }}>VENCIMIENTO</Text>
                     <Text style={{ fontFamily: F.bold, color: '#00ae78', fontSize: 12 }}>PERMANENTE</Text>
                   </View>
                 </View>
@@ -631,19 +764,19 @@ export const LandingScreen: React.FC<Props> = ({
         {/* ========================================================================= */}
         {/* FINAL CALL TO ACTION (CTA) */}
         {/* ========================================================================= */}
-        <View style={styles.finalCtaSection}>
+        <View style={[styles.finalCtaSection, { backgroundColor: isDark ? '#0a0d13' : '#eef3fa' }]}>
           <View style={styles.finalCtaGlow} pointerEvents="none" />
           <Text style={styles.finalCtaBadge}>GARAGE PILOT EXPERIENCE</Text>
-          <Text style={styles.finalCtaTitle}>
+          <Text style={[styles.finalCtaTitle, { color: T.textPrimary }]}>
             Toma el control absoluto de tu máquina hoy
           </Text>
-          <Text style={styles.finalCtaSubtitle}>
+          <Text style={[styles.finalCtaSubtitle, { color: T.textSecondary }]}>
             Crea tu cuenta de piloto gratis y comienza a monitorear telemetría, documentos y mantenimientos con precisión milimétrica.
           </Text>
 
           <TouchableOpacity
             onPress={onEnter}
-            style={styles.finalCtaBtn}
+            style={[styles.finalCtaBtn, { backgroundColor: T.accentBlue }]}
             activeOpacity={0.85}
           >
             <Text style={styles.finalCtaBtnText}>
@@ -654,27 +787,148 @@ export const LandingScreen: React.FC<Props> = ({
         </View>
 
         {/* ========================================================================= */}
-        {/* FOOTER */}
+        {/* EXPANDED FOOTER WITH LEGAL LINKS & POLICIES */}
         {/* ========================================================================= */}
-        <View style={styles.footerContainer}>
+        <View style={[styles.footerContainer, { backgroundColor: T.footerBg, borderTopColor: T.borderHairline }]}>
           <View style={styles.footerInner}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <MaterialCommunityIcons name="engine" size={20} color="#00e3fd" />
-              <Text style={{ fontFamily: F.extrabold, color: '#ffffff', fontSize: 15 }}>
-                GARAGE
-              </Text>
-              <Text style={{ fontFamily: F.regular, color: '#8b94a5', fontSize: 12, marginLeft: 6 }}>
-                • Plataforma de Gestión de Motocicletas
-              </Text>
+            
+            {/* FOOTER TOP GRID: 3 COLUMNS */}
+            <View style={styles.footerGrid}>
+              
+              {/* COLUMN 1: BRAND IDENTITY & DESCRIPTION */}
+              <View style={styles.footerColBrand}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <View style={styles.brandIconCircle}>
+                    <MaterialCommunityIcons name="engine" size={20} color="#00e3fd" />
+                  </View>
+                  <View>
+                    <Text style={[styles.brandLogoText, { color: T.textPrimary, fontSize: 17 }]}>GARAGE</Text>
+                    <Text style={styles.brandSubLogoText}>MOTO OS • V1.0</Text>
+                  </View>
+                </View>
+                <Text style={[styles.footerDescText, { color: T.textSecondary }]}>
+                  El sistema operativo integral para motociclistas. Telemetría de desgaste, ficha técnica oficial, billetera digital blindada y gestión inteligente de servicios.
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#00ae78' }} />
+                  <Text style={{ fontFamily: F.semibold, fontSize: 11, color: '#00ae78' }}>
+                    SISTEMA ACTIVO Y OPERATIVO
+                  </Text>
+                </View>
+              </View>
+
+              {/* COLUMN 2: PLATFORM NAVIGATION */}
+              <View style={styles.footerColLinks}>
+                <Text style={[styles.footerSectionTitle, { color: T.textPrimary }]}>
+                  PLATAFORMA
+                </Text>
+                <TouchableOpacity onPress={() => scrollToSection(0)} style={styles.footerLinkRow}>
+                  <Text style={[styles.footerLinkText, { color: T.textSecondary }]}>Inicio & Modelos</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => scrollToSection(windowHeight * 0.95)} style={styles.footerLinkRow}>
+                  <Text style={[styles.footerLinkText, { color: T.textSecondary }]}>Telemetría en Vivo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { if (onOpenSpecs) onOpenSpecs(); else scrollToSection(windowHeight * 1.6); }} style={styles.footerLinkRow}>
+                  <Text style={[styles.footerLinkText, { color: T.textSecondary }]}>Ficha Técnica de Motos</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { if (onOpenWallet) onOpenWallet(); else scrollToSection(windowHeight * 2.2); }} style={styles.footerLinkRow}>
+                  <Text style={[styles.footerLinkText, { color: T.textSecondary }]}>Billetera Digital Vial</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowTutorial(true)} style={styles.footerLinkRow}>
+                  <Text style={[styles.footerLinkText, { color: T.accentBlue, fontFamily: F.semibold }]}>Tutorial & Guía del Piloto</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* COLUMN 3: MARCO LEGAL & POLÍTICAS (REQUERIDO) */}
+              <View style={styles.footerColLinks}>
+                <Text style={[styles.footerSectionTitle, { color: T.textPrimary }]}>
+                  MARCO LEGAL & PRIVACIDAD
+                </Text>
+                
+                {/* 1. TÉRMINOS Y CONDICIONES */}
+                <TouchableOpacity 
+                  onPress={() => openLegal('terms')} 
+                  style={styles.footerLinkRow}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons name="description" size={15} color={T.accentBlue} style={{ marginRight: 6 }} />
+                  <Text style={[styles.footerLinkText, { color: T.textPrimary, fontFamily: F.semibold }]}>
+                    Términos y Condiciones de Uso
+                  </Text>
+                </TouchableOpacity>
+
+                {/* 2. POLÍTICA DE PRIVACIDAD */}
+                <TouchableOpacity 
+                  onPress={() => openLegal('privacy')} 
+                  style={styles.footerLinkRow}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons name="security" size={15} color={T.accentBlue} style={{ marginRight: 6 }} />
+                  <Text style={[styles.footerLinkText, { color: T.textPrimary, fontFamily: F.semibold }]}>
+                    Política de Privacidad y Datos
+                  </Text>
+                </TouchableOpacity>
+
+                {/* 3. POLÍTICA DE COOKIES */}
+                <TouchableOpacity 
+                  onPress={() => openLegal('cookies')} 
+                  style={styles.footerLinkRow}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="cookie-outline" size={15} color={T.accentBlue} style={{ marginRight: 6 }} />
+                  <Text style={[styles.footerLinkText, { color: T.textPrimary, fontFamily: F.semibold }]}>
+                    Política de Cookies y Almacenamiento
+                  </Text>
+                </TouchableOpacity>
+
+                {/* AVISO LEGAL */}
+                <View style={{ marginTop: 10, padding: 10, borderRadius: 10, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' }}>
+                  <Text style={{ fontFamily: F.regular, fontSize: 11, color: T.textSecondary, lineHeight: 15 }}>
+                    Cumplimiento de estándares de protección de datos personales y seguridad vehicular.
+                  </Text>
+                </View>
+              </View>
+
             </View>
 
-            <Text style={{ fontFamily: F.regular, color: '#687387', fontSize: 12 }}>
-              © {new Date().getFullYear()} GARAGE Inc. Todos los derechos reservados.
-            </Text>
+            {/* FOOTER BOTTOM BAR: COPYRIGHT & SOCIAL */}
+            <View style={[styles.footerBottomBar, { borderTopColor: T.borderHairline }]}>
+              <Text style={[styles.footerCopyrightText, { color: T.textMuted }]}>
+                © {new Date().getFullYear()} GARAGE Inc. Todos los derechos reservados.
+              </Text>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                <TouchableOpacity onPress={() => openLegal('terms')}>
+                  <Text style={[styles.footerSubLegalText, { color: T.textSecondary }]}>Términos</Text>
+                </TouchableOpacity>
+                <Text style={{ color: T.borderHairline }}>•</Text>
+                <TouchableOpacity onPress={() => openLegal('privacy')}>
+                  <Text style={[styles.footerSubLegalText, { color: T.textSecondary }]}>Privacidad</Text>
+                </TouchableOpacity>
+                <Text style={{ color: T.borderHairline }}>•</Text>
+                <TouchableOpacity onPress={() => openLegal('cookies')}>
+                  <Text style={[styles.footerSubLegalText, { color: T.textSecondary }]}>Cookies</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
           </View>
         </View>
 
       </ScrollView>
+
+      {/* MODAL: DOCUMENTOS LEGALES (TÉRMINOS, PRIVACIDAD, COOKIES) */}
+      <LegalDocModal
+        visible={showLegalModal}
+        initialDoc={selectedLegalDoc}
+        onClose={() => setShowLegalModal(false)}
+      />
+
+      {/* MODAL: TUTORIAL Y GUÍA DEL CONDUCTOR */}
+      <TutorialModal
+        visible={showTutorial}
+        onClose={() => setShowTutorial(false)}
+      />
     </View>
   );
 };
@@ -682,18 +936,15 @@ export const LandingScreen: React.FC<Props> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0b0d13',
   },
   heroContainer: {
     width: '100%',
     position: 'relative',
     overflow: 'hidden',
     justifyContent: 'space-between',
-    backgroundColor: '#0c1017',
   },
   atmosphericSkyLayer: {
     ...StyleSheet.absoluteFill as any,
-    backgroundColor: '#0c1219',
     opacity: 0.95,
   },
   mountainRidgeContainer: {
@@ -711,7 +962,6 @@ const styles = StyleSheet.create({
     left: '10%',
     width: 600,
     height: 360,
-    backgroundColor: '#162230',
     transform: [{ rotate: '45deg' }],
     borderRadius: 40,
   },
@@ -721,7 +971,6 @@ const styles = StyleSheet.create({
     left: '42%',
     width: 720,
     height: 440,
-    backgroundColor: '#1b2a3b',
     transform: [{ rotate: '45deg' }],
     borderRadius: 50,
   },
@@ -731,7 +980,6 @@ const styles = StyleSheet.create({
     right: '5%',
     width: 550,
     height: 340,
-    backgroundColor: '#141f2c',
     transform: [{ rotate: '45deg' }],
     borderRadius: 40,
   },
@@ -741,7 +989,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 280,
-    backgroundColor: 'rgba(12, 16, 23, 0.95)',
     ...(Platform.OS === 'web' ? { filter: 'blur(40px)' } : {}),
   } as any,
   radialCockpitLight: {
@@ -751,7 +998,6 @@ const styles = StyleSheet.create({
     width: 500,
     height: 400,
     borderRadius: 250,
-    opacity: 0.12,
     ...(Platform.OS === 'web' ? { filter: 'blur(80px)' } : {}),
   } as any,
   navBar: {
@@ -777,7 +1023,6 @@ const styles = StyleSheet.create({
   brandLogoText: {
     fontFamily: 'Montserrat_800ExtraBold',
     fontSize: 18,
-    color: '#ffffff',
     letterSpacing: 1.5,
   },
   brandSubLogoText: {
@@ -796,9 +1041,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   navLinkText: {
-    fontFamily: 'Montserrat_500Medium',
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.75)',
     letterSpacing: 0.5,
   },
   navActiveIndicator: {
@@ -810,6 +1053,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#00e3fd',
     borderRadius: 1,
   },
+  themeToggleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   navActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -818,13 +1069,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   navActionBtnText: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 12,
-    color: '#ffffff',
     letterSpacing: 0.6,
   },
   centerHeroStage: {
@@ -845,7 +1093,6 @@ const styles = StyleSheet.create({
   },
   giantText: {
     fontFamily: 'Montserrat_800ExtraBold',
-    color: 'rgba(255, 255, 255, 0.94)',
     textAlign: 'center',
     textTransform: 'uppercase',
   },
@@ -869,7 +1116,6 @@ const styles = StyleSheet.create({
     width: '75%',
     height: 25,
     borderRadius: 13,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     ...(Platform.OS === 'web' ? { filter: 'blur(12px)' } : {}),
     zIndex: 1,
   } as any,
@@ -882,14 +1128,12 @@ const styles = StyleSheet.create({
   heroQuoteText: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 16,
-    color: '#ffffff',
     letterSpacing: 0.8,
     textAlign: 'center',
   },
   heroSubQuoteText: {
     fontFamily: 'Montserrat_400Regular',
     fontSize: 12.5,
-    color: 'rgba(255, 255, 255, 0.72)',
     marginTop: 4,
     marginBottom: 20,
     textAlign: 'center',
@@ -901,10 +1145,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 36,
     paddingVertical: 14,
     borderRadius: 30,
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.38)',
-    backgroundColor: 'rgba(18, 24, 34, 0.75)',
-    shadowColor: '#00e3fd',
+    borderWidth: 1.5,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -915,12 +1156,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     inset: 0,
     borderRadius: 30,
-    backgroundColor: 'rgba(0, 227, 253, 0.06)',
   } as any,
   heroPillBtnText: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 13.5,
-    color: '#ffffff',
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
@@ -946,9 +1185,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 0.8,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   sliderCounterBadge: {
     paddingHorizontal: 8,
@@ -957,19 +1194,16 @@ const styles = StyleSheet.create({
   sliderCounterText: {
     fontFamily: 'Montserrat_800ExtraBold',
     fontSize: 16,
-    color: '#ffffff',
     letterSpacing: 1,
   },
   activeModelTagPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
     borderWidth: 0.8,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
     marginLeft: 6,
   },
   modelDot: {
@@ -980,7 +1214,6 @@ const styles = StyleSheet.create({
   activeModelText: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.85)',
   },
   socialIconsRow: {
     flexDirection: 'row',
@@ -993,9 +1226,7 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 0.8,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   statsStrip: {
     flexDirection: 'row',
@@ -1003,10 +1234,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingVertical: 24,
     paddingHorizontal: 20,
-    backgroundColor: '#080a0f',
     borderTopWidth: 0.8,
     borderBottomWidth: 0.8,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
     flexWrap: 'wrap',
     gap: 16,
   },
@@ -1021,19 +1250,16 @@ const styles = StyleSheet.create({
   statStripLabel: {
     fontFamily: 'Montserrat_500Medium',
     fontSize: 11,
-    color: '#8b94a5',
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   featureSection: {
     paddingVertical: 70,
     paddingHorizontal: 32,
     borderBottomWidth: 0.8,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   featureContentRow: {
     maxWidth: 1120,
@@ -1063,14 +1289,12 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontFamily: 'Montserrat_800ExtraBold',
     fontSize: 30,
-    color: '#ffffff',
     lineHeight: 38,
     marginBottom: 14,
   },
   featureDescription: {
     fontFamily: 'Montserrat_400Regular',
     fontSize: 14,
-    color: '#9aa5b8',
     lineHeight: 22,
     marginBottom: 20,
   },
@@ -1086,7 +1310,6 @@ const styles = StyleSheet.create({
   bulletText: {
     fontFamily: 'Montserrat_500Medium',
     fontSize: 13,
-    color: '#cdd5e4',
   },
   featureActionBtn: {
     flexDirection: 'row',
@@ -1106,23 +1329,20 @@ const styles = StyleSheet.create({
   featureCardPreview: {
     width: '100%',
     maxWidth: 520,
-    backgroundColor: '#151a24',
     borderRadius: 22,
     padding: 22,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.2,
     shadowRadius: 20,
-    elevation: 10,
+    elevation: 8,
   },
   telemetryMockHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderBottomWidth: 0.8,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     paddingBottom: 14,
     marginBottom: 16,
   },
@@ -1138,7 +1358,6 @@ const styles = StyleSheet.create({
   mockTrack: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
   },
   mockFill: {
@@ -1149,24 +1368,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     padding: 12,
     borderRadius: 12,
     marginTop: 6,
   },
   walletCardMock: {
-    backgroundColor: '#1b2230',
     borderRadius: 18,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(65, 105, 225, 0.35)',
   },
   finalCtaSection: {
     position: 'relative',
     alignItems: 'center',
     paddingVertical: 90,
     paddingHorizontal: 24,
-    backgroundColor: '#0a0d13',
     overflow: 'hidden',
   },
   finalCtaGlow: {
@@ -1189,7 +1404,6 @@ const styles = StyleSheet.create({
   finalCtaTitle: {
     fontFamily: 'Montserrat_800ExtraBold',
     fontSize: 34,
-    color: '#ffffff',
     textAlign: 'center',
     maxWidth: 680,
     lineHeight: 42,
@@ -1198,7 +1412,6 @@ const styles = StyleSheet.create({
   finalCtaSubtitle: {
     fontFamily: 'Montserrat_400Regular',
     fontSize: 14,
-    color: '#9aa5b8',
     textAlign: 'center',
     maxWidth: 580,
     lineHeight: 22,
@@ -1208,13 +1421,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#4169E1',
     paddingHorizontal: 34,
     paddingVertical: 15,
     borderRadius: 30,
     shadowColor: '#4169E1',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.35,
     shadowRadius: 18,
     elevation: 8,
   },
@@ -1225,20 +1437,67 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   footerContainer: {
-    backgroundColor: '#07090d',
-    paddingVertical: 30,
+    paddingVertical: 48,
     paddingHorizontal: 32,
     borderTopWidth: 0.8,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },
   footerInner: {
     maxWidth: 1120,
     alignSelf: 'center',
     width: '100%',
+  },
+  footerGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 32,
+    marginBottom: 36,
+  },
+  footerColBrand: {
+    flex: 1.4,
+    minWidth: 260,
+  },
+  footerColLinks: {
+    flex: 1,
+    minWidth: 200,
+  },
+  footerDescText: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 13,
+    lineHeight: 20,
+    maxWidth: 380,
+  },
+  footerSectionTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 11.5,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 16,
+  },
+  footerLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  footerLinkText: {
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 13,
+  },
+  footerBottomBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 24,
+    borderTopWidth: 0.8,
     flexWrap: 'wrap',
-    gap: 14,
+    gap: 12,
+  },
+  footerCopyrightText: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 12,
+  },
+  footerSubLegalText: {
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 12,
   },
 });

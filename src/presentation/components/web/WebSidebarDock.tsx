@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Text, Platform, useWindowDimensions } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
 interface WebSidebarDockProps {
-  onOpenSOS: () => void;
   onOpenQuickOdo: () => void;
   onOpenQuickFuel: () => void;
   onOpenSpecs: () => void;
@@ -12,7 +11,6 @@ interface WebSidebarDockProps {
 }
 
 export const WebSidebarDock: React.FC<WebSidebarDockProps> = ({
-  onOpenSOS,
   onOpenQuickOdo,
   onOpenQuickFuel,
   onOpenSpecs,
@@ -28,22 +26,12 @@ export const WebSidebarDock: React.FC<WebSidebarDockProps> = ({
   }
 
   return (
-    <View style={{ position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute', left: 24, top: '50%', transform: [{ translateY: -120 }], zIndex: 90 }}>
+    <View style={{ position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute', left: 24, top: '50%', transform: [{ translateY: -100 }], zIndex: 90 }}>
       <View style={[styles.dockContainer, { 
         backgroundColor: isDark ? 'rgba(25, 28, 33, 0.75)' : 'rgba(255, 255, 255, 0.85)',
         borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : 'rgba(0, 0, 0, 0.1)',
         backdropFilter: 'blur(12px)',
       } as any]}>
-        
-        {/* SOS BUTTON */}
-        <TouchableOpacity 
-          style={[styles.dockIcon, { backgroundColor: 'rgba(186, 26, 26, 0.18)' }]} 
-          onPress={onOpenSOS}
-          accessibilityLabel="Protocolo de Emergencia SOS"
-          activeOpacity={0.7}
-        >
-          <MaterialIcons name="warning" size={19} color="#ffb4ab" />
-        </TouchableOpacity>
 
         {/* ODOMETER */}
         <TouchableOpacity 
@@ -110,6 +98,5 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    transition: 'all 0.2s ease',
-  } as any,
+  },
 });

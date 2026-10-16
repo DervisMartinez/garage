@@ -12,7 +12,6 @@ interface WebVehicleHeroProps {
   onOpenStats: () => void;
   onOpenQuickOdo: () => void;
   onOpenQuickFuel: () => void;
-  onOpenSOS: () => void;
   onScrollToTelemetry: () => void;
   onOpenInspection?: () => void;
 }
@@ -22,7 +21,6 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
   onOpenStats,
   onOpenQuickOdo,
   onOpenQuickFuel,
-  onOpenSOS,
   onScrollToTelemetry,
   onOpenInspection,
 }) => {
@@ -31,6 +29,8 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
   const { width: windowWidth } = useWindowDimensions();
 
   const isDark = mode === 'dark';
+  const isMobile = windowWidth < 900;
+  const isSmallPhone = windowWidth < 500;
 
   const F = {
     bold: 'Montserrat_700Bold',
@@ -96,115 +96,173 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
     <View style={{ width: '100%', position: 'relative', overflow: 'hidden' }}>
       <LinearGradient
         colors={isDark ? ['#111319', '#141a29', '#0f1218'] : ['#f0f4fa', '#e4ecf8', '#edf2fa']}
-        style={[styles.heroContainer, { paddingHorizontal: windowWidth < 1200 ? 20 : 40, minHeight: windowWidth < 1200 ? 520 : 600 }]}
+        style={[
+          styles.heroContainer, 
+          { 
+            paddingHorizontal: isSmallPhone ? 14 : (isMobile ? 20 : (windowWidth < 1200 ? 28 : 40)),
+            minHeight: isMobile ? 'auto' : (windowWidth < 1200 ? 520 : 600),
+            paddingTop: isMobile ? 18 : 36,
+            paddingBottom: isMobile ? 20 : 28,
+          }
+        ]}
       >
         {/* ATMOSPHERIC BACKGROUND RADIAL GLOW */}
         <View style={{
           position: 'absolute',
-          top: '15%',
-          left: '25%',
-          width: 700,
-          height: 520,
+          top: isMobile ? '5%' : '15%',
+          left: isMobile ? '10%' : '25%',
+          width: isMobile ? 350 : 700,
+          height: isMobile ? 280 : 520,
           borderRadius: 350,
           backgroundColor: isDark ? 'rgba(65, 105, 225, 0.14)' : 'rgba(39, 95, 227, 0.09)',
           pointerEvents: 'none',
           zIndex: 1,
         } as any} />
 
-        {/* WATERMARK TEXT (Like "2022" in Yamaha reference image) */}
+        {/* WATERMARK TEXT (Like "2024" in Yamaha reference image) */}
         <Text style={{
           position: 'absolute',
-          top: '10%',
-          left: '8%',
-          fontSize: 180,
+          top: isMobile ? '4%' : '10%',
+          left: isMobile ? '4%' : '8%',
+          fontSize: isSmallPhone ? 64 : (isMobile ? 96 : 180),
           fontFamily: F.extrabold,
           color: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.035)',
           zIndex: 1,
-          letterSpacing: 8,
+          letterSpacing: isMobile ? 4 : 8,
         }}>
           {myMoto.year || '2024'}
         </Text>
 
-        {/* HERO MAIN ROW: LEFT ARROW, CENTER BIKE, RIGHT INFO, RIGHT ARROW */}
-        <View style={[styles.heroContentRow, { gap: windowWidth < 1200 ? 16 : 24 }]}>
+        {/* HERO MAIN CONTENT: DESKTOP (ROW) VS MOBILE WEB (RESPONSIVE COLUMN) */}
+        <View style={[
+          styles.heroContentRow, 
+          { 
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? 16 : (windowWidth < 1200 ? 16 : 24),
+            alignItems: 'center',
+          }
+        ]}>
           
-          {/* CAROUSEL PREV ARROW */}
-          <TouchableOpacity
-            style={[styles.carouselArrowBtn, { 
-              backgroundColor: isDark ? 'rgba(25, 28, 33, 0.65)' : 'rgba(255, 255, 255, 0.75)',
-              borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : 'rgba(0, 0, 0, 0.1)',
-              opacity: motos.length > 1 ? 1 : 0.3
-            }]}
-            onPress={handlePrevMoto}
-            disabled={motos.length <= 1}
-            activeOpacity={0.8}
-            accessibilityLabel="Moto anterior"
-          >
-            <MaterialIcons name="chevron-left" size={32} color={colors.onSurface} />
-          </TouchableOpacity>
+          {/* DESKTOP PREV ARROW (hidden on mobile, mobile uses clean inline switcher) */}
+          {!isMobile && (
+            <TouchableOpacity
+              style={[styles.carouselArrowBtn, { 
+                backgroundColor: isDark ? 'rgba(25, 28, 33, 0.65)' : 'rgba(255, 255, 255, 0.75)',
+                borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : 'rgba(0, 0, 0, 0.1)',
+                opacity: motos.length > 1 ? 1 : 0.3
+              }]}
+              onPress={handlePrevMoto}
+              disabled={motos.length <= 1}
+              activeOpacity={0.8}
+              accessibilityLabel="Moto anterior"
+            >
+              <MaterialIcons name="chevron-left" size={32} color={colors.onSurface} />
+            </TouchableOpacity>
+          )}
 
-          {/* CENTER: MOTORCYCLE SHOWCASE WITH SOFT SHADOW & 3D INSPECTION */}
-          <TouchableOpacity 
-            style={styles.bikeShowcaseContainer}
-            onPress={onOpenInspection}
-            activeOpacity={0.9}
-            accessibilityLabel="Abrir inspección interactiva 3D"
-          >
-            {imageSource ? (
-              <Image
-                source={imageSource}
-                style={[styles.bikeImage, { height: windowWidth < 1200 ? 370 : 450 }]}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.bikePlaceholder}>
-                <MaterialIcons name="two-wheeler" size={130} color="#4169E1" />
-                <Text style={[styles.bikePlaceholderText, { color: colors.onSurfaceVariant }]}>
-                  {myMoto.brand} {myMoto.model}
+          {/* MOTORCYCLE SHOWCASE WITH SOFT SHADOW & 3D INSPECTION */}
+          <View style={[
+            styles.bikeShowcaseContainer,
+            {
+              width: '100%',
+              minHeight: isSmallPhone ? 220 : (isMobile ? 280 : 440),
+            }
+          ]}>
+            <TouchableOpacity 
+              style={{ width: '100%', alignItems: 'center' }}
+              onPress={onOpenInspection}
+              activeOpacity={0.9}
+              accessibilityLabel="Abrir inspección interactiva 3D"
+            >
+              {imageSource ? (
+                <Image
+                  source={imageSource}
+                  style={[
+                    styles.bikeImage, 
+                    { 
+                      height: isSmallPhone ? 210 : (isMobile ? 270 : (windowWidth < 1200 ? 370 : 450)) 
+                    }
+                  ]}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={[styles.bikePlaceholder, { height: isMobile ? 220 : 400 }]}>
+                  <MaterialIcons name="two-wheeler" size={isMobile ? 80 : 130} color="#4169E1" />
+                  <Text style={[styles.bikePlaceholderText, { color: colors.onSurfaceVariant }]}>
+                    {myMoto.brand} {myMoto.model}
+                  </Text>
+                </View>
+              )}
+
+              {/* FLOATING 3D INSPECTION BADGE */}
+              <View style={{
+                position: 'absolute',
+                top: 4,
+                alignSelf: 'center',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+                backgroundColor: isDark ? 'rgba(17, 25, 40, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+                borderRadius: 20,
+                borderWidth: 0.8,
+                borderColor: '#00e3fd',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.25,
+                shadowRadius: 8,
+                elevation: 6,
+                zIndex: 10,
+              }}>
+                <MaterialIcons name="3d-rotation" size={14} color="#00e3fd" />
+                <Text style={{ fontFamily: F.bold, fontSize: 10.5, color: isDark ? '#ffffff' : '#111319', letterSpacing: 0.5 }}>
+                  TOCA PARA INSPECCIONAR EN 3D
                 </Text>
               </View>
+
+              {/* SOFT GROUND SHADOW */}
+              <View style={{
+                width: isMobile ? '80%' : '85%',
+                height: isMobile ? 18 : 28,
+                marginHorizontal: 'auto',
+                marginTop: isMobile ? -14 : -24,
+                borderRadius: 14,
+                backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.14)',
+              } as any} />
+            </TouchableOpacity>
+
+            {/* MOBILE QUICK CAROUSEL SWITCHER (When user has multiple motos) */}
+            {isMobile && motos.length > 1 && (
+              <View style={styles.mobileCarouselRow}>
+                <TouchableOpacity 
+                  style={[styles.mobileArrowBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc' }]} 
+                  onPress={handlePrevMoto}
+                >
+                  <MaterialIcons name="chevron-left" size={20} color={colors.onSurface} />
+                </TouchableOpacity>
+                <Text style={[styles.mobileCounterText, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
+                  {activeIndex + 1} de {motos.length}
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.mobileArrowBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc' }]} 
+                  onPress={handleNextMoto}
+                >
+                  <MaterialIcons name="chevron-right" size={20} color={colors.onSurface} />
+                </TouchableOpacity>
+              </View>
             )}
+          </View>
 
-            {/* FLOATING 3D INSPECTION BADGE */}
-            <View style={{
-              position: 'absolute',
-              top: 8,
-              alignSelf: 'center',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 5,
-              backgroundColor: isDark ? 'rgba(17, 25, 40, 0.85)' : 'rgba(255, 255, 255, 0.9)',
-              paddingHorizontal: 12,
-              paddingVertical: 5,
-              borderRadius: 20,
-              borderWidth: 0.8,
-              borderColor: '#00e3fd',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.25,
-              shadowRadius: 8,
-              elevation: 6,
-              zIndex: 10,
-            }}>
-              <MaterialIcons name="3d-rotation" size={14} color="#00e3fd" />
-              <Text style={{ fontFamily: F.bold, fontSize: 10.5, color: isDark ? '#ffffff' : '#111319', letterSpacing: 0.5 }}>
-                TOCA PARA INSPECCIONAR EN 3D
-              </Text>
-            </View>
-
-            {/* SOFT GROUND SHADOW (Like in technical presentation) */}
-            <View style={{
-              width: '85%',
-              height: 28,
-              marginHorizontal: 'auto',
-              marginTop: -24,
-              borderRadius: 14,
-              backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.14)',
-            } as any} />
-          </TouchableOpacity>
-
-          {/* RIGHT SIDE: VEHICLE TITLE, TELEMETRY SPECS & CTA BUTTONS */}
-          <View style={[styles.heroInfoBlock, { maxWidth: windowWidth < 1200 ? 350 : 420, paddingLeft: windowWidth < 1200 ? 6 : 12 }]}>
+          {/* VEHICLE TITLE, TELEMETRY SPECS & CTA BUTTONS */}
+          <View style={[
+            styles.heroInfoBlock, 
+            { 
+              maxWidth: isMobile ? '100%' : (windowWidth < 1200 ? 350 : 420),
+              width: isMobile ? '100%' : 'auto',
+              paddingLeft: isMobile ? 0 : (windowWidth < 1200 ? 6 : 12),
+            }
+          ]}>
             
             {/* BRAND & MODEL HEADLINE */}
             <View style={styles.brandBadgeRow}>
@@ -218,26 +276,47 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
               )}
             </View>
 
-            <Text style={[styles.modelHeading, { color: colors.onSurface, fontSize: windowWidth < 1200 ? 28 : 36, lineHeight: windowWidth < 1200 ? 32 : 40, marginBottom: windowWidth < 1200 ? 12 : 20 }]}>
+            <Text style={[
+              styles.modelHeading, 
+              { 
+                color: colors.onSurface, 
+                fontSize: isSmallPhone ? 24 : (isMobile ? 28 : (windowWidth < 1200 ? 30 : 36)), 
+                lineHeight: isSmallPhone ? 28 : (isMobile ? 32 : (windowWidth < 1200 ? 34 : 40)), 
+                marginBottom: isMobile ? 12 : 20 
+              }
+            ]}>
               {myMoto.model.toUpperCase()}
             </Text>
 
             {/* TELEMETRY READINGS */}
-            <View style={[styles.telemetryQuickSpecs, { gap: windowWidth < 1200 ? 10 : 14, marginBottom: windowWidth < 1200 ? 16 : 26 }]}>
-              <View style={styles.telemetrySpecItem}>
+            <View style={[
+              styles.telemetryQuickSpecs, 
+              { 
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                gap: 12, 
+                marginBottom: isMobile ? 16 : 24,
+                width: '100%',
+              }
+            ]}>
+              <View style={[styles.telemetrySpecItem, { flex: 1 }]}>
                 <Text style={[styles.specLabel, { color: colors.onSurfaceVariant }]}>ODÓMETRO TOTAL</Text>
-                <Text style={[styles.specValueMain, { color: isDark ? '#ffffff' : '#111319' }]}>
+                <Text style={[styles.specValueMain, { color: isDark ? '#ffffff' : '#111319', fontSize: isSmallPhone ? 18 : 22 }]}>
                   {myMoto.currentOdometer.toLocaleString()}{' '}
-                  <Text style={{ fontSize: 16, color: '#00e3fd' }}>KM</Text>
+                  <Text style={{ fontSize: isSmallPhone ? 13 : 15, color: '#00e3fd' }}>KM</Text>
                 </Text>
               </View>
 
-              <View style={styles.telemetrySpecItem}>
+              <View style={[styles.telemetrySpecItem, { flex: 1 }]}>
                 <Text style={[styles.specLabel, { color: colors.onSurfaceVariant }]}>SALUD DE ACEITE</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={[styles.specValueMain, { 
-                    color: oilWear > 40 ? '#00ae78' : (oilWear > 15 ? '#ffb703' : '#ba1a1a') 
-                  }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[
+                    styles.specValueMain, 
+                    { 
+                      color: oilWear > 40 ? '#00ae78' : (oilWear > 15 ? '#ffb703' : '#ba1a1a'),
+                      fontSize: isSmallPhone ? 18 : 22,
+                    }
+                  ]}>
                     {oilWear}%
                   </Text>
                   <View style={[styles.healthBadge, {
@@ -245,7 +324,8 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
                     borderColor: oilWear > 40 ? '#00ae78' : '#ba1a1a',
                   }]}>
                     <Text style={[styles.healthBadgeText, {
-                      color: oilWear > 40 ? '#00ae78' : '#ffb4ab'
+                      color: oilWear > 40 ? '#00ae78' : '#ffb4ab',
+                      fontSize: 8.5,
                     }]}>
                       {oilWear > 40 ? 'ÓPTIMO' : (oilWear > 15 ? 'ATENCIÓN' : 'CAMBIO')}
                     </Text>
@@ -254,12 +334,23 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
               </View>
             </View>
 
-            {/* ACTION BUTTONS (Matching "FIND A DEALER" style in reference) */}
-            <View style={styles.ctaButtonGroup}>
+            {/* ACTION BUTTONS */}
+            <View style={[
+              styles.ctaButtonGroup, 
+              { 
+                flexDirection: isSmallPhone ? 'column' : 'row',
+                width: '100%',
+                gap: 10,
+              }
+            ]}>
               <TouchableOpacity
-                style={[styles.primaryCtaBtn, { 
-                  borderColor: isDark ? '#ffffff' : '#111319',
-                }]}
+                style={[
+                  styles.primaryCtaBtn, 
+                  { 
+                    flex: 1,
+                    borderColor: isDark ? '#ffffff' : '#111319',
+                  }
+                ]}
                 onPress={onOpenQuickOdo}
                 activeOpacity={0.8}
               >
@@ -270,7 +361,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.secondaryCtaBtn}
+                style={[styles.secondaryCtaBtn, { flex: 1 }]}
                 onPress={onOpenQuickFuel}
                 activeOpacity={0.8}
               >
@@ -281,25 +372,27 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
 
           </View>
 
-          {/* CAROUSEL NEXT ARROW */}
-          <TouchableOpacity
-            style={[styles.carouselArrowBtn, { 
-              backgroundColor: isDark ? 'rgba(25, 28, 33, 0.65)' : 'rgba(255, 255, 255, 0.75)',
-              borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : 'rgba(0, 0, 0, 0.1)',
-              opacity: motos.length > 1 ? 1 : 0.3
-            }]}
-            onPress={handleNextMoto}
-            disabled={motos.length <= 1}
-            activeOpacity={0.8}
-            accessibilityLabel="Moto siguiente"
-          >
-            <MaterialIcons name="chevron-right" size={32} color={colors.onSurface} />
-          </TouchableOpacity>
+          {/* DESKTOP NEXT ARROW */}
+          {!isMobile && (
+            <TouchableOpacity
+              style={[styles.carouselArrowBtn, { 
+                backgroundColor: isDark ? 'rgba(25, 28, 33, 0.65)' : 'rgba(255, 255, 255, 0.75)',
+                borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : 'rgba(0, 0, 0, 0.1)',
+                opacity: motos.length > 1 ? 1 : 0.3
+              }]}
+              onPress={handleNextMoto}
+              disabled={motos.length <= 1}
+              activeOpacity={0.8}
+              accessibilityLabel="Moto siguiente"
+            >
+              <MaterialIcons name="chevron-right" size={32} color={colors.onSurface} />
+            </TouchableOpacity>
+          )}
 
         </View>
 
-        {/* BOTTOM SUB-NAVIGATION PILLS (Matching + TOP FEATURES, + GALLERY, + SPECS in reference) */}
-        <View style={styles.subPillsRow}>
+        {/* BOTTOM SUB-NAVIGATION PILLS (No SOS tab) */}
+        <View style={[styles.subPillsRow, { justifyContent: isMobile ? 'center' : 'flex-start', marginTop: isMobile ? 18 : 0 }]}>
           {onOpenInspection && (
             <TouchableOpacity
               style={[styles.subPill, { 
@@ -310,7 +403,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
               activeOpacity={0.8}
             >
               <MaterialIcons name="3d-rotation" size={14} color="#00e3fd" style={{ marginRight: 6 }} />
-              <Text style={[styles.subPillText, { color: '#00e3fd', fontFamily: F.bold }]}>+ INSPECCIÓN 3D & PIEZAS</Text>
+              <Text style={[styles.subPillText, { color: '#00e3fd', fontFamily: F.bold }]}>+ INSPECCIÓN 3D</Text>
             </TouchableOpacity>
           )}
 
@@ -337,22 +430,10 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
           >
             <Text style={[styles.subPillText, { color: colors.onSurface }]}>+ CALENDARIO Y GASTOS</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.subPill, { 
-              borderColor: 'rgba(186, 26, 26, 0.5)',
-              backgroundColor: 'rgba(186, 26, 26, 0.12)' 
-            }]}
-            onPress={onOpenSOS}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="warning" size={14} color="#ffb4ab" style={{ marginRight: 6 }} />
-            <Text style={[styles.subPillText, { color: '#ffb4ab' }]}>+ PROTOCOLO SOS</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* BOTTOM FOOTER CAROUSEL BAR (Matching < Aerox 155 VVA ... NMax Connected > in reference) */}
-        {motos.length > 1 && (
+        {/* BOTTOM FOOTER CAROUSEL BAR */}
+        {motos.length > 1 && !isMobile && (
           <View style={styles.footerCarouselBar}>
             <TouchableOpacity 
               style={styles.footerNavSide} 
@@ -396,19 +477,13 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
 const styles = StyleSheet.create({
   heroContainer: {
     width: '100%',
-    minHeight: 600,
-    paddingTop: 36,
-    paddingBottom: 28,
-    paddingHorizontal: 40,
     position: 'relative',
     justifyContent: 'space-between',
   },
   heroContentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     zIndex: 2,
-    gap: 24,
+    width: '100%',
+    justifyContent: 'space-between',
   },
   carouselArrowBtn: {
     width: 48,
@@ -422,28 +497,42 @@ const styles = StyleSheet.create({
     flex: 1.6,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 440,
     position: 'relative',
   },
   bikeImage: {
     width: '100%',
-    height: 450,
     maxWidth: 780,
   },
   bikePlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 400,
   },
   bikePlaceholderText: {
     fontSize: 16,
     fontFamily: 'Montserrat_600SemiBold',
     marginTop: 12,
   },
+  mobileCarouselRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 8,
+  },
+  mobileArrowBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mobileCounterText: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
   heroInfoBlock: {
     flex: 1,
-    maxWidth: 420,
-    paddingLeft: 12,
   },
   brandBadgeRow: {
     flexDirection: 'row',
@@ -469,136 +558,124 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   modelHeading: {
-    fontSize: 36,
     fontFamily: 'Montserrat_800ExtraBold',
     letterSpacing: -0.5,
-    lineHeight: 40,
-    marginBottom: 20,
   },
   telemetryQuickSpecs: {
     gap: 14,
-    marginBottom: 26,
   },
   telemetrySpecItem: {
-    gap: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: '#00e3fd',
+    paddingLeft: 10,
   },
   specLabel: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontFamily: 'Montserrat_600SemiBold',
-    letterSpacing: 1.2,
+    letterSpacing: 1,
+    marginBottom: 2,
   },
   specValueMain: {
-    fontSize: 26,
-    fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 0.5,
+    fontFamily: 'Montserrat_800ExtraBold',
+    letterSpacing: -0.5,
   },
   healthBadge: {
     borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 8,
+    borderRadius: 10,
     paddingVertical: 2,
+    paddingHorizontal: 7,
   },
   healthBadgeText: {
-    fontSize: 10,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 0.8,
   },
   ctaButtonGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flexWrap: 'wrap',
+    marginTop: 6,
   },
   primaryCtaBtn: {
     borderWidth: 1.5,
-    borderRadius: 24,
+    borderRadius: 10,
     paddingVertical: 12,
-    paddingHorizontal: 22,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   primaryCtaText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 1,
   },
   secondaryCtaBtn: {
     backgroundColor: 'rgba(0, 227, 253, 0.12)',
-    borderColor: 'rgba(0, 227, 253, 0.4)',
-    borderWidth: 1,
-    borderRadius: 24,
+    borderColor: '#00e3fd',
+    borderWidth: 1.5,
+    borderRadius: 10,
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryCtaText: {
     color: '#00e3fd',
-    fontSize: 12,
+    fontSize: 11.5,
     fontFamily: 'Montserrat_700Bold',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
   subPillsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-    zIndex: 2,
-    marginTop: 20,
     flexWrap: 'wrap',
+    gap: 10,
+    zIndex: 2,
   },
   subPill: {
     borderWidth: 1,
     borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
   },
   subPillText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontFamily: 'Montserrat_600SemiBold',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   footerCarouselBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 18,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: 'rgba(64, 72, 92, 0.25)',
     zIndex: 2,
-    marginTop: 18,
+    marginTop: 14,
   },
   footerNavSide: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
   },
   footerNavSideText: {
     color: '#00e3fd',
     fontSize: 12,
     fontFamily: 'Montserrat_600SemiBold',
-    letterSpacing: 0.5,
   },
   footerDotsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
+    alignItems: 'center',
   },
   footerDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(64, 72, 92, 0.6)',
+    backgroundColor: 'rgba(64, 72, 92, 0.5)',
   },
   footerDotActive: {
     width: 22,
-    borderRadius: 4,
     backgroundColor: '#00e3fd',
   },
 });

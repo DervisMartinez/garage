@@ -36,6 +36,8 @@ const PreloadScreen = () => {
   );
 };
 
+import { isWebPlatform } from '@/presentation/utils/platformMode';
+
 export default function HomeScreen() {
   const { myMoto, isLoaded, isAddingMoto } = useMyMoto();
   const [session, setSession] = useState<Session | null>(null);
@@ -44,8 +46,10 @@ export default function HomeScreen() {
   // Mantenemos un mínimo de tiempo para que se aprecie la animación (opcional, 1.5s)
   const [minWaitDone, setMinWaitDone] = useState(false);
 
-  // Estado de navegación inicial: 'landing' (Portada de entrada) | 'auth' (Login/Register) | 'app' (Garaje activo)
+  // Estado de navegación inicial para la versión WEB: 'landing' | 'auth' | 'app'
   const [viewState, setViewState] = useState<'landing' | 'auth' | 'app'>('landing');
+
+  const isWeb = isWebPlatform();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -78,7 +82,24 @@ export default function HomeScreen() {
     return <PreloadScreen />;
   }
 
-  // 1. Portada de Entrada (Landing estilo portada de referencia)
+  // ==========================================
+  // MOBILE APP FLOW (Port 8082 / Native iOS / Android):
+  // 100% PURA APP MÓVIL SIN ADULTERACIONES NI LANDING WEB
+  // ==========================================
+  if (!isWeb) {
+    if (!session) {
+      return <AuthScreen />;
+    }
+    if (!myMoto || isAddingMoto) {
+      return <SetupScreen />;
+    }
+    return <MainApp />;
+  }
+
+  // ==========================================
+  // WEB PLATFORM FLOW (Port 8081 / Web domain):
+  // Portada de entrada (Landing) -> Acceder -> App Web
+  // ==========================================
   if (viewState === 'landing') {
     return (
       <LandingScreen
@@ -94,7 +115,6 @@ export default function HomeScreen() {
     );
   }
 
-  // 2. Pantalla de Acceso / Registro
   if (!session || viewState === 'auth') {
     return (
       <AuthScreen
@@ -103,12 +123,10 @@ export default function HomeScreen() {
     );
   }
 
-  // 3. Configuración inicial si no tiene moto registrada
   if (!myMoto || isAddingMoto) {
     return <SetupScreen />;
   }
 
-  // 4. Panel principal de la app
   return <MainApp />;
 }
 

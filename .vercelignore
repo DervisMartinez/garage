@@ -1,0 +1,18 @@
+# Native Mobile & Build Artifacts
+android/
+ios/
+.expo/
+.system_generated/
+*.log
+
+# Sensitive credentials & local storage
+.env.local
+.env*.local
+DATABASE_URL
+
+# Git & Cache
+.git/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

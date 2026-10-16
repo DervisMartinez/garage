@@ -38,6 +38,7 @@ import { VehicleStatsAndCalendarModal } from '../components/VehicleStatsAndCalen
 import { EmergencyCrashModal } from '../components/EmergencyCrashModal';
 import { MotoInspectionModal } from '../components/MotoInspectionModal';
 import { getMotoSpecs } from '../../data/specs';
+import { isWebPlatform } from '../utils/platformMode';
 
 export const MainApp = () => {
   const { colors, mode } = useTheme();
@@ -182,30 +183,29 @@ export const MainApp = () => {
   const borderHairline = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
 
   // ==========================================
-  // DESKTOP LAYOUT (Inspired by Yamaha reference)
+  // RESPONSIVE WEB APPLICATION LAYOUT (DESKTOP, TABLET & MOBILE WEB)
   // ==========================================
-  if (isDesktop) {
+  const isWeb = isWebPlatform();
+  if (isWeb) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.surface }}>
-        {/* DESKTOP TOP HEADER */}
+        {/* RESPONSIVE WEB TOP HEADER (Adapts cleanly to desktop, tablet, and mobile browsers) */}
         <WebHeader
           activeTab={activeTab}
           onSelectTab={setActiveTab}
           onOpenQuickOdo={() => setQuickOdoVisible(true)}
           onOpenQuickFuel={() => setQuickFuelVisible(true)}
-          onOpenSOS={() => setSosModalVisible(true)}
         />
 
         {/* DESKTOP SIDEBAR DOCK (VERTICAL SHORTCUTS) */}
         <WebSidebarDock
-          onOpenSOS={() => setSosModalVisible(true)}
           onOpenQuickOdo={() => setQuickOdoVisible(true)}
           onOpenQuickFuel={() => setQuickFuelVisible(true)}
           onOpenSpecs={() => setActiveTab('specs')}
           onOpenStats={() => setStatsModalVisible(true)}
         />
 
-        {/* DESKTOP MAIN VIEW */}
+        {/* WEB MAIN VIEW */}
         <ScrollView 
           ref={desktopScrollRef}
           style={{ flex: 1 }}
@@ -220,7 +220,6 @@ export const MainApp = () => {
                 onOpenStats={() => setStatsModalVisible(true)}
                 onOpenQuickOdo={() => setQuickOdoVisible(true)}
                 onOpenQuickFuel={() => setQuickFuelVisible(true)}
-                onOpenSOS={() => setSosModalVisible(true)}
                 onScrollToTelemetry={scrollToTelemetry}
                 onOpenInspection={() => setInspectionModalVisible(true)}
               />
@@ -242,25 +241,25 @@ export const MainApp = () => {
           )}
 
           {activeTab === 'services' && (
-            <View style={styles.desktopTabContainer}>
+            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? 14 : 32 }]}>
               <ServicesTab />
             </View>
           )}
 
           {activeTab === 'history' && (
-            <View style={styles.desktopTabContainer}>
+            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? 14 : 32 }]}>
               <HistoryTab />
             </View>
           )}
 
           {activeTab === 'wallet' && (
-            <View style={styles.desktopTabContainer}>
+            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? 14 : 32 }]}>
               <WalletTab />
             </View>
           )}
 
           {activeTab === 'profile' && (
-            <View style={styles.desktopTabContainer}>
+            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? 14 : 32 }]}>
               <ProfileTab />
             </View>
           )}

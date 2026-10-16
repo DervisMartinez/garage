@@ -22,6 +22,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { TutorialModal } from '../../components/TutorialModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LegalDocModal, LegalDocType } from '../../components/LegalDocModal';
+import { EmergencyCrashModal } from '../../components/EmergencyCrashModal';
+import { isWebPlatform } from '../../utils/platformMode';
 
 export const ProfileTab = () => {
   const { myMoto, motos, selectMoto, deleteMoto, updateMoto, logout, setIsAddingMoto } = useMyMoto();
@@ -49,6 +51,7 @@ export const ProfileTab = () => {
   // Legal Modal Management
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [selectedLegalDoc, setSelectedLegalDoc] = useState<LegalDocType>('terms');
+  const [showSOSModal, setShowSOSModal] = useState(false);
 
   const F = {
     bold: 'Montserrat_700Bold',
@@ -422,6 +425,31 @@ export const ProfileTab = () => {
                 </View>
               )}
             </TouchableOpacity>
+
+            {/* Protocolo de Emergencia & SOS (Solo visible en versión Web) */}
+            {isWebPlatform() && (
+              <TouchableOpacity 
+                onPress={() => setShowSOSModal(true)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(255, 69, 58, 0.12)',
+                  borderColor: 'rgba(255, 69, 58, 0.45)',
+                  borderWidth: 1,
+                  paddingVertical: 11,
+                  borderRadius: 14,
+                  marginTop: 10,
+                  gap: 8,
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="warning" size={18} color="#FF453A" />
+                <Text style={{ fontFamily: F.bold, color: '#FF453A', fontSize: 13, letterSpacing: 0.3 }}>
+                  Ver Protocolo de Emergencia SOS
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* MIS MOTOS */}
@@ -643,6 +671,11 @@ export const ProfileTab = () => {
         visible={showLegalModal}
         initialDoc={selectedLegalDoc}
         onClose={() => setShowLegalModal(false)}
+      />
+      <EmergencyCrashModal
+        visible={showSOSModal}
+        onClose={() => setShowSOSModal(false)}
+        manualTrigger={true}
       />
     </SafeAreaView>
   );

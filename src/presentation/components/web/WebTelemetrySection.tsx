@@ -127,14 +127,14 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
   if (!myMoto) return null;
 
   return (
-    <View nativeID="telemetry-section" style={{ width: '100%', paddingVertical: windowWidth < 1200 ? 24 : 40, paddingHorizontal: windowWidth < 1200 ? 20 : 48 }}>
-      <View style={styles.sectionHeaderRow}>
+    <View nativeID="telemetry-section" style={{ width: '100%', paddingVertical: windowWidth < 1200 ? 24 : 40, paddingHorizontal: windowWidth < 600 ? 14 : (windowWidth < 1200 ? 20 : 48) }}>
+      <View style={[styles.sectionHeaderRow, { flexDirection: windowWidth < 700 ? 'column' : 'row', alignItems: windowWidth < 700 ? 'flex-start' : 'flex-end', gap: 12 }]}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <MaterialCommunityIcons name="gauge" size={20} color="#00e3fd" />
             <Text style={[styles.sectionSubtitle, { color: '#00e3fd' }]}>TELEMETRÍA EN TIEMPO REAL</Text>
           </View>
-          <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.onSurface, fontSize: windowWidth < 600 ? 20 : 24 }]}>
             Desgaste y Ciclos de Mantenimiento
           </Text>
         </View>
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   },
   overviewCard: {
     flex: 1,
-    minWidth: 380,
+    minWidth: 280,
     borderWidth: 1,
     borderRadius: 18,
     padding: 22,
