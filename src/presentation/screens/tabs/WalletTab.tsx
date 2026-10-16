@@ -550,7 +550,8 @@ export const WalletTab = () => {
         onPress={onPress}
         style={[
           styles.physicalCard,
-          isSelected && {
+          !isDesktop && { width: '100%', maxWidth: 440, minHeight: 220 },
+          isDesktop && isSelected && {
             borderColor: '#4169E1',
             borderWidth: 2,
             shadowColor: '#4169E1',
@@ -620,6 +621,57 @@ export const WalletTab = () => {
               </Text>
             </View>
           </View>
+
+          {/* MOBILE ONLY: ACTION BAR ON CARD (TAP TO VIEW PHOTO, EDIT, DELETE) */}
+          {!isDesktop && (
+            <View style={styles.cardMobileActionsRow}>
+              {doc.image_url ? (
+                <TouchableOpacity
+                  style={[styles.cardMobileActionPill, { backgroundColor: 'rgba(0, 227, 253, 0.15)', borderColor: 'rgba(0, 227, 253, 0.4)' }]}
+                  onPress={() => {
+                    if (doc.image_url.toLowerCase().includes('.pdf')) {
+                      Linking.openURL(doc.image_url);
+                    } else {
+                      setSelectedDocImage(doc.image_url);
+                    }
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <MaterialIcons name="image" size={14} color="#00e3fd" />
+                  <Text style={[styles.cardMobileActionPillText, { color: '#00e3fd' }]}>Toca para ver documento ↗</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.cardMobileActionPill, { backgroundColor: 'rgba(255, 255, 255, 0.08)', borderColor: 'rgba(255, 255, 255, 0.2)' }]}
+                  onPress={() => handleOpenEdit(doc)}
+                  activeOpacity={0.75}
+                >
+                  <MaterialIcons name="add-a-photo" size={14} color="#ffffff" />
+                  <Text style={[styles.cardMobileActionPillText, { color: 'rgba(255,255,255,0.85)' }]}>Subir Foto</Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TouchableOpacity
+                  style={styles.cardMobileIconBtn}
+                  onPress={() => handleOpenEdit(doc)}
+                  activeOpacity={0.75}
+                  accessibilityLabel="Editar documento"
+                >
+                  <MaterialIcons name="edit" size={15} color="#ffffff" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.cardMobileIconBtn, { backgroundColor: 'rgba(255, 69, 58, 0.25)' }]}
+                  onPress={() => deleteDocument(doc.id)}
+                  activeOpacity={0.75}
+                  accessibilityLabel="Eliminar documento"
+                >
+                  <MaterialIcons name="delete-outline" size={15} color="#ffb4ab" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
         </LinearGradient>
       </TouchableOpacity>
@@ -772,12 +824,31 @@ export const WalletTab = () => {
               <View style={[styles.cardsGrid, !isDesktop && { justifyContent: 'center' }]}>
                 {filteredDocuments.map((doc) => {
                   const isSelected = selectedDocId === doc.id;
-                  return renderCard(doc, isSelected, () => setSelectedDocId(doc.id));
+                  return renderCard(doc, isSelected, () => {
+                    if (isDesktop) {
+                      setSelectedDocId(doc.id);
+                    } else {
+                      // On mobile: immediately open document image in full screen!
+                      if (doc.image_url) {
+                        if (doc.image_url.toLowerCase().includes('.pdf')) {
+                          Linking.openURL(doc.image_url);
+                        } else {
+                          setSelectedDocImage(doc.image_url);
+                        }
+                      } else {
+                        handleOpenEdit(doc);
+                      }
+                    }
+                  });
                 })}
 
                 {/* ADD NEW DOCUMENT DASHED CARD */}
                 <TouchableOpacity
-                  style={[styles.addDashedCard, { borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : '#d0d4dc' }]}
+                  style={[
+                    styles.addDashedCard, 
+                    !isDesktop && { width: '100%', maxWidth: 440 },
+                    { borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : '#d0d4dc' }
+                  ]}
                   onPress={() => isDesktop ? handlePickImage() : setShowOptionsModal(true)}
                   activeOpacity={0.8}
                 >
@@ -794,8 +865,8 @@ export const WalletTab = () => {
               </View>
             </View>
 
-            {/* DOCUMENT INSPECTOR (VISOR DE DOCUMENTO OFICIAL) */}
-            {activeDoc && activeParsed && activeStatus && (
+            {/* DOCUMENT INSPECTOR (VISOR DE DOCUMENTO OFICIAL) - ONLY ON DESKTOP */}
+            {isDesktop && activeDoc && activeParsed && activeStatus && (
               <View style={[
                 styles.inspectorPanel, 
                 { 
@@ -1579,6 +1650,37 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 0.5,
+  },
+  cardMobileActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  cardMobileActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  cardMobileActionPillText: {
+    fontSize: 10.5,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.3,
+  },
+  cardMobileIconBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   addDashedCard: {
     width: 370,
