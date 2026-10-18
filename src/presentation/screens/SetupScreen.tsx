@@ -152,7 +152,7 @@ export const SetupScreen = () => {
           <MaterialCommunityIcons name="engine" size={60} color={colors.primary} />
           <Text style={[styles.title, { color: colors.onSurface }]}>Bienvenido a GARAGE</Text>
           <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>
-            {isAddingMoto ? 'Agrega otro vehículo a tu garaje' : '¿Qué tipo de vehículo vas a registrar?'}
+            {isAddingMoto ? 'Anexa un nuevo vehículo a tu garaje' : '¿Qué tipo de vehículo vas a registrar?'}
           </Text>
         </View>
 

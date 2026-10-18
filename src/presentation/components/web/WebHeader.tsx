@@ -26,13 +26,13 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
   const { width } = useWindowDimensions();
 
   // Clean responsive thresholds:
-  // - showInlineTabs: Only on wide displays (>= 1340px) with ample room for 3 columns.
-  // - showSubNav: On all laptop, tablet, and mobile displays (< 1340px) to guarantee ZERO overlap!
-  const isDesktopWide = width >= 1340;
-  const isDesktopCompact = width >= 1024 && width < 1340;
+  // - showInlineTabs: Only on wide displays (>= 1500px) with ample room for 3 columns.
+  // - showSubNav: On all laptop, tablet, and mobile displays (< 1500px) to guarantee ZERO overlap!
+  const isDesktopWide = width >= 1500;
+  const isDesktopCompact = width >= 1024 && width < 1500;
   const isTablet = width >= 600 && width < 1024;
-  const showInlineTabs = width >= 1340;
-  const showSubNav = width < 1340;
+  const showInlineTabs = width >= 1500;
+  const showSubNav = width < 1500;
   const isSmallPhone = width < 480;
   const isTinyPhone = width < 370;
   const isCurrentCar = isCar(myMoto);
@@ -228,8 +228,9 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
                   {/* BOTÓN PROMINENTE: ANEXAR OTRO VEHÍCULO */}
                   <TouchableOpacity
                     style={[styles.addNewMotoBtn, { 
-                      backgroundColor: isDark ? 'rgba(0, 227, 253, 0.1)' : 'rgba(0, 174, 120, 0.1)',
+                      backgroundColor: isDark ? 'rgba(0, 227, 253, 0.12)' : 'rgba(0, 174, 120, 0.1)',
                       borderColor: '#00e3fd',
+                      cursor: Platform.OS === 'web' ? ('pointer' as any) : undefined,
                     }]}
                     onPress={() => {
                       setMotoMenuVisible(false);
@@ -238,7 +239,7 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
                     activeOpacity={0.8}
                   >
                     <MaterialIcons name="add-circle" size={19} color="#00e3fd" />
-                    <Text style={styles.addNewMotoText}>Añadir nuevo vehículo</Text>
+                    <Text style={styles.addNewMotoText}>Anexar un nuevo vehículo</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 99990,
+    zIndex: 999,
   },
   leftGroup: {
     flexDirection: 'row',
@@ -568,6 +569,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 14,
+    overflow: 'hidden',
   },
   centerNavScroll: {
     alignItems: 'center',
