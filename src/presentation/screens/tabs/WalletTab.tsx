@@ -22,6 +22,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../../data/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { isWebPlatform } from '../../utils/platformMode';
 
 type StatusFilter = 'all' | 'valid' | 'expiring' | 'expired';
 
@@ -45,6 +46,7 @@ export const WalletTab = () => {
   const { colors, mode } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
   const isDesktop = windowWidth >= 920;
+  const isWeb = isWebPlatform();
   const isDark = mode === 'dark';
 
   const [documents, setDocuments] = useState<any[]>([]);
@@ -698,14 +700,14 @@ export const WalletTab = () => {
           </View>
           
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: isDesktop ? 12 : 8, flexWrap: 'wrap' }}>
-            {isDesktop ? (
+            {isWeb ? (
               <TouchableOpacity 
                 onPress={handlePickImage}
-                style={[styles.headerActionBtn, { borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc', paddingVertical: 9, paddingHorizontal: 14 }]}
+                style={[styles.headerActionBtn, { borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc', paddingVertical: isDesktop ? 9 : 7, paddingHorizontal: isDesktop ? 14 : 10 }]}
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="upload-file" size={18} color="#00e3fd" />
-                <Text style={[styles.headerActionBtnText, { color: colors.onSurface, fontSize: 12 }]}>Cargar Documento / Foto</Text>
+                <Text style={[styles.headerActionBtnText, { color: colors.onSurface, fontSize: isDesktop ? 12 : 11 }]}>Cargar Documento / Foto</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity 
@@ -849,17 +851,17 @@ export const WalletTab = () => {
                     !isDesktop && { width: '100%', maxWidth: 440 },
                     { borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : '#d0d4dc' }
                   ]}
-                  onPress={() => isDesktop ? handlePickImage() : setShowOptionsModal(true)}
+                  onPress={() => isWeb ? handlePickImage() : setShowOptionsModal(true)}
                   activeOpacity={0.8}
                 >
                   <View style={styles.addDashedIconWrap}>
-                    <MaterialIcons name={isDesktop ? "cloud-upload" : "add"} size={26} color="#00e3fd" />
+                    <MaterialIcons name={isWeb ? "cloud-upload" : "add"} size={26} color="#00e3fd" />
                   </View>
                   <Text style={[styles.addDashedTitle, { color: colors.onSurface }]}>
-                    {isDesktop ? 'Subir Nuevo Documento' : 'Registrar Otro Documento'}
+                    {isWeb ? 'Subir Nuevo Documento' : 'Registrar Otro Documento'}
                   </Text>
                   <Text style={[styles.addDashedSubtitle, { color: colors.onSurfaceVariant }]}>
-                    {isDesktop ? 'Cargar foto o archivo digital (PDF / Imagen) de tu equipo' : 'Foto física o escaneo de código QR'}
+                    {isWeb ? 'Cargar foto o archivo digital (PDF / Imagen) de tu equipo' : 'Foto física o escaneo de código QR'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1098,7 +1100,7 @@ export const WalletTab = () => {
             </Text>
 
             <View style={{ gap: 10, marginTop: 14 }}>
-              {isDesktop ? (
+              {isWeb ? (
                 <>
                   <TouchableOpacity 
                     onPress={handlePickImage}

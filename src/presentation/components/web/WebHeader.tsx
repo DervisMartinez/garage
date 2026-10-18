@@ -4,6 +4,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useMyMoto } from '../../context/MotoContext';
 import { supabase } from '../../../data/supabaseClient';
+import { isCar } from '../../../domain/entities/Moto';
 
 interface WebHeaderProps {
   activeTab: 'moto' | 'specs' | 'services' | 'wallet' | 'history' | 'profile';
@@ -24,10 +25,20 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
   const [motoMenuVisible, setMotoMenuVisible] = useState(false);
   const { width } = useWindowDimensions();
 
-  const isWide = width >= 1280;
-  const isMedium = width >= 1180 && width < 1280;
-  const isMobileWeb = width < 1180;
+  // Finely tuned responsive breakpoints:
+  // - isDesktopWide: Full desktop view with expanded navbar labels (>= 1260px)
+  // - isDesktopCompact: Compact desktop view that prevents clipping on standard 1080p / 1366px screens without 75% zoom (1024px - 1259px)
+  // - isTablet: Tablet view (768px - 1023px)
+  // - isMobileWeb: Mobile screens (< 1024px)
+  // - isSmallPhone: Small phone viewports (< 480px)
+  // - isTinyPhone: Ultra-compact viewports (< 370px)
+  const isDesktopWide = width >= 1260;
+  const isDesktopCompact = width >= 1024 && width < 1260;
+  const isTablet = width >= 768 && width < 1024;
+  const isMobileWeb = width < 1024;
   const isSmallPhone = width < 480;
+  const isTinyPhone = width < 370;
+  const isCurrentCar = isCar(myMoto);
 
   const F = {
     bold: 'Montserrat_700Bold',
@@ -42,37 +53,37 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
   const navItems = [
     { 
       id: 'moto' as const, 
-      label: isWide ? 'VEHÍCULO' : 'Vehículo', 
-      icon: 'engine', 
-      iconFamily: 'community' as const 
+      label: isDesktopWide ? (isCurrentCar ? 'VEHÍCULO' : 'VEHÍCULO') : (isCurrentCar ? 'Vehículo' : 'Vehículo'), 
+      icon: isCurrentCar ? 'directions-car' : 'engine', 
+      iconFamily: isCurrentCar ? ('material' as const) : ('community' as const) 
     },
     { 
       id: 'specs' as const, 
-      label: isWide ? 'FICHA TÉCNICA' : 'Ficha', 
+      label: isDesktopWide ? 'FICHA TÉCNICA' : 'Ficha', 
       icon: 'description', 
       iconFamily: 'material' as const 
     },
     { 
       id: 'services' as const, 
-      label: isWide ? 'SERVICIOS' : 'Servicios', 
+      label: isDesktopWide ? 'SERVICIOS' : 'Servicios', 
       icon: 'build', 
       iconFamily: 'material' as const 
     },
     { 
       id: 'history' as const, 
-      label: isWide ? 'HISTORIAL' : 'Historial', 
+      label: isDesktopWide ? 'HISTORIAL' : 'Historial', 
       icon: 'receipt-long', 
       iconFamily: 'material' as const 
     },
     { 
       id: 'wallet' as const, 
-      label: 'WALLET', 
+      label: isDesktopWide ? 'WALLET' : 'Wallet', 
       icon: 'account-balance-wallet', 
       iconFamily: 'material' as const 
     },
     { 
       id: 'profile' as const, 
-      label: isWide ? 'PERFIL' : 'Perfil', 
+      label: isDesktopWide ? 'PERFIL' : 'Perfil', 
       icon: 'person', 
       iconFamily: 'material' as const 
     },
@@ -99,53 +110,64 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
         { 
           backgroundColor: isDark ? 'rgba(17, 19, 25, 0.97)' : 'rgba(255, 255, 255, 0.97)', 
           borderBottomColor: isDark ? 'rgba(64, 72, 92, 0.35)' : 'rgba(0, 0, 0, 0.08)',
-          paddingHorizontal: isWide ? 24 : (isMedium ? 16 : 12),
+          paddingHorizontal: isDesktopWide ? 24 : (isDesktopCompact ? 16 : (isSmallPhone ? 10 : 14)),
+          height: isSmallPhone ? 58 : 64,
         }
       ]}>
         
         {/* LEFT: BRAND & MOTO SWITCHER */}
-        <View style={[styles.leftGroup, { gap: isWide ? 14 : 10, marginRight: 14, flexShrink: 0 }]}>
+        <View style={[styles.leftGroup, { gap: isDesktopWide ? 14 : (isSmallPhone ? 6 : 10), marginRight: isSmallPhone ? 6 : 14, flexShrink: 1, minWidth: 0 }]}>
           <TouchableOpacity 
             style={styles.logoRow} 
             activeOpacity={0.8}
             onPress={() => onSelectTab('moto')}
           >
-            <View style={[styles.logoBadge, isSmallPhone && { width: 30, height: 30, borderRadius: 15 }]}>
-              <MaterialCommunityIcons name="engine" size={isSmallPhone ? 17 : 20} color="#00e3fd" />
+            <View style={[styles.logoBadge, isSmallPhone && { width: 28, height: 28, borderRadius: 14 }]}>
+              {isCurrentCar ? (
+                <MaterialIcons name="directions-car" size={isSmallPhone ? 15 : 18} color="#00e3fd" />
+              ) : (
+                <MaterialCommunityIcons name="engine" size={isSmallPhone ? 15 : 18} color="#00e3fd" />
+              )}
             </View>
             <Text style={[
               styles.brandText, 
               { 
                 color: isDark ? '#ffffff' : '#111319',
-                fontSize: isSmallPhone ? 18 : 22,
-                letterSpacing: isSmallPhone ? 1.5 : 2,
+                fontSize: isTinyPhone ? 15 : (isSmallPhone ? 17 : 21),
+                letterSpacing: isSmallPhone ? 1.2 : 2,
               }
             ]}>
               GARAGE
             </Text>
-            <View style={[styles.brandAccentDot, isSmallPhone && { marginTop: 8 }]} />
+            <View style={[styles.brandAccentDot, isSmallPhone && { width: 5, height: 5, marginTop: 7, marginLeft: -3 }]} />
           </TouchableOpacity>
 
           {/* MOTO SELECTOR PILL & FLOATING DROPDOWN */}
           {myMoto && (
-            <View style={{ position: 'relative', zIndex: 99999 }}>
+            <View style={{ position: 'relative', zIndex: 99999, flexShrink: 1, minWidth: 0 }}>
               <TouchableOpacity
                 style={[styles.motoSelectorPill, { 
                   backgroundColor: isDark ? 'rgba(29, 32, 37, 0.9)' : '#ececf0',
                   borderColor: motoMenuVisible ? '#00e3fd' : (isDark ? '#40485c' : '#d0d4dc'),
-                  maxWidth: isWide ? 220 : (isSmallPhone ? 120 : 175),
-                  paddingHorizontal: 10,
+                  maxWidth: isDesktopWide ? 220 : (isTinyPhone ? 85 : (isSmallPhone ? 110 : (isTablet ? 170 : 140))),
+                  paddingHorizontal: isSmallPhone ? 6 : 10,
+                  paddingVertical: isSmallPhone ? 4 : 5,
                 }]}
                 onPress={() => setMotoMenuVisible(!motoMenuVisible)}
                 activeOpacity={0.8}
               >
-                <MaterialIcons name="two-wheeler" size={15} color="#4169E1" style={{ marginRight: 4 }} />
-                <Text style={[styles.motoSelectorText, { color: colors.onSurface }]} numberOfLines={1}>
+                <MaterialIcons 
+                  name={isCurrentCar ? "directions-car" : "two-wheeler"} 
+                  size={isSmallPhone ? 13 : 15} 
+                  color="#4169E1" 
+                  style={{ marginRight: 3 }} 
+                />
+                <Text style={[styles.motoSelectorText, { color: colors.onSurface, fontSize: isSmallPhone ? 10.5 : 11.5 }]} numberOfLines={1}>
                   {isSmallPhone ? myMoto.model : `${myMoto.brand} ${myMoto.model}`}
                 </Text>
                 <MaterialIcons 
                   name={motoMenuVisible ? "arrow-drop-up" : "arrow-drop-down"} 
-                  size={16} 
+                  size={isSmallPhone ? 14 : 16} 
                   color={colors.onSurfaceVariant} 
                 />
               </TouchableOpacity>
@@ -183,7 +205,7 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
                           }}
                         >
                           <MaterialIcons 
-                            name="two-wheeler" 
+                            name={isCar(m) ? "directions-car" : "two-wheeler"} 
                             size={18} 
                             color={isCurrent ? '#00e3fd' : colors.onSurfaceVariant} 
                           />
@@ -227,10 +249,10 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
           )}
         </View>
 
-        {/* CENTER: DESKTOP NAVIGATION TABS (visible >= 1180px) */}
+        {/* CENTER: DESKTOP NAVIGATION TABS (visible >= 1024px) */}
         {!isMobileWeb && (
           <View style={styles.centerNavContainer}>
-            <View style={styles.centerNavScroll}>
+            <View style={[styles.centerNavScroll, { gap: isDesktopWide ? 8 : 4 }]}>
               {navItems.map((item) => {
                 const isActive = activeTab === item.id;
                 return (
@@ -240,8 +262,8 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
                     style={[
                       styles.navLink,
                       {
-                        paddingVertical: 7,
-                        paddingHorizontal: isWide ? 12 : 9,
+                        paddingVertical: isDesktopWide ? 7 : 5,
+                        paddingHorizontal: isDesktopWide ? 12 : 7,
                       },
                       isActive && {
                         backgroundColor: isDark ? 'rgba(65, 105, 225, 0.18)' : 'rgba(39, 95, 227, 0.12)',
@@ -253,20 +275,20 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
                     {item.iconFamily === 'community' ? (
                       <MaterialCommunityIcons 
                         name={item.icon as any} 
-                        size={isWide ? 16 : 14} 
+                        size={isDesktopWide ? 16 : 14} 
                         color={isActive ? '#00e3fd' : colors.onSurfaceVariant} 
                       />
                     ) : (
                       <MaterialIcons 
                         name={item.icon as any} 
-                        size={isWide ? 16 : 14} 
+                        size={isDesktopWide ? 16 : 14} 
                         color={isActive ? '#00e3fd' : colors.onSurfaceVariant} 
                       />
                     )}
                     <Text style={[
                       styles.navLabel, 
                       { 
-                        fontSize: isWide ? 11.5 : 10.5,
+                        fontSize: isDesktopWide ? 11.5 : 10,
                         color: isActive ? (isDark ? '#ffffff' : '#275FE3') : colors.onSurfaceVariant,
                         fontFamily: isActive ? F.bold : F.medium,
                       }
@@ -282,22 +304,22 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
         )}
 
         {/* RIGHT: ACTIONS & USER */}
-        <View style={[styles.rightGroup, { gap: isWide ? 8 : 6, flexShrink: 0 }]}>
+        <View style={[styles.rightGroup, { gap: isDesktopWide ? 8 : (isSmallPhone ? 4 : 6), flexShrink: 0 }]}>
           
           {/* THEME TOGGLE */}
           <TouchableOpacity
             style={[styles.iconButton, { 
               borderColor: isDark ? '#40485c' : '#d0d4dc',
-              width: 34,
-              height: 34,
-              borderRadius: 17,
+              width: isSmallPhone ? 30 : 34,
+              height: isSmallPhone ? 30 : 34,
+              borderRadius: isSmallPhone ? 15 : 17,
             }]}
             onPress={toggleTheme}
             accessibilityLabel={isDark ? 'Modo claro' : 'Modo oscuro'}
           >
             <MaterialIcons 
               name={isDark ? 'wb-sunny' : 'nightlight-round'} 
-              size={17} 
+              size={isSmallPhone ? 15 : 17} 
               color={isDark ? '#ffb703' : '#4169E1'} 
             />
           </TouchableOpacity>
@@ -306,48 +328,56 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
           <TouchableOpacity
             style={[
               styles.quickAddButton,
-              isMobileWeb && { paddingHorizontal: 9, paddingVertical: 5 }
+              {
+                paddingHorizontal: isSmallPhone ? 7 : (isDesktopCompact ? 9 : 12),
+                paddingVertical: isSmallPhone ? 5 : 6,
+                borderRadius: isSmallPhone ? 13 : 16,
+              }
             ]}
             onPress={onOpenQuickOdo}
             activeOpacity={0.8}
             accessibilityLabel="Actualizar kilometraje"
           >
-            <MaterialIcons name="speed" size={15} color="#ffffff" />
-            <Text style={styles.quickAddText}>{isSmallPhone ? 'KM' : '+ KM'}</Text>
+            <MaterialIcons name="speed" size={isSmallPhone ? 13 : 15} color="#ffffff" />
+            <Text style={[styles.quickAddText, isSmallPhone && { fontSize: 10 }]}>{isSmallPhone ? 'KM' : '+ KM'}</Text>
           </TouchableOpacity>
 
           {/* FUEL LOG BUTTON (+ GAS) */}
           <TouchableOpacity
             style={[
               styles.fuelButton,
-              isMobileWeb && { paddingHorizontal: 9, paddingVertical: 5 }
+              {
+                paddingHorizontal: isSmallPhone ? 7 : (isDesktopCompact ? 9 : 11),
+                paddingVertical: isSmallPhone ? 5 : 6,
+                borderRadius: isSmallPhone ? 13 : 16,
+              }
             ]}
             onPress={onOpenQuickFuel}
             activeOpacity={0.8}
             accessibilityLabel="Registrar gasolina"
           >
-            <MaterialCommunityIcons name="gas-station" size={15} color="#00e3fd" />
-            <Text style={styles.fuelText}>{isSmallPhone ? 'GAS' : '+ GAS'}</Text>
+            <MaterialCommunityIcons name="gas-station" size={isSmallPhone ? 13 : 15} color="#00e3fd" />
+            <Text style={[styles.fuelText, isSmallPhone && { fontSize: 10 }]}>{isSmallPhone ? 'GAS' : '+ GAS'}</Text>
           </TouchableOpacity>
 
           {/* SIGN OUT */}
           <TouchableOpacity
             style={[styles.iconButton, { 
               borderColor: isDark ? '#40485c' : '#d0d4dc',
-              width: 34,
-              height: 34,
-              borderRadius: 17,
+              width: isSmallPhone ? 30 : 34,
+              height: isSmallPhone ? 30 : 34,
+              borderRadius: isSmallPhone ? 15 : 17,
             }]}
             onPress={handleSignOut}
             accessibilityLabel="Cerrar sesión"
           >
-            <MaterialIcons name="logout" size={16} color={colors.onSurfaceVariant} />
+            <MaterialIcons name="logout" size={isSmallPhone ? 14 : 16} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
         </View>
 
       </View>
 
-      {/* RESPONSIVE MOBILE WEB HORIZONTAL SUB-NAVIGATION (< 900px) */}
+      {/* RESPONSIVE MOBILE WEB HORIZONTAL SUB-NAVIGATION (< 1024px) */}
       {isMobileWeb && (
         <View style={[
           styles.mobileSubNav,

@@ -241,25 +241,25 @@ export const MainApp = () => {
           )}
 
           {activeTab === 'services' && (
-            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? 14 : 32 }]}>
+            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
               <ServicesTab />
             </View>
           )}
 
           {activeTab === 'history' && (
-            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? 14 : 32 }]}>
+            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
               <HistoryTab />
             </View>
           )}
 
           {activeTab === 'wallet' && (
-            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? 14 : 32 }]}>
+            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
               <WalletTab />
             </View>
           )}
 
           {activeTab === 'profile' && (
-            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? 14 : 32 }]}>
+            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
               <ProfileTab />
             </View>
           )}

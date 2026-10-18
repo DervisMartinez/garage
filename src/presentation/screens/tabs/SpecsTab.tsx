@@ -100,26 +100,34 @@ export const SpecsTab: React.FC<SpecsTabProps> = ({ onNavigateToServices }) => {
       <View style={styles.topBannerContainer}>
         <LinearGradient
           colors={isDark ? ['#0b111c', '#111520', '#161d2d'] : ['#e9f0fc', '#f2f6fd', '#e0ecfa']}
-          style={styles.bannerGradient}
+          style={[styles.bannerGradient, { paddingHorizontal: windowWidth < 600 ? 16 : 32 }]}
         >
           {/* Subtle Watermark */}
-          <div style={{
+          <Text style={{
             position: 'absolute',
             right: '5%',
             top: '10%',
-            fontSize: '110px',
-            fontWeight: 900,
-            fontFamily: 'Montserrat, sans-serif',
+            fontSize: windowWidth < 600 ? 56 : 110,
+            fontFamily: F.extrabold,
             color: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
-            userSelect: 'none',
-            pointerEvents: 'none',
-            letterSpacing: '6px',
+            letterSpacing: 6,
             textTransform: 'uppercase',
-          } as any}>
+            zIndex: 0,
+          }}>
             {myMoto.brand}
-          </div>
+          </Text>
 
-          <View style={[styles.bannerContentRow, { maxWidth: 1240, width: '100%', alignSelf: 'center' }]}>
+          <View style={[
+            styles.bannerContentRow, 
+            { 
+              maxWidth: 1240, 
+              width: '100%', 
+              alignSelf: 'center',
+              flexDirection: windowWidth < 840 ? 'column' : 'row',
+              alignItems: windowWidth < 840 ? 'flex-start' : 'center',
+              gap: windowWidth < 840 ? 18 : 32,
+            }
+          ]}>
             <View style={{ flex: 1.2 }}>
               <View style={styles.bannerBadge}>
                 <MaterialCommunityIcons name="shield-check" size={16} color="#00e3fd" />
@@ -141,7 +149,10 @@ export const SpecsTab: React.FC<SpecsTabProps> = ({ onNavigateToServices }) => {
             {/* Quick Hero Specs Card */}
             <View style={[styles.bannerMiniStatsCard, { 
               backgroundColor: isDark ? 'rgba(25, 28, 33, 0.85)' : 'rgba(255, 255, 255, 0.9)',
-              borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc'
+              borderColor: isDark ? 'rgba(64, 72, 92, 0.4)' : '#d0d4dc',
+              width: windowWidth < 840 ? '100%' : 'auto',
+              justifyContent: windowWidth < 840 ? 'space-around' : 'flex-start',
+              paddingHorizontal: windowWidth < 480 ? 12 : 24,
             }]}>
               <View style={styles.statMiniBox}>
                 <Text style={styles.statMiniLabel}>CILINDRADA</Text>
@@ -169,7 +180,7 @@ export const SpecsTab: React.FC<SpecsTabProps> = ({ onNavigateToServices }) => {
       </View>
 
       {/* 2. CATEGORY PILLS BAR */}
-      <View style={[styles.categoryBar, { maxWidth: 1240, width: '100%', alignSelf: 'center' }]}>
+      <View style={[styles.categoryBar, { maxWidth: 1240, width: '100%', alignSelf: 'center', paddingHorizontal: windowWidth < 600 ? 16 : 32 }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 14 }}>
           {specCategories.map((cat) => {
             const isSel = activeCategory === cat.id;
@@ -209,7 +220,13 @@ export const SpecsTab: React.FC<SpecsTabProps> = ({ onNavigateToServices }) => {
       {/* 3. MAIN SPLIT CONTENT (Like Yamaha reference image 2: Left technical details + Right photo card) */}
       <View style={[
         styles.mainSplitLayout, 
-        { maxWidth: 1240, width: '100%', alignSelf: 'center', flexDirection: isDesktop ? 'row' : 'column' }
+        { 
+          maxWidth: 1240, 
+          width: '100%', 
+          alignSelf: 'center', 
+          flexDirection: isDesktop ? 'row' : 'column',
+          paddingHorizontal: windowWidth < 600 ? 16 : 32,
+        }
       ]}>
         
         {/* LEFT COLUMN: TECHNICAL BREAKDOWN SECTIONS */}

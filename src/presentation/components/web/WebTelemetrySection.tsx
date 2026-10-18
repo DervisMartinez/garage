@@ -175,6 +175,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
                 { 
                   backgroundColor: isDark ? '#191c21' : '#ffffff',
                   borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)',
+                  minWidth: windowWidth < 600 ? '100%' : 260,
                 }
               ]}
             >
@@ -238,6 +239,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
         <View style={[styles.overviewCard, { 
           backgroundColor: isDark ? '#191c21' : '#ffffff',
           borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)',
+          minWidth: windowWidth < 700 ? '100%' : 280,
         }]}>
           <View style={styles.overviewCardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -286,6 +288,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
         <View style={[styles.overviewCard, { 
           backgroundColor: isDark ? '#191c21' : '#ffffff',
           borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)',
+          minWidth: windowWidth < 700 ? '100%' : 280,
         }]}>
           <View style={styles.overviewCardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -299,9 +302,9 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
           <View style={styles.financeMetricsRow}>
             <View style={styles.financeMetricBox}>
               <Text style={[styles.specMiniLabel, { color: colors.onSurfaceVariant }]}>TOTAL COMBUSTIBLE</Text>
-              <Text style={[styles.financeAmount, { color: '#00e3fd' }]}>
+              <Text style={[styles.financeAmount, { color: '#00e3fd', fontSize: windowWidth < 420 ? 20 : 24 }]}>
                 ${totalFuelUSD.toFixed(2)}{' '}
-                <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }}>USD</Text>
+                <Text style={{ fontSize: windowWidth < 420 ? 11 : 13, color: colors.onSurfaceVariant }}>USD</Text>
               </Text>
               <TouchableOpacity onPress={onOpenQuickFuel} style={{ marginTop: 6 }}>
                 <Text style={styles.actionLinkText}>+ Registrar carga</Text>
@@ -312,9 +315,9 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
 
             <View style={styles.financeMetricBox}>
               <Text style={[styles.specMiniLabel, { color: colors.onSurfaceVariant }]}>TOTAL MANTENIMIENTO</Text>
-              <Text style={[styles.financeAmount, { color: '#4169E1' }]}>
+              <Text style={[styles.financeAmount, { color: '#4169E1', fontSize: windowWidth < 420 ? 20 : 24 }]}>
                 ${totalMaintenanceUSD.toFixed(2)}{' '}
-                <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }}>USD</Text>
+                <Text style={{ fontSize: windowWidth < 420 ? 11 : 13, color: colors.onSurfaceVariant }}>USD</Text>
               </Text>
               <TouchableOpacity onPress={onOpenServicesTab} style={{ marginTop: 6 }}>
                 <Text style={styles.actionLinkText}>+ Nuevo servicio</Text>

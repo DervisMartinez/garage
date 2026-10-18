@@ -166,7 +166,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
             styles.bikeShowcaseContainer,
             {
               width: '100%',
-              minHeight: isSmallPhone ? 220 : (isMobile ? 280 : 440),
+              minHeight: isSmallPhone ? 250 : (isMobile ? 310 : 450),
             }
           ]}>
             <TouchableOpacity 
@@ -181,14 +181,14 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
                   style={[
                     styles.bikeImage, 
                     { 
-                      height: isSmallPhone ? 210 : (isMobile ? 270 : (windowWidth < 1200 ? 370 : 450)) 
+                      height: isSmallPhone ? 240 : (isMobile ? 300 : (windowWidth < 1200 ? 380 : 460)) 
                     }
                   ]}
                   resizeMode="contain"
                 />
               ) : (
-                <View style={[styles.bikePlaceholder, { height: isMobile ? 220 : 400 }]}>
-                  <MaterialIcons name="two-wheeler" size={isMobile ? 80 : 130} color="#4169E1" />
+                <View style={[styles.bikePlaceholder, { height: isMobile ? 240 : 400 }]}>
+                  <MaterialIcons name={isCar(myMoto) ? "directions-car" : "two-wheeler"} size={isMobile ? 80 : 130} color="#4169E1" />
                   <Text style={[styles.bikePlaceholderText, { color: colors.onSurfaceVariant }]}>
                     {myMoto.brand} {myMoto.model}
                   </Text>
@@ -224,10 +224,10 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
 
               {/* SOFT GROUND SHADOW */}
               <View style={{
-                width: isMobile ? '80%' : '85%',
-                height: isMobile ? 18 : 28,
+                width: isMobile ? '82%' : '85%',
+                height: isMobile ? 20 : 28,
                 marginHorizontal: 'auto',
-                marginTop: isMobile ? -14 : -24,
+                marginTop: isMobile ? -16 : -24,
                 borderRadius: 14,
                 backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.14)',
               } as any} />
