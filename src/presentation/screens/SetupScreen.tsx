@@ -103,12 +103,23 @@ export const SetupScreen = () => {
           <MaterialIcons name={mode === 'dark' ? 'light-mode' : 'dark-mode'} size={20} color={colors.primary} />
         </TouchableOpacity>
 
+        {isAddingMoto && (
+          <TouchableOpacity 
+            onPress={() => setIsAddingMoto(false)} 
+            style={[styles.returnPillBtn, { 
+              backgroundColor: mode === 'dark' ? 'rgba(65, 105, 225, 0.15)' : 'rgba(39, 95, 227, 0.1)',
+              borderColor: mode === 'dark' ? 'rgba(0, 227, 253, 0.4)' : '#275FE3',
+            }]}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="arrow-back" size={18} color={mode === 'dark' ? '#00e3fd' : '#275FE3'} />
+            <Text style={[styles.returnPillText, { color: colors.onSurface }]}>
+              Volver al Garaje
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.header}>
-          {isAddingMoto && (
-            <TouchableOpacity onPress={() => setIsAddingMoto(false)} style={{ position: 'absolute', top: 0, left: 0, zIndex: 10 }}>
-              <MaterialIcons name="arrow-back" size={28} color={colors.onSurface} />
-            </TouchableOpacity>
-          )}
           <MaterialCommunityIcons name="engine" size={64} color={colors.primary} />
           <Text style={[styles.title, { color: colors.onSurface }]}>Bienvenido a GARAGE</Text>
           <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>{isAddingMoto ? 'Agrega otra moto a tu garaje' : '¿Cuál es tu modelo de moto?'}</Text>
@@ -228,4 +239,20 @@ const styles = StyleSheet.create({
   resultText: { fontFamily: 'Montserrat_500Medium', fontSize: 14 },
   button: { padding: 18, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 32 },
   buttonText: { fontSize: 16, fontFamily: 'Montserrat_800ExtraBold', textTransform: 'uppercase' },
+  returnPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  returnPillText: {
+    fontSize: 13,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.3,
+  },
 });

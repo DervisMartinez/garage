@@ -25,8 +25,8 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
   const { width } = useWindowDimensions();
 
   const isWide = width >= 1280;
-  const isMedium = width >= 900 && width < 1280;
-  const isMobileWeb = width < 900;
+  const isMedium = width >= 1180 && width < 1280;
+  const isMobileWeb = width < 1180;
   const isSmallPhone = width < 480;
 
   const F = {
@@ -104,7 +104,7 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
       ]}>
         
         {/* LEFT: BRAND & MOTO SWITCHER */}
-        <View style={[styles.leftGroup, { gap: isWide ? 14 : 8, flexShrink: 0 }]}>
+        <View style={[styles.leftGroup, { gap: isWide ? 14 : 10, marginRight: 14, flexShrink: 0 }]}>
           <TouchableOpacity 
             style={styles.logoRow} 
             activeOpacity={0.8}
@@ -133,7 +133,7 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
                 style={[styles.motoSelectorPill, { 
                   backgroundColor: isDark ? 'rgba(29, 32, 37, 0.9)' : '#ececf0',
                   borderColor: motoMenuVisible ? '#00e3fd' : (isDark ? '#40485c' : '#d0d4dc'),
-                  maxWidth: isWide ? 220 : (isMedium ? 160 : (isSmallPhone ? 115 : 140)),
+                  maxWidth: isWide ? 220 : (isSmallPhone ? 120 : 175),
                   paddingHorizontal: 10,
                 }]}
                 onPress={() => setMotoMenuVisible(!motoMenuVisible)}
@@ -227,19 +227,10 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
           )}
         </View>
 
-        {/* CENTER: DESKTOP NAVIGATION TABS (visible >= 900px) */}
+        {/* CENTER: DESKTOP NAVIGATION TABS (visible >= 1180px) */}
         {!isMobileWeb && (
           <View style={styles.centerNavContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[
-                styles.centerNavScroll,
-                {
-                  gap: isWide ? 8 : 5,
-                }
-              ]}
-            >
+            <View style={styles.centerNavScroll}>
               {navItems.map((item) => {
                 const isActive = activeTab === item.id;
                 return (
@@ -249,7 +240,7 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
                     style={[
                       styles.navLink,
                       {
-                        paddingVertical: isWide ? 7 : 6,
+                        paddingVertical: 7,
                         paddingHorizontal: isWide ? 12 : 9,
                       },
                       isActive && {
@@ -286,7 +277,7 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
         )}
 
@@ -549,14 +540,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 8,
-    overflow: 'hidden',
+    marginHorizontal: 14,
   },
   centerNavScroll: {
-    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    gap: 8,
   },
   navLink: {
     flexDirection: 'row',
