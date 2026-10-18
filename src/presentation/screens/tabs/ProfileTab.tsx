@@ -25,14 +25,20 @@ import { LegalDocModal, LegalDocType } from '../../components/LegalDocModal';
 import { EmergencyCrashModal } from '../../components/EmergencyCrashModal';
 import { isWebPlatform } from '../../utils/platformMode';
 import { isCar } from '../../../domain/entities/Moto';
+import { VehicleReportModal } from '../../components/VehicleReportModal';
 
-export const ProfileTab = () => {
+interface ProfileTabProps {
+  onOpenReport?: () => void;
+}
+
+export const ProfileTab: React.FC<ProfileTabProps> = ({ onOpenReport }) => {
   const { myMoto, motos, selectMoto, deleteMoto, updateMoto, logout, setIsAddingMoto } = useMyMoto();
   const { colors, mode, isDark, toggleTheme } = useTheme();
   
   const [userData, setUserData] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Form Fields
   const [firstName, setFirstName] = useState('');
@@ -222,10 +228,18 @@ export const ProfileTab = () => {
     }
   };
 
-  const confirmDeleteMoto = (id: string) => {
+  const confirmDeleteMoto = (id: string, name?: string) => {
+    const label = name ? `el vehículo "${name}"` : 'este vehículo';
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`¿Estás seguro de que deseas eliminar ${label}? Esta acción no se puede deshacer.`);
+      if (confirmed) {
+        deleteMoto(id);
+      }
+      return;
+    }
     Alert.alert(
-      'Eliminar Moto',
-      '¿Estás seguro de que deseas eliminar esta moto? Esta acción no se puede deshacer.',
+      'Eliminar Vehículo',
+      `¿Estás seguro de que deseas eliminar ${label}? Esta acción no se puede deshacer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: () => deleteMoto(id) }
@@ -496,13 +510,22 @@ export const ProfileTab = () => {
                           {m.brand}
                         </Text>
                       </View>
-                      {!isSelected && (
+                      {motos.length > 1 && (
                         <TouchableOpacity 
-                          onPress={() => confirmDeleteMoto(m.id)} 
-                          style={{ padding: 4, cursor: Platform.OS === 'web' ? ('pointer' as any) : undefined }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          onPress={(e) => {
+                            e?.stopPropagation?.();
+                            confirmDeleteMoto(m.id, `${m.brand} ${m.model}`);
+                          }} 
+                          style={{ 
+                            padding: 6, 
+                            borderRadius: 8,
+                            backgroundColor: mode === 'dark' ? 'rgba(255, 69, 58, 0.18)' : 'rgba(255, 69, 58, 0.12)',
+                            cursor: Platform.OS === 'web' ? ('pointer' as any) : undefined 
+                          }}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          accessibilityLabel="Eliminar vehículo"
                         >
-                          <MaterialIcons name="delete-outline" size={17} color={colors.error} />
+                          <MaterialIcons name="delete-outline" size={17} color="#FF453A" />
                         </TouchableOpacity>
                       )}
                       {isSelected && (
@@ -550,6 +573,41 @@ export const ProfileTab = () => {
                 </Text>
               </TouchableOpacity>
             </ScrollView>
+          </View>
+
+          {/* GENERADOR DE REPORTE TÉCNICO PDF */}
+          <View style={[styles.cardSection, { backgroundColor: colors.surfaceContainerLow, borderColor: '#e53e3e', borderWidth: 1.2 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialIcons name="picture-as-pdf" size={22} color="#e53e3e" />
+                <Text style={{ fontSize: 15, fontFamily: F.bold, color: colors.onSurface }}>Expediente & Reporte PDF</Text>
+              </View>
+              <View style={{ backgroundColor: 'rgba(229, 62, 62, 0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                <Text style={{ fontFamily: F.bold, color: '#e53e3e', fontSize: 10 }}>OFICIAL</Text>
+              </View>
+            </View>
+            <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>
+              Genera un informe completo en PDF con especificaciones OEM, estado de cada pieza, gráficas de consumo/gasolina y bitácora de servicios.
+            </Text>
+            <TouchableOpacity
+              onPress={() => onOpenReport ? onOpenReport() : setShowReportModal(true)}
+              activeOpacity={0.8}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                backgroundColor: '#e53e3e',
+                paddingVertical: 12,
+                borderRadius: 12,
+                cursor: Platform.OS === 'web' ? ('pointer' as any) : undefined,
+              }}
+            >
+              <MaterialIcons name="print" size={18} color="#ffffff" />
+              <Text style={{ fontFamily: F.bold, color: '#ffffff', fontSize: 13, letterSpacing: 0.5 }}>
+                Generar Reporte PDF del Vehículo
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* DETALLES DE LA MOTO ACTUAL */}
@@ -721,6 +779,11 @@ export const ProfileTab = () => {
         visible={showSOSModal}
         onClose={() => setShowSOSModal(false)}
         manualTrigger={true}
+      />
+      <VehicleReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        myMoto={myMoto}
       />
     </SafeAreaView>
   );

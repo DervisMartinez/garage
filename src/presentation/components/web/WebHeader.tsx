@@ -12,6 +12,7 @@ interface WebHeaderProps {
   onOpenQuickOdo: () => void;
   onOpenQuickFuel: () => void;
   onOpenSOS?: () => void;
+  onOpenReport?: () => void;
 }
 
 export const WebHeader: React.FC<WebHeaderProps> = ({
@@ -19,6 +20,7 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
   onSelectTab,
   onOpenQuickOdo,
   onOpenQuickFuel,
+  onOpenReport,
 }) => {
   const { colors, mode, toggleTheme } = useTheme();
   const { myMoto, motos, selectMoto, setIsAddingMoto } = useMyMoto();
@@ -362,6 +364,24 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
             </TouchableOpacity>
           )}
 
+          {/* PDF REPORT BUTTON */}
+          <TouchableOpacity
+            style={[
+              styles.reportButton,
+              {
+                paddingHorizontal: isDesktopCompact ? 8 : 11,
+                paddingVertical: 6,
+                borderRadius: 16,
+              }
+            ]}
+            onPress={onOpenReport}
+            activeOpacity={0.8}
+            accessibilityLabel="Generar Reporte PDF"
+          >
+            <MaterialIcons name="picture-as-pdf" size={15} color="#e53e3e" />
+            {!isSmallPhone && <Text style={styles.reportText}>PDF</Text>}
+          </TouchableOpacity>
+
           {/* SIGN OUT */}
           <TouchableOpacity
             style={[styles.iconButton, { 
@@ -639,6 +659,23 @@ const styles = StyleSheet.create({
   },
   fuelText: {
     color: '#00e3fd',
+    fontSize: 11,
+    fontFamily: 'Montserrat_700Bold',
+    letterSpacing: 0.5,
+  },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(229, 62, 62, 0.12)',
+    borderColor: 'rgba(229, 62, 62, 0.4)',
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    borderRadius: 16,
+    gap: 4,
+  },
+  reportText: {
+    color: '#e53e3e',
     fontSize: 11,
     fontFamily: 'Montserrat_700Bold',
     letterSpacing: 0.5,

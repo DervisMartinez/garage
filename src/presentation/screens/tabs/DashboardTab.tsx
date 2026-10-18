@@ -13,6 +13,7 @@ import { TechnicalSheetModal } from '../../components/TechnicalSheetModal';
 import { VehicleStatsAndCalendarModal } from '../../components/VehicleStatsAndCalendarModal';
 import { EmergencyCrashModal } from '../../components/EmergencyCrashModal';
 import { MotoInspectionModal } from '../../components/MotoInspectionModal';
+import { VehicleReportModal } from '../../components/VehicleReportModal';
 import { useCrashDetection } from '../../hooks/useCrashDetection';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -75,6 +76,7 @@ export const DashboardTab = () => {
   const [statsCalVisible, setStatsCalVisible] = useState(false);
   const [statsCalInitialTab, setStatsCalInitialTab] = useState<'calendar' | 'stats'>('calendar');
   const [inspectionVisible, setInspectionVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
   const [newOdo, setNewOdo] = useState('');
   const [lastOilOdo, setLastOilOdo] = useState('');
   const [oilType, setOilType] = useState('Mineral');
@@ -643,6 +645,37 @@ export const DashboardTab = () => {
                 <Text style={{ fontFamily: F.bold, color: '#000', fontSize: 11 }}>VER</Text>
               </View>
             </TouchableOpacity>
+
+            {/* SHORTCUT BANNER: EXPEDIENTE Y REPORTE PDF */}
+            <TouchableOpacity
+              onPress={() => setReportModalVisible(true)}
+              activeOpacity={0.85}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#dc2626',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderRadius: 18,
+                marginTop: 10,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, paddingRight: 8 }}>
+                <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                  <MaterialIcons name="picture-as-pdf" size={22} color="#FFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: F.bold, color: '#FFF', fontSize: 14 }}>Expediente & Reporte PDF</Text>
+                  <Text style={{ fontFamily: F.medium, color: '#FECACA', fontSize: 11, marginTop: 2 }}>
+                    Ficha técnica, telemetría, consumo y bitácora
+                  </Text>
+                </View>
+              </View>
+              <View style={{ backgroundColor: '#FFF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 }}>
+                <Text style={{ fontFamily: F.bold, color: '#dc2626', fontSize: 11 }}>PDF</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -979,6 +1012,12 @@ export const DashboardTab = () => {
           if (comp === 'oil') setOilSetupVisible(true);
           else setModalVisible(true);
         }}
+      />
+      <VehicleReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        myMoto={myMoto}
+        specs={specs}
       />
     </SafeAreaView>
   );

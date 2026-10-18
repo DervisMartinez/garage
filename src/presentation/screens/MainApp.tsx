@@ -37,6 +37,7 @@ import { TechnicalSheetModal } from '../components/TechnicalSheetModal';
 import { VehicleStatsAndCalendarModal } from '../components/VehicleStatsAndCalendarModal';
 import { EmergencyCrashModal } from '../components/EmergencyCrashModal';
 import { MotoInspectionModal } from '../components/MotoInspectionModal';
+import { VehicleReportModal } from '../components/VehicleReportModal';
 import { getMotoSpecs } from '../../data/specs';
 import { isWebPlatform } from '../utils/platformMode';
 import { ComponentType } from '../../constants/telemetry';
@@ -65,6 +66,7 @@ export const MainApp = () => {
   const [statsModalVisible, setStatsModalVisible] = useState(false);
   const [sosModalVisible, setSosModalVisible] = useState(false);
   const [inspectionModalVisible, setInspectionModalVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   const desktopScrollRef = useRef<ScrollView>(null);
 
@@ -197,6 +199,7 @@ export const MainApp = () => {
           onSelectTab={setActiveTab}
           onOpenQuickOdo={() => setQuickOdoVisible(true)}
           onOpenQuickFuel={() => setQuickFuelVisible(true)}
+          onOpenReport={() => setReportModalVisible(true)}
         />
 
         {/* DESKTOP SIDEBAR DOCK (VERTICAL SHORTCUTS) */}
@@ -224,6 +227,7 @@ export const MainApp = () => {
                 onOpenQuickFuel={() => setQuickFuelVisible(true)}
                 onScrollToTelemetry={scrollToTelemetry}
                 onOpenInspection={() => setInspectionModalVisible(true)}
+                onOpenReport={() => setReportModalVisible(true)}
                 onOpenServicesTab={() => {
                   setServicesInitialComp('oil');
                   setActiveTab('services');
@@ -273,7 +277,7 @@ export const MainApp = () => {
 
           {activeTab === 'profile' && (
             <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
-              <ProfileTab />
+              <ProfileTab onOpenReport={() => setReportModalVisible(true)} />
             </View>
           )}
         </ScrollView>
@@ -304,6 +308,14 @@ export const MainApp = () => {
           visible={inspectionModalVisible}
           onClose={() => setInspectionModalVisible(false)}
           onOpenQuickService={() => setActiveTab('services')}
+        />
+
+        {/* MODAL: REPORTE EJECUTIVO PDF */}
+        <VehicleReportModal
+          visible={reportModalVisible}
+          onClose={() => setReportModalVisible(false)}
+          myMoto={myMoto}
+          specs={specs}
         />
 
         {/* MODAL: ACTUALIZAR ODÓMETRO */}
@@ -409,7 +421,7 @@ export const MainApp = () => {
           {activeTab === 'services' && <ServicesTab initialComponent={servicesInitialComp} />}
           {activeTab === 'history' && <HistoryTab />}
           {activeTab === 'wallet' && <WalletTab />}
-          {activeTab === 'profile' && <ProfileTab />}
+          {activeTab === 'profile' && <ProfileTab onOpenReport={() => setReportModalVisible(true)} />}
         </View>
       </KeyboardAvoidingView>
 
@@ -769,6 +781,14 @@ export const MainApp = () => {
           </View>
         </View>
       </Modal>
+
+      {/* MODAL: REPORTE EJECUTIVO PDF (MOBILE) */}
+      <VehicleReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        myMoto={myMoto}
+        specs={specs}
+      />
 
     </View>
   );

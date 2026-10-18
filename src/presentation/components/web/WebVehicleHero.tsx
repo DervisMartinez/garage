@@ -16,6 +16,7 @@ interface WebVehicleHeroProps {
   onScrollToTelemetry: () => void;
   onOpenInspection?: () => void;
   onOpenServicesTab?: () => void;
+  onOpenReport?: () => void;
 }
 
 export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
@@ -26,6 +27,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
   onScrollToTelemetry,
   onOpenInspection,
   onOpenServicesTab,
+  onOpenReport,
 }) => {
   const { colors, mode } = useTheme();
   const { myMoto, motos, selectMoto, records } = useMyMoto();
@@ -489,6 +491,22 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
             activeOpacity={0.8}
           >
             <Text style={[styles.subPillText, { color: colors.onSurface }]}>+ CALENDARIO Y GASTOS</Text>
+          </TouchableOpacity>
+
+          {/* REPORTE EXPEDIENTE PDF */}
+          <TouchableOpacity
+            style={[styles.subPill, { 
+              borderColor: '#e53e3e',
+              backgroundColor: isDark ? 'rgba(229, 62, 62, 0.12)' : 'rgba(229, 62, 62, 0.08)',
+              paddingHorizontal: isSmallPhone ? 10 : 14,
+            }]}
+            onPress={onOpenReport}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="picture-as-pdf" size={14} color="#e53e3e" style={{ marginRight: 6 }} />
+            <Text style={[styles.subPillText, { color: '#e53e3e', fontFamily: F.bold, fontSize: isSmallPhone ? 10 : 10.5 }]}>
+              REPORTE PDF
+            </Text>
           </TouchableOpacity>
         </View>
 

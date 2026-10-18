@@ -226,9 +226,22 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteMoto = async (id: string) => {
-    await supabase.from('motos').delete().eq('id', id);
+    // 1. Optimistic local state update so UI updates immediately
+    const remaining = motos.filter(m => m.id !== id);
+    setMotos(remaining);
     if (myMoto?.id === id) {
-      setMyMoto(null);
+      setMyMoto(remaining.length > 0 ? remaining[0] : null);
+    }
+
+    // 2. Cascade delete records and vehicle from Supabase
+    try {
+      await supabase.from('service_records').delete().eq('moto_id', id);
+      const { error } = await supabase.from('motos').delete().eq('id', id);
+      if (error) {
+        console.warn('Aviso al eliminar moto en Supabase:', error);
+      }
+    } catch (e) {
+      console.error('Error eliminando moto:', e);
     }
     await loadDataFromCloud();
   };
