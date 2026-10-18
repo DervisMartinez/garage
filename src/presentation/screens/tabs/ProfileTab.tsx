@@ -24,6 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LegalDocModal, LegalDocType } from '../../components/LegalDocModal';
 import { EmergencyCrashModal } from '../../components/EmergencyCrashModal';
 import { isWebPlatform } from '../../utils/platformMode';
+import { isCar } from '../../../domain/entities/Moto';
 
 export const ProfileTab = () => {
   const { myMoto, motos, selectMoto, deleteMoto, updateMoto, logout, setIsAddingMoto } = useMyMoto();
@@ -54,6 +55,7 @@ export const ProfileTab = () => {
   const [showSOSModal, setShowSOSModal] = useState(false);
 
   const F = {
+    extrabold: 'Montserrat_800ExtraBold',
     bold: 'Montserrat_700Bold',
     semibold: 'Montserrat_600SemiBold',
     medium: 'Montserrat_500Medium',
@@ -458,51 +460,94 @@ export const ProfileTab = () => {
               <Text style={{ fontSize: 15, fontFamily: F.bold, color: colors.onSurface }}>Mis Vehículos Registrados</Text>
               <MaterialCommunityIcons name="engine" size={20} color={colors.primary} />
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+            <ScrollView 
+              horizontal 
+              keyboardShouldPersistTaps="handled"
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={{ gap: 12, paddingVertical: 4 }}
+            >
               {motos?.map((m) => {
                 const isSelected = m.id === myMoto.id;
+                const vehicleIsCar = isCar(m);
                 return (
                   <TouchableOpacity 
                     key={m.id}
                     onPress={() => selectMoto(m.id)}
                     onLongPress={() => confirmDeleteMoto(m.id)}
+                    activeOpacity={0.8}
                     style={{
                       backgroundColor: colors.surfaceContainer,
                       padding: 14,
                       borderRadius: 16,
                       borderWidth: 1.5,
-                      borderColor: isSelected ? colors.primary : 'transparent',
-                      width: 150
+                      borderColor: isSelected ? colors.primary : (mode === 'dark' ? 'rgba(64, 72, 92, 0.4)' : colors.outlineVariant),
+                      minWidth: 175,
+                      maxWidth: 220,
+                      cursor: Platform.OS === 'web' ? ('pointer' as any) : undefined,
                     }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Text style={{ fontFamily: F.bold, color: colors.onSurface, flex: 1 }} numberOfLines={2}>{m.brand} {m.model}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, paddingRight: 4 }}>
+                        <MaterialIcons 
+                          name={vehicleIsCar ? "directions-car" : "two-wheeler"} 
+                          size={18} 
+                          color={isSelected ? colors.primary : colors.onSurfaceVariant} 
+                        />
+                        <Text style={{ fontFamily: F.bold, color: isSelected ? colors.primary : colors.onSurface, fontSize: 13, flex: 1 }} numberOfLines={1}>
+                          {m.brand}
+                        </Text>
+                      </View>
                       {!isSelected && (
-                        <TouchableOpacity onPress={() => confirmDeleteMoto(m.id)} style={{ padding: 4 }}>
-                          <MaterialIcons name="delete-outline" size={18} color={colors.error} />
+                        <TouchableOpacity 
+                          onPress={() => confirmDeleteMoto(m.id)} 
+                          style={{ padding: 4, cursor: Platform.OS === 'web' ? ('pointer' as any) : undefined }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <MaterialIcons name="delete-outline" size={17} color={colors.error} />
                         </TouchableOpacity>
                       )}
+                      {isSelected && (
+                        <MaterialIcons name="check-circle" size={16} color={colors.primary} />
+                      )}
                     </View>
-                    <Text style={{ fontFamily: F.semibold, color: colors.onSurfaceVariant, fontSize: 12, marginTop: 6 }}>Año {m.year}</Text>
-                    <Text style={{ fontFamily: F.bold, color: colors.secondary, fontSize: 11 }}>{m.plate || 'Sin placa'}</Text>
+                    
+                    <Text style={{ fontFamily: F.extrabold, color: colors.onSurface, fontSize: 14 }} numberOfLines={1}>
+                      {m.model}
+                    </Text>
+                    
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                      <Text style={{ fontFamily: F.medium, color: colors.onSurfaceVariant, fontSize: 11 }}>
+                        Año {m.year}
+                      </Text>
+                      <View style={{ backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontFamily: F.bold, color: colors.secondary, fontSize: 10 }}>
+                          {m.plate || 'Sin placa'}
+                        </Text>
+                      </View>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
+              
               <TouchableOpacity
                 onPress={handleAddMoto}
+                activeOpacity={0.7}
                 style={{
-                  backgroundColor: colors.surfaceContainer,
+                  backgroundColor: mode === 'dark' ? 'rgba(0, 227, 253, 0.08)' : 'rgba(39, 95, 227, 0.06)',
                   padding: 14,
                   borderRadius: 16,
                   borderWidth: 1.5,
                   borderStyle: 'dashed',
-                  borderColor: colors.outline,
-                  width: 140,
+                  borderColor: mode === 'dark' ? '#00e3fd' : colors.primary,
+                  minWidth: 165,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  gap: 8
+                  gap: 8,
+                  cursor: Platform.OS === 'web' ? ('pointer' as any) : undefined,
                 }}>
-                <MaterialIcons name="add" size={28} color={colors.primary} />
-                <Text style={{ fontFamily: F.semibold, color: colors.primary, fontSize: 12, textAlign: 'center' }}>Agregar Vehículo</Text>
+                <MaterialIcons name="add-circle" size={26} color={mode === 'dark' ? '#00e3fd' : colors.primary} />
+                <Text style={{ fontFamily: F.bold, color: mode === 'dark' ? '#00e3fd' : colors.primary, fontSize: 12, textAlign: 'center' }}>
+                  Anexar un nuevo vehículo
+                </Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

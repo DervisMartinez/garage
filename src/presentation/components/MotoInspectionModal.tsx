@@ -318,9 +318,14 @@ export const MotoInspectionModal: React.FC<Props> = ({
 
     activeHotspots.forEach((h) => {
       const recs = records.filter((r) => r.type === h.id);
+      const isConfigured = recs.length > 0 || !!myMoto.isFromAgency;
+      if (!isConfigured) {
+        map[h.id] = 0;
+        return;
+      }
       const lastOdo = recs.length > 0
         ? recs.reduce((prev, curr) => (prev.odometer > curr.odometer ? prev : curr)).odometer
-        : (myMoto.isFromAgency ? 0 : Math.max(0, myMoto.currentOdometer - 1500));
+        : 0;
       map[h.id] = calculateWearPercentage(myMoto.currentOdometer, lastOdo, h.id, undefined, isVehicleCar);
     });
 
@@ -337,18 +342,17 @@ export const MotoInspectionModal: React.FC<Props> = ({
   const dossier = useMemo(() => {
     if (!myMoto || !selectedHotspot) return null;
 
-    const wear = wearMap[selectedHotspot.id] ?? 85;
-    const statusColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';
-    const statusText = wear >= 60 ? 'ÓPTIMO' : wear >= 30 ? 'PREVENTIVO' : 'CRÍTICO';
-
     const compRecords = records.filter((r) => r.type === selectedHotspot.id);
+    const isConfigured = compRecords.length > 0 || !!myMoto.isFromAgency;
+    const wear = isConfigured ? (wearMap[selectedHotspot.id] ?? 0) : 0;
+    const statusColor = !isConfigured ? '#ff9500' : (wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a');
+    const statusText = !isConfigured ? 'AJUSTAR' : (wear >= 60 ? 'ÓPTIMO' : wear >= 30 ? 'PREVENTIVO' : 'CRÍTICO');
+
     const lastRecord = compRecords.length > 0
       ? compRecords.reduce((prev, curr) => (prev.odometer > curr.odometer ? prev : curr))
       : null;
-    const lastOdo = lastRecord
-      ? lastRecord.odometer
-      : (myMoto.isFromAgency ? 0 : Math.max(0, myMoto.currentOdometer - 1500));
-    const kmSince = Math.max(0, myMoto.currentOdometer - lastOdo);
+    const lastOdo = lastRecord ? lastRecord.odometer : 0;
+    const kmSince = isConfigured ? Math.max(0, myMoto.currentOdometer - lastOdo) : 0;
 
     let oemSpecs: { label: string; value: string; icon: string }[] = [];
     let intervalNominal = 3000;
@@ -657,9 +661,10 @@ export const MotoInspectionModal: React.FC<Props> = ({
                 {showHotspots && (
                   <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
                     {activeHotspots.map((h) => {
-                      const wear = wearMap[h.id] ?? 85;
+                      const isConfigured = records.some(r => r.type === h.id) || !!myMoto.isFromAgency;
+                      const wear = isConfigured ? (wearMap[h.id] ?? 0) : 0;
                       const isSelected = selectedHotspot?.id === h.id;
-                      const statusColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';
+                      const statusColor = !isConfigured ? '#ff9500' : (wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a');
                       const leftPos = h.leftPct;
 
                       return (
@@ -721,11 +726,12 @@ export const MotoInspectionModal: React.FC<Props> = ({
                               {
                                 backgroundColor: statusColor,
                                 borderColor: isSelected ? '#ffffff' : statusColor,
+                                minWidth: !isConfigured ? 24 : undefined,
                               },
                             ]}
                           >
-                            <Text style={{ fontFamily: F.extrabold, fontSize: 9, color: '#ffffff' }}>
-                              {wear}%
+                            <Text style={{ fontFamily: F.extrabold, fontSize: !isConfigured ? 7.5 : 9, color: '#ffffff' }}>
+                              {!isConfigured ? '!' : `${wear}%`}
                             </Text>
                           </View>
                         </TouchableOpacity>

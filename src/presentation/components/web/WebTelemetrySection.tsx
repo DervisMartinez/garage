@@ -191,6 +191,9 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
           {
             backgroundColor: isDark ? 'rgba(255, 149, 0, 0.12)' : 'rgba(255, 149, 0, 0.08)',
             borderColor: 'rgba(255, 149, 0, 0.35)',
+            flexDirection: windowWidth < 650 ? 'column' : 'row',
+            alignItems: windowWidth < 650 ? 'stretch' : 'center',
+            gap: 12,
           }
         ]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
@@ -207,7 +210,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
             </View>
           </View>
           <TouchableOpacity
-            style={[styles.unconfiguredBannerBtn, { backgroundColor: '#ff9500' }]}
+            style={[styles.unconfiguredBannerBtn, { backgroundColor: '#ff9500', alignSelf: windowWidth < 650 ? 'flex-start' : 'center' }]}
             onPress={() => onOpenServicesTab()}
             activeOpacity={0.8}
           >
@@ -217,7 +220,13 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
       )}
 
       {/* 4 TELEMETRY WEAR CARDS (GRID) */}
-      <View style={styles.wearCardsGrid}>
+      <View style={[
+        styles.wearCardsGrid,
+        {
+          flexDirection: windowWidth < 650 ? 'column' : 'row',
+          gap: windowWidth < 650 ? 14 : 20,
+        }
+      ]}>
         {wearData.map((item) => {
           const isHealthy = item.isConfigured && item.wear > 40;
           const isWarning = item.isConfigured && item.wear <= 40 && item.wear > 15;
@@ -241,7 +250,9 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
                   borderColor: isUnconfigured
                     ? 'rgba(255, 149, 0, 0.45)'
                     : (isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)'),
-                  minWidth: windowWidth < 600 ? '100%' : 260,
+                  width: windowWidth < 650 ? '100%' : undefined,
+                  minWidth: windowWidth < 650 ? 0 : 260,
+                  flex: windowWidth < 650 ? undefined : 1,
                 }
               ]}
             >
@@ -318,13 +329,21 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
       </View>
 
       {/* SECOND ROW: QUICK SPECS & EXPENSE SUMMARY (Like Slide 2 & 3 in reference) */}
-      <View style={styles.bottomOverviewRow}>
+      <View style={[
+        styles.bottomOverviewRow,
+        {
+          flexDirection: windowWidth < 768 ? 'column' : 'row',
+          gap: windowWidth < 768 ? 14 : 20,
+        }
+      ]}>
         
         {/* QUICK SPECS OVERVIEW */}
         <View style={[styles.overviewCard, { 
           backgroundColor: isDark ? '#191c21' : '#ffffff',
           borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)',
-          minWidth: windowWidth < 700 ? '100%' : 280,
+          width: windowWidth < 768 ? '100%' : undefined,
+          minWidth: windowWidth < 768 ? 0 : 280,
+          flex: windowWidth < 768 ? undefined : 1,
         }]}>
           <View style={styles.overviewCardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -373,7 +392,9 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
         <View style={[styles.overviewCard, { 
           backgroundColor: isDark ? '#191c21' : '#ffffff',
           borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)',
-          minWidth: windowWidth < 700 ? '100%' : 280,
+          width: windowWidth < 768 ? '100%' : undefined,
+          minWidth: windowWidth < 768 ? 0 : 280,
+          flex: windowWidth < 768 ? undefined : 1,
         }]}>
           <View style={styles.overviewCardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -454,8 +475,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   wearCard: {
-    flex: 1,
-    minWidth: 260,
     borderWidth: 1,
     borderRadius: 18,
     padding: 20,
@@ -531,8 +550,6 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   overviewCard: {
-    flex: 1,
-    minWidth: 280,
     borderWidth: 1,
     borderRadius: 18,
     padding: 22,

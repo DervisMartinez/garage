@@ -177,7 +177,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
             styles.bikeShowcaseContainer,
             {
               width: '100%',
-              minHeight: isSmallPhone ? 250 : (isMobile ? 310 : 450),
+              minHeight: isSmallPhone ? 200 : (isMobile ? 260 : 420),
             }
           ]}>
             <TouchableOpacity 
@@ -192,7 +192,8 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
                   style={[
                     styles.bikeImage, 
                     { 
-                      height: isSmallPhone ? 220 : (isMobile ? 270 : (windowWidth < 1340 ? 330 : 400)) 
+                      height: isSmallPhone ? 180 : (isMobile ? 240 : (windowWidth < 1340 ? 330 : 400)),
+                      maxHeight: isSmallPhone ? 190 : 400,
                     }
                   ]}
                   resizeMode="contain"
@@ -383,7 +384,9 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
                 style={[
                   styles.primaryCtaBtn, 
                   { 
-                    flex: 1,
+                    flex: isSmallPhone ? undefined : 1,
+                    width: isSmallPhone ? '100%' : 'auto',
+                    minHeight: 46,
                     borderColor: isDark ? '#ffffff' : '#111319',
                   }
                 ]}
@@ -397,7 +400,14 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.secondaryCtaBtn, { flex: 1 }]}
+                style={[
+                  styles.secondaryCtaBtn, 
+                  { 
+                    flex: isSmallPhone ? undefined : 1,
+                    width: isSmallPhone ? '100%' : 'auto',
+                    minHeight: 46,
+                  }
+                ]}
                 onPress={onOpenQuickFuel}
                 activeOpacity={0.8}
               >
@@ -428,35 +438,49 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
         </View>
 
         {/* BOTTOM SUB-NAVIGATION PILLS (No SOS tab) */}
-        <View style={[styles.subPillsRow, { justifyContent: isMobile ? 'center' : 'flex-start', marginTop: isMobile ? 18 : 0 }]}>
+        <View style={[
+          styles.subPillsRow, 
+          { 
+            justifyContent: isMobile ? 'center' : 'flex-start', 
+            marginTop: isSmallPhone ? 16 : (isMobile ? 18 : 0),
+            gap: isSmallPhone ? 8 : 10,
+          }
+        ]}>
           {onOpenInspection && (
             <TouchableOpacity
               style={[styles.subPill, { 
                 borderColor: '#00e3fd', 
-                backgroundColor: isDark ? 'rgba(0, 227, 253, 0.12)' : 'rgba(0, 227, 253, 0.08)' 
+                backgroundColor: isDark ? 'rgba(0, 227, 253, 0.12)' : 'rgba(0, 227, 253, 0.08)',
+                paddingHorizontal: isSmallPhone ? 10 : 14,
               }]}
               onPress={onOpenInspection}
               activeOpacity={0.8}
             >
               <MaterialIcons name="3d-rotation" size={14} color="#00e3fd" style={{ marginRight: 6 }} />
-              <Text style={[styles.subPillText, { color: '#00e3fd', fontFamily: F.bold }]}>+ INSPECCIÓN 3D</Text>
+              <Text style={[styles.subPillText, { color: '#00e3fd', fontFamily: F.bold, fontSize: isSmallPhone ? 10 : 10.5 }]}>+ INSPECCIÓN 3D</Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            style={[styles.subPill, { borderColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]}
+            style={[styles.subPill, { 
+              borderColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc',
+              paddingHorizontal: isSmallPhone ? 10 : 14,
+            }]}
             onPress={onScrollToTelemetry}
             activeOpacity={0.8}
           >
-            <Text style={[styles.subPillText, { color: colors.onSurface }]}>+ TELEMETRÍA Y DESGASTE</Text>
+            <Text style={[styles.subPillText, { color: colors.onSurface, fontSize: isSmallPhone ? 10 : 10.5 }]}>+ TELEMETRÍA Y DESGASTE</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.subPill, { borderColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]}
+            style={[styles.subPill, { 
+              borderColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc',
+              paddingHorizontal: isSmallPhone ? 10 : 14,
+            }]}
             onPress={onOpenSpecs}
             activeOpacity={0.8}
           >
-            <Text style={[styles.subPillText, { color: colors.onSurface }]}>+ FICHA TÉCNICA</Text>
+            <Text style={[styles.subPillText, { color: colors.onSurface, fontSize: isSmallPhone ? 10 : 10.5 }]}>+ FICHA TÉCNICA</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

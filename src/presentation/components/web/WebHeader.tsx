@@ -33,8 +33,8 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
   const isTablet = width >= 600 && width < 1024;
   const showInlineTabs = width >= 1500;
   const showSubNav = width < 1500;
-  const isSmallPhone = width < 480;
-  const isTinyPhone = width < 370;
+  const isSmallPhone = width < 520;
+  const isTinyPhone = width < 360;
   const isCurrentCar = isCar(myMoto);
 
   const F = {
@@ -146,8 +146,8 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
                 style={[styles.motoSelectorPill, { 
                   backgroundColor: isDark ? 'rgba(29, 32, 37, 0.9)' : '#ececf0',
                   borderColor: motoMenuVisible ? '#00e3fd' : (isDark ? '#40485c' : '#d0d4dc'),
-                  maxWidth: isDesktopWide ? 220 : (isTinyPhone ? 85 : (isSmallPhone ? 110 : (isTablet ? 170 : 140))),
-                  paddingHorizontal: isSmallPhone ? 6 : 10,
+                  maxWidth: isDesktopWide ? 220 : (isTinyPhone ? 115 : (isSmallPhone ? 175 : (isTablet ? 180 : 150))),
+                  paddingHorizontal: isSmallPhone ? 8 : 10,
                   paddingVertical: isSmallPhone ? 4 : 5,
                 }]}
                 onPress={() => setMotoMenuVisible(!motoMenuVisible)}
@@ -322,41 +322,45 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
             />
           </TouchableOpacity>
 
-          {/* QUICK LOG BUTTON (+ KM) */}
-          <TouchableOpacity
-            style={[
-              styles.quickAddButton,
-              {
-                paddingHorizontal: isSmallPhone ? 7 : (isDesktopCompact ? 9 : 12),
-                paddingVertical: isSmallPhone ? 5 : 6,
-                borderRadius: isSmallPhone ? 13 : 16,
-              }
-            ]}
-            onPress={onOpenQuickOdo}
-            activeOpacity={0.8}
-            accessibilityLabel="Actualizar kilometraje"
-          >
-            <MaterialIcons name="speed" size={isSmallPhone ? 13 : 15} color="#ffffff" />
-            <Text style={[styles.quickAddText, isSmallPhone && { fontSize: 10 }]}>{isSmallPhone ? 'KM' : '+ KM'}</Text>
-          </TouchableOpacity>
+          {/* QUICK LOG BUTTON (+ KM) - On desktop/tablets; on mobile phones buttons are prominent in Hero */}
+          {!isSmallPhone && (
+            <TouchableOpacity
+              style={[
+                styles.quickAddButton,
+                {
+                  paddingHorizontal: isDesktopCompact ? 9 : 12,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                }
+              ]}
+              onPress={onOpenQuickOdo}
+              activeOpacity={0.8}
+              accessibilityLabel="Actualizar kilometraje"
+            >
+              <MaterialIcons name="speed" size={15} color="#ffffff" />
+              <Text style={styles.quickAddText}>+ KM</Text>
+            </TouchableOpacity>
+          )}
 
           {/* FUEL LOG BUTTON (+ GAS) */}
-          <TouchableOpacity
-            style={[
-              styles.fuelButton,
-              {
-                paddingHorizontal: isSmallPhone ? 7 : (isDesktopCompact ? 9 : 11),
-                paddingVertical: isSmallPhone ? 5 : 6,
-                borderRadius: isSmallPhone ? 13 : 16,
-              }
-            ]}
-            onPress={onOpenQuickFuel}
-            activeOpacity={0.8}
-            accessibilityLabel="Registrar gasolina"
-          >
-            <MaterialCommunityIcons name="gas-station" size={isSmallPhone ? 13 : 15} color="#00e3fd" />
-            <Text style={[styles.fuelText, isSmallPhone && { fontSize: 10 }]}>{isSmallPhone ? 'GAS' : '+ GAS'}</Text>
-          </TouchableOpacity>
+          {!isSmallPhone && (
+            <TouchableOpacity
+              style={[
+                styles.fuelButton,
+                {
+                  paddingHorizontal: isDesktopCompact ? 9 : 11,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                }
+              ]}
+              onPress={onOpenQuickFuel}
+              activeOpacity={0.8}
+              accessibilityLabel="Registrar gasolina"
+            >
+              <MaterialCommunityIcons name="gas-station" size={15} color="#00e3fd" />
+              <Text style={styles.fuelText}>+ GAS</Text>
+            </TouchableOpacity>
+          )}
 
           {/* SIGN OUT */}
           <TouchableOpacity

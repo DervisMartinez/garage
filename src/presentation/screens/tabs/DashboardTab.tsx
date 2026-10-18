@@ -95,10 +95,11 @@ export const DashboardTab = () => {
 
   const calcPercent = (type: ComponentType) => {
     if (!myMoto) return 0;
-    const lastOdo = getLastOdo(type);
-    if (lastOdo === myMoto.currentOdometer && !myMoto.isFromAgency && records.filter(r => r.type === type).length === 0) {
-      return 0; // No data, not from agency
+    const typeRecords = records.filter(r => r.type === type);
+    if (typeRecords.length === 0 && !myMoto.isFromAgency) {
+      return 0; // No data, not from agency -> requiere ajuste inicial
     }
+    const lastOdo = getLastOdo(type);
     let override = undefined; 
     if (type === 'oil') { 
       const typeRecords = records.filter(r => r.type === 'oil'); 

@@ -52,7 +52,7 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const loadDataFromCloud = async () => {
+  const loadDataFromCloud = async (preferredMotoId?: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -80,15 +80,35 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
             vehicleType,
           };
         });
-        setMotos(parsedMotos);
+
+        // Deduplicate any accidental duplicate entries in Supabase (by brand, model, year, plate)
+        const uniqueMotos: Moto[] = [];
+        const seenKeys = new Set<string>();
+        for (const m of parsedMotos) {
+          const key = `${m.brand.trim().toLowerCase()}-${m.model.trim().toLowerCase()}-${m.year}-${(m.plate || '').trim().toLowerCase()}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            uniqueMotos.push(m);
+          }
+        }
+
+        setMotos(uniqueMotos);
         
         // Set myMoto if not set, or keep the existing one if it still exists
         setMyMoto((prev) => {
-          if (prev) {
-            const found = parsedMotos.find(m => m.id === prev.id);
+          const targetId = preferredMotoId || prev?.id;
+          if (targetId) {
+            const found = uniqueMotos.find(m => m.id === targetId);
             if (found) return found;
           }
-          return parsedMotos[0];
+          if (prev) {
+            const foundByDetails = uniqueMotos.find(
+              m => m.brand.trim().toLowerCase() === prev.brand.trim().toLowerCase() && 
+                   m.model.trim().toLowerCase() === prev.model.trim().toLowerCase()
+            );
+            if (foundByDetails) return foundByDetails;
+          }
+          return uniqueMotos[0] || null;
         });
       } else {
         setMotos([]);
@@ -133,23 +153,47 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
   }, [myMoto?.id]);
 
   const saveMoto = async (moto: Moto) => {
-    setMotos(prev => [...prev.filter(m => m.id !== moto.id), moto]);
-    setMyMoto(moto);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('motos').insert({
-        id: moto.id.length > 20 ? moto.id : undefined,
-        user_id: user.id,
-        brand: moto.brand,
-        model: moto.model,
-        year: moto.year,
-        image_url: moto.imageUrl,
-        catalog_id: null,
-        current_odometer: moto.currentOdometer,
-        is_from_agency: moto.isFromAgency
-      });
-      await loadDataFromCloud();
+      try {
+        const { data: insertedData, error } = await supabase.from('motos').insert({
+          user_id: user.id,
+          brand: moto.brand,
+          model: moto.model,
+          year: moto.year,
+          image_url: moto.imageUrl,
+          catalog_id: null,
+          current_odometer: moto.currentOdometer,
+          is_from_agency: moto.isFromAgency
+        }).select().single();
+
+        if (error) throw error;
+
+        if (insertedData) {
+          const vehicleType: VehicleType = isCar({ brand: insertedData.brand, model: insertedData.model }) ? 'car' : 'moto';
+          const createdMoto: Moto = {
+            id: insertedData.id,
+            brand: insertedData.brand || moto.brand,
+            model: insertedData.model || moto.model,
+            year: insertedData.year || moto.year,
+            imageUrl: insertedData.image_url || moto.imageUrl,
+            catalogImageRes: moto.catalogImageRes,
+            plate: insertedData.plate || moto.plate,
+            currentOdometer: insertedData.current_odometer ?? moto.currentOdometer,
+            isFromAgency: insertedData.is_from_agency ?? moto.isFromAgency,
+            vehicleType,
+          };
+          setMotos(prev => [...prev.filter(m => m.id !== createdMoto.id), createdMoto]);
+          setMyMoto(createdMoto);
+          await loadDataFromCloud(createdMoto.id);
+          return;
+        }
+      } catch (err) {
+        console.warn('Error guardando en Supabase, aplicando guardado local:', err);
+      }
     }
+    setMotos(prev => [...prev.filter(m => m.id !== moto.id), moto]);
+    setMyMoto(moto);
   };
 
   const updateMoto = async (updates: Partial<Moto>) => {
