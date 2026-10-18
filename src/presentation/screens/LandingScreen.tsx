@@ -90,6 +90,19 @@ const FEATURED_MOTOS: FeaturedMoto[] = [
     spanishQuote: 'Diseñada para conquistar la ciudad todos los días.',
     colorAccent: '#00ae78',
   },
+  {
+    index: '05',
+    brand: 'CHEVROLET',
+    model: 'Optra Advance 2011',
+    category: 'Sedán Ejecutivo & Familiar',
+    hp: '121 HP',
+    displacement: '1.8L DOHC 16V',
+    topSpeed: '185 km/h',
+    image: require('../../../assets/images/autos/CHEVROLET/SEDAN/OPTRA 2011.png'),
+    quote: 'Comfort, technology and reliable engineering.',
+    spanishQuote: 'Confort, tecnología Chevystar y control integral en cada kilómetro.',
+    colorAccent: '#FFD60A',
+  },
 ];
 
 export const LandingScreen: React.FC<Props> = ({

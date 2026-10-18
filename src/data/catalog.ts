@@ -1,12 +1,19 @@
 // ARCHIVO GENERADO AUTOMÁTICAMENTE. NO EDITAR A MANO.
 // Para actualizar este catálogo, ejecuta: node scripts/generateCatalog.js
 
-export interface CatalogMoto {
+export type VehicleType = 'moto' | 'car';
+
+export interface CatalogVehicle {
   id: string;
   brand: string;
   model: string;
+  vehicleType?: VehicleType;
+  category?: string;
+  year?: number;
   imageRes: any;
 }
+
+export type CatalogMoto = CatalogVehicle;
 
 export const MOTO_CATALOG: CatalogMoto[] = [
   {
@@ -79,6 +86,34 @@ export const MOTO_CATALOG: CatalogMoto[] = [
     id: "KADI-Kadi Lovis 150".replace(/\s+/g, '-').toLowerCase(),
     brand: "KADI",
     model: "Kadi Lovis 150",
+    vehicleType: 'moto',
     imageRes: require('../../assets/images/motos/KADI/Kadi Lovis 150.png'),
   },
 ];
+
+export const CAR_CATALOG: CatalogVehicle[] = [
+  {
+    id: 'chevrolet-optra-2011',
+    brand: 'CHEVROLET',
+    model: 'Optra 2011',
+    vehicleType: 'car',
+    category: 'SEDAN',
+    year: 2011,
+    imageRes: require('../../assets/images/autos/CHEVROLET/SEDAN/OPTRA 2011.png'),
+  },
+  {
+    id: 'chevrolet-optra-advance-2011',
+    brand: 'CHEVROLET',
+    model: 'Optra Advance 2011',
+    vehicleType: 'car',
+    category: 'SEDAN',
+    year: 2011,
+    imageRes: require('../../assets/images/autos/CHEVROLET/SEDAN/OPTRA 2011.png'),
+  },
+];
+
+export const VEHICLE_CATALOG: CatalogVehicle[] = [
+  ...MOTO_CATALOG.map(m => ({ ...m, vehicleType: 'moto' as VehicleType })),
+  ...CAR_CATALOG,
+];
+

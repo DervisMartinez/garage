@@ -15,7 +15,8 @@ import {
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useMyMoto } from '../context/MotoContext';
-import { MOTO_CATALOG } from '../../data/catalog';
+import { VEHICLE_CATALOG, MOTO_CATALOG } from '../../data/catalog';
+import { isCar } from '../../domain/entities/Moto';
 import { calculateWearPercentage, COMPONENT_NAMES, ComponentType } from '../../constants/telemetry';
 import { getMotoSpecs, MotoSpecs } from '../../data/specs';
 
@@ -36,7 +37,7 @@ interface HotspotDef {
   tip: string;
 }
 
-const HOTSPOTS: HotspotDef[] = [
+const MOTO_HOTSPOTS: HotspotDef[] = [
   {
     id: 'oil',
     title: 'Aceite de Motor 4T',
@@ -119,6 +120,132 @@ const HOTSPOTS: HotspotDef[] = [
   },
 ];
 
+const CAR_HOTSPOTS: HotspotDef[] = [
+  {
+    id: 'oil',
+    title: 'Aceite & Filtro Motor',
+    sub: 'Lubricación 1.8L DOHC 16V',
+    topPct: 46,
+    leftPct: 24,
+    icon: 'opacity',
+    iconFamily: 'material',
+    tip: '4.0 Litros 10W-30 / 15W-40 Semi-Sintético. Cambio cada 5.000 km.',
+  },
+  {
+    id: 'timing_belt',
+    title: 'Correa de Distribución (Tiempo)',
+    sub: 'Kit Distribución DOHC 16V',
+    topPct: 44,
+    leftPct: 20,
+    icon: 'sync',
+    iconFamily: 'material',
+    tip: '¡Crítico! Motor de interferencia. Reemplazo cada 40.000 - 50.000 km junto a bomba de agua y tensores.',
+  },
+  {
+    id: 'coolant',
+    title: 'Refrigerante / Radiador',
+    sub: 'Sistema Térmico Dex-Cool',
+    topPct: 48,
+    leftPct: 15,
+    icon: 'invert-colors',
+    iconFamily: 'material',
+    tip: 'Capacidad 7.0 Litros al 50/50. Previene recalentamiento en el motor E-TEC II.',
+  },
+  {
+    id: 'brakes_front',
+    title: 'Frenos Delanteros',
+    sub: 'Discos Ventilados 256 mm',
+    topPct: 68,
+    leftPct: 22,
+    icon: 'pan-tool',
+    iconFamily: 'material',
+    tip: 'Revisa espesor de pastillas cada 10.000 km y sustitución a los 30.000 km.',
+  },
+  {
+    id: 'brakes_rear',
+    title: 'Frenos Traseros',
+    sub: 'Discos Sólidos 258 mm (ABS)',
+    topPct: 68,
+    leftPct: 80,
+    icon: 'pan-tool',
+    iconFamily: 'material',
+    tip: 'Discos con tambor interno de freno de mano. Vida estimada 40.000 - 50.000 km.',
+  },
+  {
+    id: 'tires_front',
+    title: 'Neumáticos Delanteros',
+    sub: 'Medida 195/55 R15',
+    topPct: 66,
+    leftPct: 22,
+    icon: 'album',
+    iconFamily: 'material',
+    tip: 'Mantén presión a 30 - 32 PSI en frío. Rotar cada 10.000 km para desgaste parejo.',
+  },
+  {
+    id: 'tires_rear',
+    title: 'Neumáticos Traseros',
+    sub: 'Medida 195/55 R15',
+    topPct: 66,
+    leftPct: 80,
+    icon: 'album',
+    iconFamily: 'material',
+    tip: 'Presión 30 - 32 PSI. Inspecciona alineación del tren multibrazo independiente.',
+  },
+  {
+    id: 'cabin_filter',
+    title: 'Filtro de Habitáculo / A/C',
+    sub: 'Sistema de Climatización',
+    topPct: 42,
+    leftPct: 42,
+    icon: 'air',
+    iconFamily: 'material',
+    tip: 'Ubicado tras la guantera. Reemplazar cada 15.000 km o 1 año para aire limpio.',
+  },
+  {
+    id: 'air_filter',
+    title: 'Filtro de Aire Motor',
+    sub: 'Admisión de Aire MPFI',
+    topPct: 40,
+    leftPct: 28,
+    icon: 'air',
+    iconFamily: 'material',
+    tip: 'Inspeccionar cada 10.000 km. Asegura mezcla de combustible y potencia óptima.',
+  },
+  {
+    id: 'battery',
+    title: 'Batería 12V 60Ah',
+    sub: 'Sistema Eléctrico 550 CCA',
+    topPct: 44,
+    leftPct: 32,
+    icon: 'battery-charging-full',
+    iconFamily: 'material',
+    tip: 'Vida promedio 2 a 3 años. Revisa bornes limpios y voltaje en reposo (>12.6V).',
+  },
+  {
+    id: 'spark_plugs',
+    title: 'Bujías (x4)',
+    sub: 'NGK BKR6E-11 / Champion',
+    topPct: 46,
+    leftPct: 26,
+    icon: 'flash-on',
+    iconFamily: 'material',
+    tip: 'Calibración 1.1 mm. Cambio cada 30.000 km junto con cables de alta tensión.',
+  },
+  {
+    id: 'shock_absorbers',
+    title: 'Amortiguadores & Suspensión',
+    sub: 'McPherson Del. / Dual-Link Tras.',
+    topPct: 58,
+    leftPct: 50,
+    icon: 'build',
+    iconFamily: 'material',
+    tip: 'Revisión cada 20.000 km. Reemplazar entre 60.000 y 80.000 km.',
+  },
+];
+
+const HOTSPOTS = MOTO_HOTSPOTS;
+
+
 export const MotoInspectionModal: React.FC<Props> = ({
   visible,
   onClose,
@@ -132,10 +259,18 @@ export const MotoInspectionModal: React.FC<Props> = ({
   const isDesktop = windowWidth >= 900;
   const useNativeDriver = Platform.OS !== 'web';
 
+  const isVehicleCar = isCar(myMoto);
+  const activeHotspots = isVehicleCar ? CAR_HOTSPOTS : MOTO_HOTSPOTS;
+
   // Selected Hotspot for detail inspection card
-  const [selectedHotspot, setSelectedHotspot] = useState<HotspotDef | null>(HOTSPOTS[0]);
+  const [selectedHotspot, setSelectedHotspot] = useState<HotspotDef | null>(activeHotspots[0]);
   const [showHotspots, setShowHotspots] = useState(true);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+
+  // Synchronize hotspot when active vehicle changes
+  useEffect(() => {
+    setSelectedHotspot(activeHotspots[0]);
+  }, [isVehicleCar, myMoto?.id]);
 
   // Animated Values for zoom and hotspot pulse
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -167,7 +302,11 @@ export const MotoInspectionModal: React.FC<Props> = ({
   const imageSource = useMemo(() => {
     if (!myMoto) return null;
     if (myMoto.imageUrl) return { uri: myMoto.imageUrl };
-    const cat = MOTO_CATALOG.find((m) => m.brand === myMoto.brand && m.model === myMoto.model);
+    const cat = VEHICLE_CATALOG.find(
+      (m) => m.brand.toLowerCase() === myMoto.brand.toLowerCase() && m.model.toLowerCase() === myMoto.model.toLowerCase()
+    ) || VEHICLE_CATALOG.find(
+      (m) => m.brand.toLowerCase() === myMoto.brand.toLowerCase()
+    );
     if (cat?.imageRes) return cat.imageRes;
     return null;
   }, [myMoto]);
@@ -177,16 +316,16 @@ export const MotoInspectionModal: React.FC<Props> = ({
     if (!myMoto) return {} as Record<string, number>;
     const map: Record<string, number> = {};
 
-    HOTSPOTS.forEach((h) => {
+    activeHotspots.forEach((h) => {
       const recs = records.filter((r) => r.type === h.id);
       const lastOdo = recs.length > 0
         ? recs.reduce((prev, curr) => (prev.odometer > curr.odometer ? prev : curr)).odometer
         : (myMoto.isFromAgency ? 0 : Math.max(0, myMoto.currentOdometer - 1500));
-      map[h.id] = calculateWearPercentage(myMoto.currentOdometer, lastOdo, h.id);
+      map[h.id] = calculateWearPercentage(myMoto.currentOdometer, lastOdo, h.id, undefined, isVehicleCar);
     });
 
     return map;
-  }, [myMoto, records]);
+  }, [myMoto, records, activeHotspots, isVehicleCar]);
 
   // Factory Specifications (OEM)
   const specs = useMemo(() => {
@@ -217,43 +356,83 @@ export const MotoInspectionModal: React.FC<Props> = ({
     switch (selectedHotspot.id) {
       case 'oil':
         oemSpecs = [
-          { label: 'Viscosidad OEM', value: specs?.oilTypeRecommended || '20W-50 4T JASO MA2', icon: 'opacity' },
-          { label: 'Capacidad Cárter', value: specs?.oilCapacity || '1.0 Litro', icon: 'local-gas-station' },
-          { label: 'Frecuencia Sugerida', value: specs?.maintenanceIntervalOil || 'Cada 2,500 - 3,000 km', icon: 'schedule' },
+          { label: 'Viscosidad OEM', value: specs?.oilTypeRecommended || (isVehicleCar ? '10W-30 / 15W-40 Semi-Sintético' : '20W-50 4T JASO MA2'), icon: 'opacity' },
+          { label: 'Capacidad Cárter', value: specs?.oilCapacity || (isVehicleCar ? '4.0 Litros (con filtro)' : '1.0 Litro'), icon: 'local-gas-station' },
+          { label: 'Frecuencia Sugerida', value: specs?.maintenanceIntervalOil || (isVehicleCar ? 'Cada 5.000 - 7.500 km' : 'Cada 2,500 - 3,000 km'), icon: 'schedule' },
         ];
-        intervalNominal = 3000;
+        intervalNominal = isVehicleCar ? 6000 : 3000;
+        break;
+      case 'timing_belt':
+        oemSpecs = [
+          { label: 'Tipo de Correa', value: specs?.timingBeltType || 'Correa DOHC 16V (162 dientes)', icon: 'sync' },
+          { label: 'Reemplazo Mandatorio', value: specs?.maintenanceIntervalTimingBelt || 'Cada 40.000 - 50.000 km (Crítico)', icon: 'schedule' },
+          { label: 'Componentes del Kit', value: 'Correa + Polea Tensora + Bomba Agua', icon: 'build' },
+        ];
+        intervalNominal = 45000;
+        break;
+      case 'coolant':
+        oemSpecs = [
+          { label: 'Especificación', value: 'Dex-Cool 50/50 Larga Duración', icon: 'invert-colors' },
+          { label: 'Capacidad Radiador', value: specs?.coolantCapacity || '7.0 Litros', icon: 'local-gas-station' },
+          { label: 'Frecuencia Cambio', value: 'Cada 40.000 km o 2 años', icon: 'schedule' },
+        ];
+        intervalNominal = 40000;
+        break;
+      case 'cabin_filter':
+        oemSpecs = [
+          { label: 'Ubicación', value: 'Bajo tablero / tras guantera', icon: 'air' },
+          { label: 'Frecuencia Sugerida', value: 'Cada 15.000 km o 1 año', icon: 'schedule' },
+          { label: 'Elemento', value: 'Carbón activo anti-polen y A/C', icon: 'check-circle' },
+        ];
+        intervalNominal = 15000;
+        break;
+      case 'battery':
+        oemSpecs = [
+          { label: 'Capacidad OEM', value: specs?.battery || '12V 60Ah - 550 CCA', icon: 'battery-charging-full' },
+          { label: 'Voltaje en Reposo', value: '12.6V a 12.8V', icon: 'speed' },
+          { label: 'Vida Útil Estimada', value: '2 a 3 años / 40.000 km', icon: 'schedule' },
+        ];
+        intervalNominal = 40000;
+        break;
+      case 'shock_absorbers':
+        oemSpecs = [
+          { label: 'Suspensión Delantera', value: specs?.suspensionFront || 'McPherson con barra estabilizadora', icon: 'build' },
+          { label: 'Suspensión Trasera', value: specs?.suspensionRear || 'Dual-Link multibrazo independiente', icon: 'build' },
+          { label: 'Reemplazo Sugerido', value: 'Cada 60.000 - 80.000 km', icon: 'schedule' },
+        ];
+        intervalNominal = 60000;
         break;
       case 'brakes_front':
         oemSpecs = [
-          { label: 'Sistema', value: specs?.brakesFront || 'Disco hidráulico ventilado 240mm', icon: 'build' },
+          { label: 'Sistema', value: specs?.brakesFront || (isVehicleCar ? 'Discos ventilados 256 mm' : 'Disco hidráulico ventilado 240mm'), icon: 'build' },
           { label: 'Espesor Mínimo', value: 'Min 2.0 mm pastillas', icon: 'straighten' },
-          { label: 'Fluido Hidráulico', value: 'DOT 3 / DOT 4', icon: 'invert-colors' },
+          { label: 'Fluido Hidráulico', value: isVehicleCar ? 'DOT 4' : 'DOT 3 / DOT 4', icon: 'invert-colors' },
         ];
-        intervalNominal = 6000;
+        intervalNominal = isVehicleCar ? 30000 : 6000;
         break;
       case 'brakes_rear':
         oemSpecs = [
-          { label: 'Sistema', value: specs?.brakesRear || 'Tambor mecánico con zapatas', icon: 'build' },
-          { label: 'Juego Libre Pedal', value: '20 - 30 mm holgura', icon: 'straighten' },
-          { label: 'Inspección', value: 'Revisión cada 3,000 km', icon: 'schedule' },
+          { label: 'Sistema', value: specs?.brakesRear || (isVehicleCar ? 'Discos sólidos 258 mm (ABS)' : 'Tambor mecánico con zapatas'), icon: 'build' },
+          { label: 'Freno de Mano', value: isVehicleCar ? 'Tambor interno en disco' : 'Varilla de ajuste 20-30mm', icon: 'straighten' },
+          { label: 'Inspección', value: isVehicleCar ? 'Cada 20.000 km' : 'Revisión cada 3,000 km', icon: 'schedule' },
         ];
-        intervalNominal = 6000;
+        intervalNominal = isVehicleCar ? 45000 : 6000;
         break;
       case 'tires_front':
         oemSpecs = [
-          { label: 'Medida Delantera', value: specs?.frontTireSize || '2.75 - 18', icon: 'album' },
-          { label: 'Presión en Frío', value: specs?.frontTirePressure || '28 PSI', icon: 'speed' },
+          { label: 'Medida Delantera', value: specs?.frontTireSize || (isVehicleCar ? '195/55 R15' : '2.75 - 18'), icon: 'album' },
+          { label: 'Presión en Frío', value: specs?.frontTirePressure || (isVehicleCar ? '30 - 32 PSI' : '28 PSI'), icon: 'speed' },
           { label: 'Profundidad Canales', value: 'Min 1.6 mm banda', icon: 'straighten' },
         ];
-        intervalNominal = 12000;
+        intervalNominal = isVehicleCar ? 40000 : 12000;
         break;
       case 'tires_rear':
         oemSpecs = [
-          { label: 'Medida Trasera', value: specs?.rearTireSize || '90/90 - 18', icon: 'album' },
-          { label: 'Presión en Frío', value: specs?.rearTirePressure || '32 PSI', icon: 'speed' },
+          { label: 'Medida Trasera', value: specs?.rearTireSize || (isVehicleCar ? '195/55 R15' : '90/90 - 18'), icon: 'album' },
+          { label: 'Presión en Frío', value: specs?.rearTirePressure || (isVehicleCar ? '30 - 32 PSI' : '32 PSI'), icon: 'speed' },
           { label: 'Profundidad Canales', value: 'Min 2.0 mm (Tracción)', icon: 'straighten' },
         ];
-        intervalNominal = 10000;
+        intervalNominal = isVehicleCar ? 40000 : 10000;
         break;
       case 'chain':
         oemSpecs = [
@@ -265,19 +444,19 @@ export const MotoInspectionModal: React.FC<Props> = ({
         break;
       case 'air_filter':
         oemSpecs = [
-          { label: 'Admisión', value: 'Elemento lavable / papel', icon: 'air' },
-          { label: 'Mantenimiento', value: 'Sopleteo o reemplazo', icon: 'build' },
-          { label: 'Frecuencia', value: 'Cada 4,000 km', icon: 'schedule' },
+          { label: 'Admisión', value: isVehicleCar ? 'Filtro de aire MPFI' : 'Elemento lavable / papel', icon: 'air' },
+          { label: 'Mantenimiento', value: isVehicleCar ? 'Sustitución recomendada' : 'Sopleteo o reemplazo', icon: 'build' },
+          { label: 'Frecuencia', value: isVehicleCar ? 'Cada 15.000 - 20.000 km' : 'Cada 4,000 km', icon: 'schedule' },
         ];
-        intervalNominal = 4000;
+        intervalNominal = isVehicleCar ? 20000 : 4000;
         break;
       case 'spark_plugs':
         oemSpecs = [
-          { label: 'Referencia OEM', value: specs?.sparkPlug || 'NGK D8EA', icon: 'flash-on' },
-          { label: 'Luz de Electrodo', value: '0.7 - 0.8 mm', icon: 'straighten' },
-          { label: 'Diagnóstico Visual', value: 'Color café claro en punta', icon: 'search' },
+          { label: 'Referencia OEM', value: specs?.sparkPlug || (isVehicleCar ? 'NGK BKR6E-11 / Champion' : 'NGK D8EA'), icon: 'flash-on' },
+          { label: 'Luz de Electrodo', value: isVehicleCar ? '1.1 mm' : '0.7 - 0.8 mm', icon: 'straighten' },
+          { label: 'Diagnóstico Visual', value: 'Color café claro en electrodo', icon: 'search' },
         ];
-        intervalNominal = 6000;
+        intervalNominal = isVehicleCar ? 30000 : 6000;
         break;
     }
 
@@ -377,7 +556,7 @@ export const MotoInspectionModal: React.FC<Props> = ({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipsScrollContent}
           >
-            {HOTSPOTS.map((h) => {
+            {activeHotspots.map((h) => {
               const isSelected = selectedHotspot?.id === h.id;
               const wear = wearMap[h.id] ?? 85;
               const statusDotColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';
@@ -426,7 +605,7 @@ export const MotoInspectionModal: React.FC<Props> = ({
         {/* MAIN BODY AREA: DESKTOP SPLIT OR MOBILE STACK */}
         <View style={[styles.mainBodyContainer, { flexDirection: isDesktop ? 'row' : 'column' }]}>
           
-          {/* LEFT SECTION: MOTORCYCLE INTERACTIVE CANVAS */}
+          {/* LEFT SECTION: VEHICLE INTERACTIVE CANVAS */}
           <View style={[styles.canvasContainer, { flex: isDesktop ? 1.15 : 1 }]}>
             
             {/* WATERMARK MODEL BACKGROUND */}
@@ -440,7 +619,7 @@ export const MotoInspectionModal: React.FC<Props> = ({
               {myMoto.model}
             </Text>
 
-            {/* STABLE 2D SCALABLE MOTORCYCLE WRAPPER */}
+            {/* STABLE 2D SCALABLE VEHICLE WRAPPER */}
             <View style={styles.bikeWrapperBox}>
               <Animated.View
                 style={[
@@ -450,7 +629,7 @@ export const MotoInspectionModal: React.FC<Props> = ({
                   },
                 ]}
               >
-                {/* IMAGEN DE LA MOTO */}
+                {/* IMAGEN DEL VEHÍCULO */}
                 {imageSource ? (
                   <Image
                     source={imageSource}
@@ -459,14 +638,14 @@ export const MotoInspectionModal: React.FC<Props> = ({
                   />
                 ) : (
                   <View style={styles.placeholderContainer}>
-                    <MaterialIcons name="two-wheeler" size={160} color="#4169E1" />
+                    <MaterialIcons name={isVehicleCar ? "directions-car" : "two-wheeler"} size={160} color="#4169E1" />
                     <Text style={{ fontFamily: F.bold, color: colors.onSurfaceVariant, marginTop: 12 }}>
                       {myMoto.brand} {myMoto.model}
                     </Text>
                   </View>
                 )}
 
-                {/* SOMBRA SUAVE DE CONTACTO BAJO LA MOTO */}
+                {/* SOMBRA SUAVE DE CONTACTO BAJO EL VEHÍCULO */}
                 <View
                   style={[
                     styles.groundShadow,
@@ -474,10 +653,10 @@ export const MotoInspectionModal: React.FC<Props> = ({
                   ]}
                 />
 
-                {/* PUNTOS TÁCTILES / HOTSPOTS EN LAS PARTES DE LA MOTO */}
+                {/* PUNTOS TÁCTILES / HOTSPOTS EN LAS PARTES DEL VEHÍCULO */}
                 {showHotspots && (
                   <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-                    {HOTSPOTS.map((h) => {
+                    {activeHotspots.map((h) => {
                       const wear = wearMap[h.id] ?? 85;
                       const isSelected = selectedHotspot?.id === h.id;
                       const statusColor = wear >= 60 ? '#00ae78' : wear >= 30 ? '#ffb703' : '#ba1a1a';

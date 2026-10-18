@@ -3,18 +3,20 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingVi
 import * as ImagePicker from 'expo-image-picker';
 import { useMyMoto } from '../context/MotoContext';
 import { useTheme } from '../context/ThemeContext';
-import { Moto } from '../../domain/entities/Moto';
+import { Moto, VehicleType, isCar } from '../../domain/entities/Moto';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { searchMotosAPI } from '../../data/sources/api';
-import { MOTO_CATALOG, CatalogMoto } from '../../data/catalog';
+import { MOTO_CATALOG, CAR_CATALOG, VEHICLE_CATALOG, CatalogVehicle } from '../../data/catalog';
 
 export const SetupScreen = () => {
   const { saveMoto, setIsAddingMoto, isAddingMoto } = useMyMoto();
   const { colors, mode, toggleTheme } = useTheme();
 
+  const [vehicleType, setVehicleType] = useState<VehicleType>('moto');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
+  const [plate, setPlate] = useState('');
   const [odometer, setOdometer] = useState('');
   const [imageUri, setImageUri] = useState('');
   
@@ -22,6 +24,8 @@ export const SetupScreen = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const [selectedCatalogRes, setSelectedCatalogRes] = useState<any>(null);
+
+  const isCarSelected = vehicleType === 'car';
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 1 });
@@ -34,33 +38,37 @@ export const SetupScreen = () => {
   };
 
   const handleSearch = async () => {
-    if (!brand && !model) { alert('Ingresa marca o modelo para buscar'); return; }
     setIsSearching(true);
     
     try {
-      // 1. Search local catalog first (case insensitive)
-      const localMatches = MOTO_CATALOG.filter(moto => {
-        const brandMatch = brand ? moto.brand.toLowerCase().includes(brand.toLowerCase()) : true;
-        const modelMatch = model ? moto.model.toLowerCase().includes(model.toLowerCase()) : true;
+      const activeCatalog = isCarSelected ? CAR_CATALOG : MOTO_CATALOG;
+      
+      // If empty query, show all in that catalog
+      const localMatches = activeCatalog.filter(v => {
+        if (!brand && !model) return true;
+        const brandMatch = brand ? v.brand.toLowerCase().includes(brand.toLowerCase()) : true;
+        const modelMatch = model ? v.model.toLowerCase().includes(model.toLowerCase()) : true;
         return brandMatch && modelMatch;
       });
 
       if (localMatches.length > 0) {
-        // Map to uniform result structure
         setSearchResults(localMatches.map(m => ({
           make: m.brand,
           model: m.model,
-          year: new Date().getFullYear().toString(),
+          year: m.year ? m.year.toString() : (isCarSelected ? '2011' : new Date().getFullYear().toString()),
           imageRes: m.imageRes,
-          isLocal: true
+          isLocal: true,
+          vehicleType: m.vehicleType || (isCarSelected ? 'car' : 'moto')
         })));
-      } else {
-        // 2. Fallback to API if not in local catalog
+      } else if (!isCarSelected) {
+        // Fallback to API for motorcycles if not in local catalog
         const results = await searchMotosAPI(brand, model);
-        setSearchResults(results);
+        setSearchResults(results.map((r: any) => ({ ...r, vehicleType: 'moto' })));
+      } else {
+        setSearchResults([]);
       }
     } catch (error) {
-      alert('Error buscando en la API');
+      alert('Error buscando en el catálogo');
     } finally {
       setIsSearching(false);
     }
@@ -69,7 +77,10 @@ export const SetupScreen = () => {
   const handleSelectResult = (item: any) => {
     setBrand(item.make);
     setModel(item.model);
-    setYear(item.year);
+    setYear(item.year || (isCarSelected ? '2011' : ''));
+    if (item.vehicleType) {
+      setVehicleType(item.vehicleType);
+    }
     if (item.isLocal && item.imageRes) {
       setImageUri('');
       setSelectedCatalogRes(item.imageRes);
@@ -77,17 +88,35 @@ export const SetupScreen = () => {
     setSearchResults([]);
   };
 
+  const handleQuickSelectVehicle = (item: CatalogVehicle) => {
+    setBrand(item.brand);
+    setModel(item.model);
+    setYear(item.year ? item.year.toString() : (isCarSelected ? '2011' : '2023'));
+    setVehicleType(item.vehicleType || (isCarSelected ? 'car' : 'moto'));
+    setImageUri('');
+    setSelectedCatalogRes(item.imageRes);
+    setSearchResults([]);
+  };
+
   const handleSave = () => {
-    if (!brand || !model) { alert('Por favor completa al menos marca y modelo.'); return; }
+    if (!brand || !model) { 
+      alert(isCarSelected ? 'Por favor completa marca y modelo de tu carro.' : 'Por favor completa al menos marca y modelo.'); 
+      return; 
+    }
+
+    const inferredType: VehicleType = isCar({ brand, model, vehicleType }) ? 'car' : vehicleType;
+
     const newMoto: Moto = {
       id: Math.random().toString(),
       brand,
       model,
-      year: parseInt(year) || new Date().getFullYear(),
+      year: parseInt(year) || (isCarSelected ? 2011 : new Date().getFullYear()),
+      plate: plate.trim() || undefined,
       imageUrl: imageUri || '',
       catalogImageRes: selectedCatalogRes, 
       currentOdometer: parseInt(odometer) || 0,
-      isFromAgency: false
+      isFromAgency: false,
+      vehicleType: inferredType,
     };
     saveMoto(newMoto);
     setIsAddingMoto(false);
@@ -120,14 +149,95 @@ export const SetupScreen = () => {
         )}
 
         <View style={styles.header}>
-          <MaterialCommunityIcons name="engine" size={64} color={colors.primary} />
+          <MaterialCommunityIcons name="engine" size={60} color={colors.primary} />
           <Text style={[styles.title, { color: colors.onSurface }]}>Bienvenido a GARAGE</Text>
-          <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>{isAddingMoto ? 'Agrega otra moto a tu garaje' : '¿Cuál es tu modelo de moto?'}</Text>
+          <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>
+            {isAddingMoto ? 'Agrega otro vehículo a tu garaje' : '¿Qué tipo de vehículo vas a registrar?'}
+          </Text>
+        </View>
+
+        {/* SELECTOR DE TIPO DE VEHÍCULO: MOTOCICLETA VS CARRO */}
+        <View style={styles.typeSelectorWrapper}>
+          <Text style={[styles.selectorLabel, { color: colors.onSurfaceVariant }]}>
+            SELECCIONA TIPO DE VEHÍCULO
+          </Text>
+          <View style={[styles.typeSelectorContainer, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant }]}>
+            <TouchableOpacity 
+              style={[
+                styles.typeBtn, 
+                !isCarSelected && { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4 }
+              ]} 
+              onPress={() => {
+                setVehicleType('moto');
+                setSelectedCatalogRes(null);
+                setSearchResults([]);
+              }}
+              activeOpacity={0.85}
+            >
+              <MaterialIcons name="two-wheeler" size={22} color={!isCarSelected ? '#FFFFFF' : colors.onSurfaceVariant} />
+              <Text style={[styles.typeBtnText, { color: !isCarSelected ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                Motocicleta
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[
+                styles.typeBtn, 
+                isCarSelected && { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4 }
+              ]} 
+              onPress={() => {
+                setVehicleType('car');
+                setSelectedCatalogRes(null);
+                setSearchResults([]);
+              }}
+              activeOpacity={0.85}
+            >
+              <MaterialIcons name="directions-car" size={22} color={isCarSelected ? '#FFFFFF' : colors.onSurfaceVariant} />
+              <Text style={[styles.typeBtnText, { color: isCarSelected ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                Carro / Auto
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ACCESO RÁPIDO DESDE EL CATÁLOGO DISPONIBLE */}
+        <View style={{ marginVertical: 8 }}>
+          <Text style={[styles.quickPickTitle, { color: colors.onSurfaceVariant }]}>
+            {isCarSelected ? 'AUTOS EN CATÁLOGO OFICIAL:' : 'MOTOS DESTACADAS EN CATÁLOGO:'}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
+            {(isCarSelected ? CAR_CATALOG : MOTO_CATALOG.slice(0, 6)).map((catItem) => (
+              <TouchableOpacity
+                key={catItem.id}
+                onPress={() => handleQuickSelectVehicle(catItem)}
+                style={[
+                  styles.quickPickCard,
+                  {
+                    backgroundColor: colors.surfaceContainerLow,
+                    borderColor: (brand === catItem.brand && model === catItem.model) ? colors.primary : colors.outlineVariant,
+                    borderWidth: (brand === catItem.brand && model === catItem.model) ? 2 : 0.8
+                  }
+                ]}
+                activeOpacity={0.85}
+              >
+                <Image source={catItem.imageRes} style={styles.quickPickImg} resizeMode="contain" />
+                <View style={{ alignItems: 'center', marginTop: 4 }}>
+                  <Text style={[styles.quickPickBrand, { color: colors.primary }]}>{catItem.brand}</Text>
+                  <Text style={[styles.quickPickModel, { color: colors.onSurface }]} numberOfLines={1}>{catItem.model}</Text>
+                  {catItem.category && (
+                    <Text style={[styles.quickPickCategory, { color: colors.onSurfaceVariant }]}>{catItem.category}</Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
         <View style={styles.form}>
           <View style={styles.imageSection}>
-            <Text style={[styles.label, { color: colors.onSurface }]}>Foto de tu Moto (Opcional)</Text>
+            <Text style={[styles.label, { color: colors.onSurface }]}>
+              {isCarSelected ? 'Foto de tu Carro (Opcional)' : 'Foto de tu Moto (Opcional)'}
+            </Text>
             {hasCustomImage ? (
               <View style={[styles.imagePreview, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.primary }]}>
                 <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="contain" />
@@ -158,22 +268,62 @@ export const SetupScreen = () => {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.onSurface }]}>Marca</Text>
-            <TextInput style={[styles.input, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, color: colors.onSurface }]} placeholder="Ej: Yamaha, Honda, Suzuki..." placeholderTextColor={colors.onSurfaceVariant} value={brand} onChangeText={setBrand} />
+            <TextInput 
+              style={[styles.input, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, color: colors.onSurface }]} 
+              placeholder={isCarSelected ? "Ej: Chevrolet, Toyota, Ford..." : "Ej: Yamaha, Honda, Bera..."} 
+              placeholderTextColor={colors.onSurfaceVariant} 
+              value={brand} 
+              onChangeText={setBrand} 
+            />
           </View>
           
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.onSurface }]}>Modelo</Text>
-            <TextInput style={[styles.input, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, color: colors.onSurface }]} placeholder="Ej: MT-07, CBR600, GSX-R..." placeholderTextColor={colors.onSurfaceVariant} value={model} onChangeText={setModel} />
+            <TextInput 
+              style={[styles.input, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, color: colors.onSurface }]} 
+              placeholder={isCarSelected ? "Ej: Optra 2011, Corolla, Aveo..." : "Ej: SBR 150, Horse 150, RK 250..."} 
+              placeholderTextColor={colors.onSurfaceVariant} 
+              value={model} 
+              onChangeText={setModel} 
+            />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.onSurface }]}>Año</Text>
-            <TextInput style={[styles.input, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, color: colors.onSurface }]} placeholder="Ej: 2023" placeholderTextColor={colors.onSurfaceVariant} value={year} onChangeText={setYear} keyboardType="numeric" />
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Text style={[styles.label, { color: colors.onSurface }]}>Año</Text>
+              <TextInput 
+                style={[styles.input, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, color: colors.onSurface }]} 
+                placeholder={isCarSelected ? "2011" : "2023"} 
+                placeholderTextColor={colors.onSurfaceVariant} 
+                value={year} 
+                onChangeText={setYear} 
+                keyboardType="numeric" 
+              />
+            </View>
+
+            <View style={[styles.inputGroup, { flex: 1.2 }]}>
+              <Text style={[styles.label, { color: colors.onSurface }]}>Placa (Opcional)</Text>
+              <TextInput 
+                style={[styles.input, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, color: colors.onSurface }]} 
+                placeholder="Ej: AB123CD" 
+                placeholderTextColor={colors.onSurfaceVariant} 
+                value={plate} 
+                onChangeText={setPlate} 
+                autoCapitalize="characters"
+              />
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.onSurface }]}>Odómetro Actual (km)</Text>
-            <TextInput style={[styles.input, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, color: colors.onSurface }]} placeholder="Ej: 1500" placeholderTextColor={colors.onSurfaceVariant} value={odometer} onChangeText={setOdometer} keyboardType="numeric" />
+            <TextInput 
+              style={[styles.input, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, color: colors.onSurface }]} 
+              placeholder="Ej: 145000" 
+              placeholderTextColor={colors.onSurfaceVariant} 
+              value={odometer} 
+              onChangeText={setOdometer} 
+              keyboardType="numeric" 
+            />
           </View>
 
           <TouchableOpacity style={[styles.searchButton, { backgroundColor: colors.surfaceContainerHigh }]} onPress={handleSearch} disabled={isSearching}>
@@ -182,7 +332,9 @@ export const SetupScreen = () => {
             ) : (
               <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
                 <MaterialIcons name="search" size={20} color={colors.secondary} />
-                <Text style={[styles.searchButtonText, { color: colors.secondary }]}>Buscar</Text>
+                <Text style={[styles.searchButtonText, { color: colors.secondary }]}>
+                  {isCarSelected ? 'Buscar en Catálogo de Autos' : 'Buscar en Catálogo de Motos'}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -192,19 +344,27 @@ export const SetupScreen = () => {
               <Text style={[styles.resultsTitle, { color: colors.onSurface }]}>Resultados encontrados:</Text>
               {searchResults.map((item, index) => (
                 <TouchableOpacity key={index} style={[styles.resultItem, { borderBottomColor: colors.surfaceContainerHigh }]} onPress={() => handleSelectResult(item)}>
-                  {item.isLocal ? (
-                    <Image source={item.imageRes} style={{ width: 40, height: 30, marginRight: 8 }} resizeMode="contain" />
+                  {item.isLocal && item.imageRes ? (
+                    <Image source={item.imageRes} style={{ width: 48, height: 32, marginRight: 8 }} resizeMode="contain" />
                   ) : (
-                    <MaterialIcons name="motorcycle" size={20} color={colors.primary} />
+                    <MaterialIcons 
+                      name={item.vehicleType === 'car' ? "directions-car" : "motorcycle"} 
+                      size={22} 
+                      color={colors.primary} 
+                    />
                   )}
-                  <Text style={[styles.resultText, { color: colors.onSurface, flex: 1 }]}>{item.make} {item.model} {item.year ? `(${item.year})` : ''}</Text>
+                  <Text style={[styles.resultText, { color: colors.onSurface, flex: 1 }]}>
+                    {item.make} {item.model} {item.year ? `(${item.year})` : ''}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
           <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleSave}>
-            <Text style={[styles.buttonText, { color: colors.onPrimaryContainer }]}>Comenzar</Text>
+            <Text style={[styles.buttonText, { color: colors.onPrimaryContainer }]}>
+              {isCarSelected ? 'Registrar Auto y Comenzar' : 'Comenzar'}
+            </Text>
             <MaterialIcons name="arrow-forward" size={24} color={colors.onPrimaryContainer} />
           </TouchableOpacity>
         </View>
@@ -217,9 +377,20 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { padding: 24, paddingVertical: 40, flexGrow: 1, justifyContent: 'center', maxWidth: 640, width: '100%', alignSelf: 'center' },
   themeToggle: { position: 'absolute', top: 40, right: 24, padding: 8, borderRadius: 20, zIndex: 10 },
-  header: { alignItems: 'center', marginBottom: 32 },
-  title: { fontSize: 28, fontFamily: 'Montserrat_800ExtraBold', marginTop: 16 },
-  subtitle: { fontSize: 16, fontFamily: 'Montserrat_500Medium', marginTop: 8 },
+  header: { alignItems: 'center', marginBottom: 24 },
+  title: { fontSize: 28, fontFamily: 'Montserrat_800ExtraBold', marginTop: 12 },
+  subtitle: { fontSize: 15, fontFamily: 'Montserrat_500Medium', marginTop: 6, textAlign: 'center' },
+  typeSelectorWrapper: { marginBottom: 16 },
+  selectorLabel: { fontSize: 11, fontFamily: 'Montserrat_700Bold', letterSpacing: 0.8, marginBottom: 8 },
+  typeSelectorContainer: { flexDirection: 'row', borderRadius: 16, padding: 4, borderWidth: 1, gap: 6 },
+  typeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12 },
+  typeBtnText: { fontSize: 14, fontFamily: 'Montserrat_700Bold' },
+  quickPickTitle: { fontSize: 11, fontFamily: 'Montserrat_700Bold', letterSpacing: 0.6, marginBottom: 6 },
+  quickPickCard: { width: 130, padding: 10, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  quickPickImg: { width: 100, height: 60 },
+  quickPickBrand: { fontSize: 10, fontFamily: 'Montserrat_700Bold', textTransform: 'uppercase' },
+  quickPickModel: { fontSize: 12, fontFamily: 'Montserrat_700Bold', textAlign: 'center' },
+  quickPickCategory: { fontSize: 9, fontFamily: 'Montserrat_500Medium' },
   form: { gap: 16 },
   imageSection: { gap: 10 },
   imageButtons: { flexDirection: 'row', gap: 12 },
@@ -256,3 +427,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 });
+

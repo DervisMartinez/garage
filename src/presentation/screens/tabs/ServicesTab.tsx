@@ -3,11 +3,15 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingVi
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMyMoto } from '../../context/MotoContext';
 import { useTheme } from '../../context/ThemeContext';
-import { ComponentType, COMPONENT_NAMES } from '../../../constants/telemetry';
+import { ComponentType, COMPONENT_NAMES, getVehicleComponents } from '../../../constants/telemetry';
+import { isCar } from '../../../domain/entities/Moto';
 
 export const ServicesTab = () => {
   const { myMoto, records, addRecord, updateMoto } = useMyMoto();
   const { colors } = useTheme();
+
+  const isCurrentCar = isCar(myMoto);
+  const comps: ComponentType[] = getVehicleComponents(isCurrentCar);
 
   const [selectedComp, setSelectedComp] = useState<ComponentType>('oil');
   const [odoStr, setOdoStr] = useState(myMoto?.currentOdometer.toString() || '0');
@@ -23,7 +27,6 @@ export const ServicesTab = () => {
     extrabold: 'Montserrat_800ExtraBold',
   };
 
-  const comps: ComponentType[] = ['fuel', 'oil', 'tires_front', 'tires_rear', 'brakes_front', 'brakes_rear', 'chain', 'air_filter', 'fuel_filter', 'spark_plugs', 'other'];
 
   // Calcular estadísticas
   const totalGasto = records.reduce((sum, r) => sum + (Number(r.costUSD) || 0), 0);

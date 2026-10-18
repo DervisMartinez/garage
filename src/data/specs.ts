@@ -8,18 +8,29 @@ export interface MotoSpecs {
   fuelCapacity?: string;
   oilCapacity?: string;
   oilTypeRecommended?: string;
+  coolantCapacity?: string;
   frontTireSize?: string;
   frontTirePressure?: string;
   rearTireSize?: string;
   rearTirePressure?: string;
   chainType?: string;
+  timingBeltType?: string;
   sparkPlug?: string;
   battery?: string;
   brakesFront?: string;
   brakesRear?: string;
   cooling?: string;
   maintenanceIntervalOil?: string;
+  maintenanceIntervalTimingBelt?: string;
+  suspensionFront?: string;
+  suspensionRear?: string;
+  dimensions?: string;
+  trunkCapacity?: string;
+  equipment?: string;
 }
+
+export type VehicleSpecs = MotoSpecs;
+
 
 export const MOTO_SPECS_DB: Record<string, MotoSpecs> = {
   'empire keeway-new horse 150': {
@@ -285,6 +296,93 @@ export const MOTO_SPECS_DB: Record<string, MotoSpecs> = {
     brakesRear: 'Tambor mecánico',
     cooling: 'Aire',
     maintenanceIntervalOil: 'Cada 2,000 km',
+  },
+  'chevrolet-optra 2011': {
+    engineType: '4 Cilindros en línea, 1.8L DOHC 16 Válvulas E-TEC II / D-TEC MPFI',
+    displacement: '1.799 cc (1.8L)',
+    hp: '121 HP (89 kW) @ 5.800 RPM',
+    torque: '165 Nm (16.8 kg-m) @ 4.000 RPM',
+    transmission: 'Manual 5 velocidades / Automática 4 velocidades con Hold Mode',
+    weight: '1.250 kg (Peso en vacío)',
+    fuelCapacity: '60 Litros (15.8 galones) - Gasolina 91/95 Octanos',
+    oilCapacity: '4.0 Litros (con filtro)',
+    oilTypeRecommended: '10W-30 / 15W-40 Semi-Sintético o 5W-30 Sintético API SN/SP',
+    coolantCapacity: '7.0 Litros (Dex-Cool 50/50)',
+    frontTireSize: '195/55 R15',
+    frontTirePressure: '30 - 32 PSI',
+    rearTireSize: '195/55 R15',
+    rearTirePressure: '30 - 32 PSI',
+    timingBeltType: 'Correa DOHC 16V (162 dientes) - Motor interferencia',
+    sparkPlug: 'NGK BKR6E-11 / Champion RC9YC4 (Luz: 1.1 mm)',
+    battery: '12V 60Ah - 550 CCA (Borne invertido)',
+    brakesFront: 'Discos ventilados 256 mm con cáliper flotante',
+    brakesRear: 'Discos sólidos 258 mm con tambor interno de parqueo (ABS + EBD)',
+    cooling: 'Líquido presurizado, electroventilador doble y radiador aluminio',
+    maintenanceIntervalOil: 'Cada 5.000 km (Semi-sintético) o 7.500 km (Sintético)',
+    maintenanceIntervalTimingBelt: 'Cada 40.000 - 50.000 km (Cambio Crítico)',
+    suspensionFront: 'Independiente tipo McPherson con barra estabilizadora',
+    suspensionRear: 'Independiente Dual-Link multibrazo con barra estabilizadora',
+    dimensions: 'Largo: 4.520 mm | Ancho: 1.725 mm | Alto: 1.445 mm | Batalla: 2.600 mm',
+    trunkCapacity: '405 Litros',
+    equipment: 'Chevystar Platinum con pantalla 4.3" y GPS, Climatizador digital, Doble Airbag, Sunroof',
+  },
+  'chevrolet-optra advance 2011': {
+    engineType: '4 Cilindros en línea, 1.8L DOHC 16 Válvulas E-TEC II / D-TEC MPFI',
+    displacement: '1.799 cc (1.8L)',
+    hp: '121 HP (89 kW) @ 5.800 RPM',
+    torque: '165 Nm (16.8 kg-m) @ 4.000 RPM',
+    transmission: 'Manual 5 velocidades / Automática 4 velocidades con Hold Mode',
+    weight: '1.250 kg (Peso en vacío)',
+    fuelCapacity: '60 Litros (15.8 galones) - Gasolina 91/95 Octanos',
+    oilCapacity: '4.0 Litros (con filtro)',
+    oilTypeRecommended: '10W-30 / 15W-40 Semi-Sintético o 5W-30 Sintético API SN/SP',
+    coolantCapacity: '7.0 Litros (Dex-Cool 50/50)',
+    frontTireSize: '195/55 R15',
+    frontTirePressure: '30 - 32 PSI',
+    rearTireSize: '195/55 R15',
+    rearTirePressure: '30 - 32 PSI',
+    timingBeltType: 'Correa DOHC 16V (162 dientes) - Motor interferencia',
+    sparkPlug: 'NGK BKR6E-11 / Champion RC9YC4 (Luz: 1.1 mm)',
+    battery: '12V 60Ah - 550 CCA (Borne invertido)',
+    brakesFront: 'Discos ventilados 256 mm con cáliper flotante',
+    brakesRear: 'Discos sólidos 258 mm con tambor interno de parqueo (ABS + EBD)',
+    cooling: 'Líquido presurizado, electroventilador doble y radiador aluminio',
+    maintenanceIntervalOil: 'Cada 5.000 km (Semi-sintético) o 7.500 km (Sintético)',
+    maintenanceIntervalTimingBelt: 'Cada 40.000 - 50.000 km (Cambio Crítico)',
+    suspensionFront: 'Independiente tipo McPherson con barra estabilizadora',
+    suspensionRear: 'Independiente Dual-Link multibrazo con barra estabilizadora',
+    dimensions: 'Largo: 4.520 mm | Ancho: 1.725 mm | Alto: 1.445 mm | Batalla: 2.600 mm',
+    trunkCapacity: '405 Litros',
+    equipment: 'Chevystar Platinum con pantalla 4.3" y GPS, Climatizador digital, Doble Airbag, Sunroof',
+  },
+  'chevrolet-optra': {
+    engineType: '4 Cilindros en línea, 1.8L DOHC 16 Válvulas E-TEC II / D-TEC MPFI',
+    displacement: '1.799 cc (1.8L)',
+    hp: '121 HP (89 kW) @ 5.800 RPM',
+    torque: '165 Nm (16.8 kg-m) @ 4.000 RPM',
+    transmission: 'Manual 5 velocidades / Automática 4 velocidades con Hold Mode',
+    weight: '1.250 kg (Peso en vacío)',
+    fuelCapacity: '60 Litros (15.8 galones) - Gasolina 91/95 Octanos',
+    oilCapacity: '4.0 Litros (con filtro)',
+    oilTypeRecommended: '10W-30 / 15W-40 Semi-Sintético o 5W-30 Sintético API SN/SP',
+    coolantCapacity: '7.0 Litros (Dex-Cool 50/50)',
+    frontTireSize: '195/55 R15',
+    frontTirePressure: '30 - 32 PSI',
+    rearTireSize: '195/55 R15',
+    rearTirePressure: '30 - 32 PSI',
+    timingBeltType: 'Correa DOHC 16V (162 dientes) - Motor interferencia',
+    sparkPlug: 'NGK BKR6E-11 / Champion RC9YC4 (Luz: 1.1 mm)',
+    battery: '12V 60Ah - 550 CCA (Borne invertido)',
+    brakesFront: 'Discos ventilados 256 mm con cáliper flotante',
+    brakesRear: 'Discos sólidos 258 mm con tambor interno de parqueo (ABS + EBD)',
+    cooling: 'Líquido presurizado, electroventilador doble y radiador aluminio',
+    maintenanceIntervalOil: 'Cada 5.000 km (Semi-sintético) o 7.500 km (Sintético)',
+    maintenanceIntervalTimingBelt: 'Cada 40.000 - 50.000 km (Cambio Crítico)',
+    suspensionFront: 'Independiente tipo McPherson con barra estabilizadora',
+    suspensionRear: 'Independiente Dual-Link multibrazo con barra estabilizadora',
+    dimensions: 'Largo: 4.520 mm | Ancho: 1.725 mm | Alto: 1.445 mm | Batalla: 2.600 mm',
+    trunkCapacity: '405 Litros',
+    equipment: 'Chevystar Platinum con pantalla 4.3" y GPS, Climatizador digital, Doble Airbag, Sunroof',
   }
 };
 
@@ -301,12 +399,18 @@ export const getMotoSpecs = (brand: string, model: string): MotoSpecs => {
     return MOTO_SPECS_DB[exactKey];
   }
 
+  // Detect Optra or Chevrolet car
+  if (cleanModel.includes('optra') || (cleanBrand.includes('chevrolet') && cleanModel.includes('optra'))) {
+    return MOTO_SPECS_DB['chevrolet-optra 2011'];
+  }
+
   // Find approximate match
   for (const k of Object.keys(MOTO_SPECS_DB)) {
     if (k.includes(cleanModel) || (cleanModel && cleanModel.includes(k.split('-')[1]))) {
       return MOTO_SPECS_DB[k];
     }
   }
+
 
   // Derive specs automatically based on model name / displacement
   let displacementHint = '150 cc';

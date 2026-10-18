@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Moto, ServiceRecord } from '../../domain/entities/Moto';
+import { Moto, ServiceRecord, isCar, VehicleType } from '../../domain/entities/Moto';
 import { supabase } from '../../data/supabaseClient';
 
 interface MotoContextType {
@@ -63,17 +63,23 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', user.id);
       
       if (motosData && motosData.length > 0) {
-        const parsedMotos: Moto[] = motosData.map(motoData => ({
-          id: motoData.id,
-          brand: motoData.brand,
-          model: motoData.model,
-          year: motoData.year,
-          imageUrl: motoData.image_url,
-          catalogImageRes: undefined,
-          plate: motoData.plate,
-          currentOdometer: motoData.current_odometer,
-          isFromAgency: motoData.is_from_agency,
-        }));
+        const parsedMotos: Moto[] = motosData.map(motoData => {
+          const brand = motoData.brand || '';
+          const model = motoData.model || '';
+          const vehicleType: VehicleType = isCar({ brand, model, vehicleType: (motoData as any).vehicle_type }) ? 'car' : 'moto';
+          return {
+            id: motoData.id,
+            brand,
+            model,
+            year: motoData.year,
+            imageUrl: motoData.image_url,
+            catalogImageRes: undefined,
+            plate: motoData.plate,
+            currentOdometer: motoData.current_odometer,
+            isFromAgency: motoData.is_from_agency,
+            vehicleType,
+          };
+        });
         setMotos(parsedMotos);
         
         // Set myMoto if not set, or keep the existing one if it still exists
@@ -127,6 +133,8 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
   }, [myMoto?.id]);
 
   const saveMoto = async (moto: Moto) => {
+    setMotos(prev => [...prev.filter(m => m.id !== moto.id), moto]);
+    setMyMoto(moto);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('motos').insert({

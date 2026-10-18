@@ -4,7 +4,8 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useMyMoto } from '../../context/MotoContext';
-import { MOTO_CATALOG } from '../../../data/catalog';
+import { MOTO_CATALOG, VEHICLE_CATALOG } from '../../../data/catalog';
+import { isCar } from '../../../domain/entities/Moto';
 import { calculateWearPercentage } from '../../../constants/telemetry';
 
 interface WebVehicleHeroProps {
@@ -49,12 +50,12 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
     if (myMoto.catalogImageRes) {
       return myMoto.catalogImageRes;
     }
-    const cat = MOTO_CATALOG.find(
+    const cat = VEHICLE_CATALOG.find(
       (m) => m.brand.toLowerCase() === myMoto.brand.toLowerCase() && m.model.toLowerCase() === myMoto.model.toLowerCase()
     );
     if (cat?.imageRes) return cat.imageRes;
     // First catalog fallback if brand matches
-    const brandCat = MOTO_CATALOG.find(
+    const brandCat = VEHICLE_CATALOG.find(
       (m) => m.brand.toLowerCase() === myMoto.brand.toLowerCase()
     );
     return brandCat?.imageRes || null;

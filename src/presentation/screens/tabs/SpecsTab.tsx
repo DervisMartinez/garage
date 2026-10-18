@@ -5,7 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useMyMoto } from '../../context/MotoContext';
 import { getMotoSpecs, MotoSpecs } from '../../../data/specs';
-import { MOTO_CATALOG } from '../../../data/catalog';
+import { MOTO_CATALOG, VEHICLE_CATALOG } from '../../../data/catalog';
+import { isCar } from '../../../domain/entities/Moto';
 
 interface SpecsTabProps {
   onNavigateToServices?: () => void;
@@ -42,8 +43,10 @@ export const SpecsTab: React.FC<SpecsTabProps> = ({ onNavigateToServices }) => {
     if (myMoto.catalogImageRes) {
       return myMoto.catalogImageRes;
     }
-    const cat = MOTO_CATALOG.find(
+    const cat = VEHICLE_CATALOG.find(
       (m) => m.brand.toLowerCase() === myMoto.brand.toLowerCase() && m.model.toLowerCase() === myMoto.model.toLowerCase()
+    ) || VEHICLE_CATALOG.find(
+      (m) => m.brand.toLowerCase() === myMoto.brand.toLowerCase()
     );
     if (cat?.imageRes) return cat.imageRes;
     return null;
@@ -52,9 +55,9 @@ export const SpecsTab: React.FC<SpecsTabProps> = ({ onNavigateToServices }) => {
   if (!myMoto) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <MaterialIcons name="two-wheeler" size={60} color={colors.onSurfaceVariant} />
+        <MaterialIcons name="directions-car" size={60} color={colors.onSurfaceVariant} />
         <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 18, marginTop: 16 }}>
-          No hay motocicleta activa
+          No hay vehículo activo
         </Text>
       </View>
     );
@@ -254,9 +257,18 @@ export const SpecsTab: React.FC<SpecsTabProps> = ({ onNavigateToServices }) => {
               </View>
 
               <View style={styles.specRowsList}>
-                <SpecRow label="Caja de Cambios" value={specs?.transmission || '5 Velocidades multidisco húmedo'} icon="settings" />
-                <SpecRow label="Cadena de Transmisión" value={specs?.chainType || 'Paso 428H x 118 eslabones reforzada'} icon="link" />
-                <SpecRow label="Intervalo de Tensión y Lubricación" value="Cada 500 - 1,000 km" icon="schedule" />
+                <SpecRow label="Caja de Cambios" value={specs?.transmission || '5 Velocidades sincronizadas'} icon="settings" />
+                {specs?.timingBeltType ? (
+                  <>
+                    <SpecRow label="Correa de Distribución (Tiempo)" value={specs.timingBeltType} icon="sync" color="#FF453A" />
+                    <SpecRow label="Intervalo Reemplazo Correa" value={specs.maintenanceIntervalTimingBelt || 'Cada 40.000 - 50.000 km'} icon="schedule" color="#FF9500" />
+                  </>
+                ) : (
+                  <>
+                    <SpecRow label="Cadena de Transmisión" value={specs?.chainType || 'Paso 428H reforzada'} icon="link" />
+                    <SpecRow label="Intervalo de Tensión y Lubricación" value="Cada 500 - 1,000 km" icon="schedule" />
+                  </>
+                )}
               </View>
             </View>
           )}
@@ -277,13 +289,19 @@ export const SpecsTab: React.FC<SpecsTabProps> = ({ onNavigateToServices }) => {
               </View>
 
               <View style={styles.specRowsList}>
-                <SpecRow label="Freno Delantero" value={specs?.brakesFront || 'Disco hidráulico 240mm'} icon="lens" color="#00ae78" />
-                <SpecRow label="Freno Trasero" value={specs?.brakesRear || 'Tambor mecánico con zapatas de expansión'} icon="adjust" />
-                <SpecRow label="Caucho Delantero (Medida)" value={specs?.frontTireSize || '2.75 - 18'} icon="tire" />
-                <SpecRow label="Presión Inflado Delantero (Frío)" value={specs?.frontTirePressure || '28 PSI'} icon="compress" color="#00e3fd" />
-                <SpecRow label="Caucho Trasero (Medida)" value={specs?.rearTireSize || '90/90 - 18'} icon="tire" />
+                <SpecRow label="Freno Delantero" value={specs?.brakesFront || 'Disco hidráulico ventilado'} icon="lens" color="#00ae78" />
+                <SpecRow label="Freno Trasero" value={specs?.brakesRear || 'Disco / Tambor'} icon="adjust" />
+                <SpecRow label="Neumático Delantero (Medida)" value={specs?.frontTireSize || '195/55 R15'} icon="tire" />
+                <SpecRow label="Presión Inflado Delantero (Frío)" value={specs?.frontTirePressure || '30 PSI'} icon="compress" color="#00e3fd" />
+                <SpecRow label="Neumático Trasero (Medida)" value={specs?.rearTireSize || '195/55 R15'} icon="tire" />
                 <SpecRow label="Presión Inflado Trasero (Frío)" value={specs?.rearTirePressure || '32 PSI'} icon="compress" color="#00e3fd" />
-                <SpecRow label="Peso en Seco Oficial" value={specs?.weight || '120 kg'} icon="fitness-center" />
+                {specs?.suspensionFront && (
+                  <SpecRow label="Suspensión Delantera" value={specs.suspensionFront} icon="build" />
+                )}
+                {specs?.suspensionRear && (
+                  <SpecRow label="Suspensión Trasera" value={specs.suspensionRear} icon="build" />
+                )}
+                <SpecRow label="Peso en Seco Oficial" value={specs?.weight || '1.250 kg'} icon="fitness-center" />
               </View>
             </View>
           )}
@@ -304,11 +322,23 @@ export const SpecsTab: React.FC<SpecsTabProps> = ({ onNavigateToServices }) => {
               </View>
 
               <View style={styles.specRowsList}>
-                <SpecRow label="Capacidad de Combustible" value={specs?.fuelCapacity || '12 Litros (Reserva: 2.0L)'} icon="local-gas-station" color="#00e3fd" />
-                <SpecRow label="Capacidad de Aceite de Motor" value={specs?.oilCapacity || '1.0 Litro'} icon="water-drop" color="#00ae78" />
-                <SpecRow label="Tipo y Grado de Aceite Recomendado" value={specs?.oilTypeRecommended || '20W-50 4T JASO MA2'} icon="verified" color="#4169E1" />
-                <SpecRow label="Intervalo Recomendado de Aceite" value={specs?.maintenanceIntervalOil || 'Cada 2,000 - 3,000 km'} icon="update" />
-                <SpecRow label="Batería / Sistema Eléctrico" value={specs?.battery || '12V - 7Ah libre de mantenimiento'} icon="battery-charging-full" />
+                <SpecRow label="Capacidad de Combustible" value={specs?.fuelCapacity || '60 Litros'} icon="local-gas-station" color="#00e3fd" />
+                <SpecRow label="Capacidad de Aceite de Motor" value={specs?.oilCapacity || '4.0 Litros'} icon="water-drop" color="#00ae78" />
+                <SpecRow label="Tipo y Grado de Aceite Recomendado" value={specs?.oilTypeRecommended || '10W-30 / 15W-40'} icon="verified" color="#4169E1" />
+                {specs?.coolantCapacity && (
+                  <SpecRow label="Refrigerante / Anticongelante" value={specs.coolantCapacity} icon="invert-colors" color="#00e3fd" />
+                )}
+                <SpecRow label="Intervalo Recomendado de Aceite" value={specs?.maintenanceIntervalOil || 'Cada 5,000 km'} icon="update" />
+                <SpecRow label="Batería / Sistema Eléctrico" value={specs?.battery || '12V 60Ah'} icon="battery-charging-full" />
+                {specs?.dimensions && (
+                  <SpecRow label="Dimensiones Oficiales" value={specs.dimensions} icon="straighten" />
+                )}
+                {specs?.trunkCapacity && (
+                  <SpecRow label="Capacidad de Maletero / Baúl" value={specs.trunkCapacity} icon="luggage" />
+                )}
+                {specs?.equipment && (
+                  <SpecRow label="Equipamiento" value={specs.equipment} icon="star" color="#FFD60A" />
+                )}
               </View>
             </View>
           )}

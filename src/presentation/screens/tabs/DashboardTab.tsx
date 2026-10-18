@@ -6,7 +6,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { calculateWearPercentage, ComponentType } from '../../../constants/telemetry';
 import { getMotoSpecs } from '../../../data/specs';
-import { MOTO_CATALOG } from '../../../data/catalog';
+import { VEHICLE_CATALOG, MOTO_CATALOG } from '../../../data/catalog';
+import { isCar } from '../../../domain/entities/Moto';
 import { TutorialModal } from '../../components/TutorialModal';
 import { TechnicalSheetModal } from '../../components/TechnicalSheetModal';
 import { VehicleStatsAndCalendarModal } from '../../components/VehicleStatsAndCalendarModal';
@@ -90,13 +91,32 @@ export const DashboardTab = () => {
     return Math.max(...typeRecords.map(r => r.odometer));
   };
 
+  const isCurrentCar = isCar(myMoto);
+
   const calcPercent = (type: ComponentType) => {
     if (!myMoto) return 0;
     const lastOdo = getLastOdo(type);
     if (lastOdo === myMoto.currentOdometer && !myMoto.isFromAgency && records.filter(r => r.type === type).length === 0) {
       return 0; // No data, not from agency
     }
-    let override = undefined; if (type === 'oil') { const typeRecords = records.filter(r => r.type === 'oil'); if (typeRecords.length > 0) { const lastRecord = typeRecords.reduce((prev, current) => (prev.odometer > current.odometer) ? prev : current); if (lastRecord.notes?.includes('Mineral')) override = 3000; else if (lastRecord.notes?.includes('Semi')) override = 5000; else if (lastRecord.notes?.includes('Sintético')) override = 8000; } } return calculateWearPercentage(myMoto.currentOdometer, lastOdo, type as any, override);
+    let override = undefined; 
+    if (type === 'oil') { 
+      const typeRecords = records.filter(r => r.type === 'oil'); 
+      if (typeRecords.length > 0) { 
+        const lastRecord = typeRecords.reduce((prev, current) => (prev.odometer > current.odometer) ? prev : current); 
+        if (isCurrentCar) {
+          if (lastRecord.notes?.includes('Sintético')) override = 7500;
+          else override = 5000;
+        } else {
+          if (lastRecord.notes?.includes('Mineral')) override = 3000; 
+          else if (lastRecord.notes?.includes('Semi')) override = 5000; 
+          else if (lastRecord.notes?.includes('Sintético')) override = 8000; 
+        }
+      } else if (isCurrentCar) {
+        override = 5000;
+      }
+    } 
+    return calculateWearPercentage(myMoto.currentOdometer, lastOdo, type as any, override, isCurrentCar);
   };
 
   const oilP = calcPercent('oil');
@@ -108,6 +128,12 @@ export const DashboardTab = () => {
   const airP = calcPercent('air_filter');
   const fuelP = calcPercent('fuel_filter');
   const sparkP = calcPercent('spark_plugs');
+  const timingBeltP = calcPercent('timing_belt');
+  const coolantP = calcPercent('coolant');
+  const cabinP = calcPercent('cabin_filter');
+  const batteryP = calcPercent('battery');
+  const shockP = calcPercent('shock_absorbers');
+  const brakeFluidP = calcPercent('brake_fluid');
 
   const F = {
     regular: 'Montserrat_400Regular',
@@ -153,23 +179,43 @@ export const DashboardTab = () => {
   const specs = getMotoSpecs(myMoto.brand, myMoto.model);
 
   // Check for components requiring attention and vehicle overall status
-  const componentsList = [
-    { name: 'Aceite', p: oilP },
-    { name: 'Caucho Del.', p: tiresFP },
-    { name: 'Caucho Tras.', p: tiresRP },
-    { name: 'Frenos Del.', p: brakesFP },
-    { name: 'Frenos Tras.', p: brakesRP },
-    { name: 'Cadena', p: chainP },
-    { name: 'Filtro Aire', p: airP },
-    { name: 'Filtro Gas', p: fuelP },
-    { name: 'Bujías', p: sparkP },
-  ];
+  const componentsList = useMemo(() => {
+    if (isCurrentCar) {
+      return [
+        { name: 'Aceite Motor', p: oilP },
+        { name: 'Correa de Distribución', p: timingBeltP },
+        { name: 'Refrigerante', p: coolantP },
+        { name: 'Líquido de Frenos', p: brakeFluidP },
+        { name: 'Filtro A/C', p: cabinP },
+        { name: 'Filtro de Aire', p: airP },
+        { name: 'Filtro Gasolina', p: fuelP },
+        { name: 'Bujías', p: sparkP },
+        { name: 'Frenos Del.', p: brakesFP },
+        { name: 'Frenos Tras.', p: brakesRP },
+        { name: 'Cauchos Del.', p: tiresFP },
+        { name: 'Cauchos Tras.', p: tiresRP },
+        { name: 'Batería', p: batteryP },
+        { name: 'Amortiguadores', p: shockP },
+      ];
+    }
+    return [
+      { name: 'Aceite', p: oilP },
+      { name: 'Caucho Del.', p: tiresFP },
+      { name: 'Caucho Tras.', p: tiresRP },
+      { name: 'Frenos Del.', p: brakesFP },
+      { name: 'Frenos Tras.', p: brakesRP },
+      { name: 'Cadena', p: chainP },
+      { name: 'Filtro Aire', p: airP },
+      { name: 'Filtro Gas', p: fuelP },
+      { name: 'Bujías', p: sparkP },
+    ];
+  }, [isCurrentCar, oilP, timingBeltP, coolantP, brakeFluidP, cabinP, airP, fuelP, sparkP, brakesFP, brakesRP, tiresFP, tiresRP, batteryP, shockP, chainP]);
 
   const lowComponents = componentsList.filter(c => c.p < 15);
 
   // Cálculo dinámico de los 4 estados reales del vehículo: Óptimo, Regular, En Mantenimiento, Atención
   const vehicleStatus = useMemo(() => {
-    const minPercent = Math.min(oilP, tiresFP, tiresRP, brakesFP, brakesRP, chainP, airP, fuelP, sparkP);
+    const minPercent = Math.min(...componentsList.map(c => c.p));
     const criticalCount = componentsList.filter(c => c.p < 15).length;
     const warningCount = componentsList.filter(c => c.p < 30).length;
 
@@ -183,7 +229,8 @@ export const DashboardTab = () => {
       return { label: '● Regular', color: '#FFD60A', bg: 'rgba(255, 214, 10, 0.18)', desc: 'Desgaste moderado en piezas' };
     }
     return { label: '● Óptimo', color: '#30D158', bg: 'rgba(48, 209, 88, 0.18)', desc: 'Todos los sistemas en buen estado' };
-  }, [oilP, tiresFP, tiresRP, brakesFP, brakesRP, chainP, airP, fuelP, sparkP]);
+  }, [componentsList]);
+
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
@@ -366,13 +413,18 @@ export const DashboardTab = () => {
             >
               {motos && motos.length > 0 ? (
                 motos.map((moto, index) => {
-                  const catMoto = MOTO_CATALOG.find(m => m.brand === moto.brand && m.model === moto.model);
+                  const catMoto = VEHICLE_CATALOG.find(
+                    m => m.brand.toLowerCase() === moto.brand.toLowerCase() && m.model.toLowerCase() === moto.model.toLowerCase()
+                  ) || VEHICLE_CATALOG.find(
+                    m => m.brand.toLowerCase() === moto.brand.toLowerCase()
+                  );
+                  const isMotoCar = isCar(moto);
                   return (
                     <TouchableOpacity 
                       key={moto.id} 
                       onPress={() => setInspectionVisible(true)}
                       activeOpacity={0.9}
-                      accessibilityLabel="Toca para inspeccionar tu moto en 3D"
+                      accessibilityLabel="Toca para inspeccionar tu vehículo en 3D"
                       style={{ width: slideWidth, height: 215, justifyContent: 'center', alignItems: 'center', position: 'relative' }}
                     >
                       {moto.imageUrl ? (
@@ -381,7 +433,7 @@ export const DashboardTab = () => {
                         <Image source={catMoto.imageRes} style={{ width: '96%', height: 195, zIndex: 5 }} resizeMode="contain" />
                       ) : (
                         <View style={{ width: '100%', height: 195, justifyContent: 'center', alignItems: 'center', zIndex: 5 }}>
-                          <MaterialIcons name="two-wheeler" size={106} color={colors.onSurfaceVariant} />
+                          <MaterialIcons name={isMotoCar ? "directions-car" : "two-wheeler"} size={106} color={colors.onSurfaceVariant} />
                         </View>
                       )}
 
@@ -501,7 +553,7 @@ export const DashboardTab = () => {
                   Próximo Servicio Estimado
                 </Text>
                 <Text style={{ fontFamily: F.bold, color: colors.onSurface, fontSize: 14, marginTop: 2 }}>
-                  En ~1,250 km • Cambio de Aceite 4T
+                  {isCurrentCar ? 'En ~1,500 km • Cambio de Aceite 10W-30 / Filtro' : 'En ~1,250 km • Cambio de Aceite 4T'}
                 </Text>
               </View>
               <View style={{ backgroundColor: 'rgba(10,132,255,0.15)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
@@ -633,7 +685,9 @@ export const DashboardTab = () => {
               <Text style={[styles.sectionSubtitle, { color: colors.onSurfaceVariant, fontFamily: F.regular }]}>Cálculo automático según Odómetro</Text>
             </View>
             <View style={[styles.badgeSys, { backgroundColor: colors.surfaceContainerHigh }]}>
-              <Text style={[styles.badgeSysText, { color: colors.secondary, fontFamily: F.bold }]}>8 SISTEMAS</Text>
+              <Text style={[styles.badgeSysText, { color: colors.secondary, fontFamily: F.bold }]}>
+                {isCurrentCar ? '10 SISTEMAS' : '8 SISTEMAS'}
+              </Text>
             </View>
           </View>
 
@@ -652,32 +706,129 @@ export const DashboardTab = () => {
               <MaterialIcons name="chevron-right" size={24} color={colors.onErrorContainer} />
             </TouchableOpacity>
           ) : (
-            <TelemetryItem colors={colors} F={F} icon="oil-barrel" title="Aceite de Motor" subtitle="Nivel de vida" percent={oilP} iconColor={colors.primary} barColor={colors.primary} />
+            <TelemetryItem colors={colors} F={F} icon="oil-barrel" title={isCurrentCar ? "Aceite & Filtro de Motor" : "Aceite de Motor"} subtitle={isCurrentCar ? "4.0L Semi-Sintético / Sintético" : "Nivel de vida"} percent={oilP} iconColor={colors.primary} barColor={colors.primary} />
           )}
-          
-          {/* Tires */}
-          <DualTelemetryItem colors={colors} F={F} icon="trip-origin" title="Cauchos / Neumáticos" subtitle="Desgaste actual" 
-            p1={tiresFP} label1="Delantero" color1={colors.tertiary}
-            p2={tiresRP} label2="Trasero" color2={colors.primary} 
-            iconColor={colors.secondary} />
 
-          {/* Brakes */}
-          <DualTelemetryItem colors={colors} F={F} icon="disc-full" title="Duración de Frenos" subtitle="Pastillas & Discos" 
-            p1={brakesFP} label1="Delanteros" color1={colors.tertiary}
-            p2={brakesRP} label2="Traseros" color2={colors.error} 
-            iconColor={colors.error} />
+          {isCurrentCar ? (
+            <>
+              {/* Timing Belt (Crítico Optra) */}
+              <TelemetryItem 
+                colors={colors} 
+                F={F} 
+                icon="sync" 
+                title="Correa de Distribución (Tiempo)" 
+                subtitle="Kit DOHC 16V (40.000 - 50.000 km)" 
+                percent={timingBeltP} 
+                iconColor={timingBeltP < 30 ? colors.error : colors.tertiary} 
+                barColor={timingBeltP < 30 ? colors.error : colors.tertiary} 
+              />
 
-          {/* Chain */}
-          <TelemetryItem colors={colors} F={F} icon="link" title="Cadena de Transmisión" subtitle="Tensión y lubricación" percent={chainP} iconColor={colors.primary} barColor={colors.tertiary} />
+              {/* Coolant & Battery */}
+              <DualTelemetryItem 
+                colors={colors} 
+                F={F} 
+                icon="invert-colors" 
+                title="Refrigerante & Batería" 
+                subtitle="Sistemas Térmico & Eléctrico" 
+                p1={coolantP} 
+                label1="Coolant Dex-Cool" 
+                color1={colors.primary}
+                p2={batteryP} 
+                label2="Batería 12V 60Ah" 
+                color2={colors.tertiary} 
+                iconColor={colors.primary} 
+              />
 
-          {/* Filters Grid */}
-          <View style={{flexDirection:'row', gap: 12, marginBottom: 12}}>
-            <FilterCard colors={colors} F={F} icon="air" title="Filtro Aire" percent={airP} color={colors.primary} />
-            <FilterCard colors={colors} F={F} icon="local-gas-station" title="Filtro Gas" percent={fuelP} color={colors.tertiary} />
-          </View>
+              {/* Tires */}
+              <DualTelemetryItem 
+                colors={colors} 
+                F={F} 
+                icon="trip-origin" 
+                title="Neumáticos 195/55 R15" 
+                subtitle="30 - 32 PSI en frío" 
+                p1={tiresFP} 
+                label1="Delanteros" 
+                color1={colors.tertiary}
+                p2={tiresRP} 
+                label2="Traseros" 
+                color2={colors.primary} 
+                iconColor={colors.secondary} 
+              />
 
-          {/* Spark Plugs */}
-          <TelemetryItem colors={colors} F={F} icon="bolt" title="Bujías (Ignición)" subtitle="Brecha / Chispa" percent={sparkP} iconColor={colors.secondary} barColor={colors.secondary} />
+              {/* Brakes */}
+              <DualTelemetryItem 
+                colors={colors} 
+                F={F} 
+                icon="disc-full" 
+                title="Duración de Frenos" 
+                subtitle="Discos Del. 256mm / Tras. 258mm (ABS)" 
+                p1={brakesFP} 
+                label1="Delanteros" 
+                color1={colors.tertiary}
+                p2={brakesRP} 
+                label2="Traseros" 
+                color2={colors.error} 
+                iconColor={colors.error} 
+              />
+
+              {/* Filters Grid for Cars */}
+              <View style={{flexDirection:'row', gap: 10, marginBottom: 12}}>
+                <FilterCard colors={colors} F={F} icon="air" title="Filtro A/C" percent={cabinP} color={colors.primary} />
+                <FilterCard colors={colors} F={F} icon="air" title="Filtro Aire" percent={airP} color={colors.secondary} />
+                <FilterCard colors={colors} F={F} icon="local-gas-station" title="Filtro Gas" percent={fuelP} color={colors.tertiary} />
+              </View>
+
+              {/* Shock Absorbers */}
+              <TelemetryItem 
+                colors={colors} 
+                F={F} 
+                icon="build" 
+                title="Amortiguadores & Suspensión" 
+                subtitle="McPherson Del. / Dual-Link Tras." 
+                percent={shockP} 
+                iconColor={colors.secondary} 
+                barColor={colors.secondary} 
+              />
+
+              {/* Spark Plugs */}
+              <TelemetryItem 
+                colors={colors} 
+                F={F} 
+                icon="bolt" 
+                title="Bujías (Encendido MPFI)" 
+                subtitle="NGK BKR6E-11 (Luz: 1.1 mm)" 
+                percent={sparkP} 
+                iconColor={colors.secondary} 
+                barColor={colors.secondary} 
+              />
+            </>
+          ) : (
+            <>
+              {/* Tires */}
+              <DualTelemetryItem colors={colors} F={F} icon="trip-origin" title="Cauchos / Neumáticos" subtitle="Desgaste actual" 
+                p1={tiresFP} label1="Delantero" color1={colors.tertiary}
+                p2={tiresRP} label2="Trasero" color2={colors.primary} 
+                iconColor={colors.secondary} />
+
+              {/* Brakes */}
+              <DualTelemetryItem colors={colors} F={F} icon="disc-full" title="Duración de Frenos" subtitle="Pastillas & Discos" 
+                p1={brakesFP} label1="Delanteros" color1={colors.tertiary}
+                p2={brakesRP} label2="Traseros" color2={colors.error} 
+                iconColor={colors.error} />
+
+              {/* Chain */}
+              <TelemetryItem colors={colors} F={F} icon="link" title="Cadena de Transmisión" subtitle="Tensión y lubricación" percent={chainP} iconColor={colors.primary} barColor={colors.tertiary} />
+
+              {/* Filters Grid */}
+              <View style={{flexDirection:'row', gap: 12, marginBottom: 12}}>
+                <FilterCard colors={colors} F={F} icon="air" title="Filtro Aire" percent={airP} color={colors.primary} />
+                <FilterCard colors={colors} F={F} icon="local-gas-station" title="Filtro Gas" percent={fuelP} color={colors.tertiary} />
+              </View>
+
+              {/* Spark Plugs */}
+              <TelemetryItem colors={colors} F={F} icon="bolt" title="Bujías (Ignición)" subtitle="Brecha / Chispa" percent={sparkP} iconColor={colors.secondary} barColor={colors.secondary} />
+            </>
+          )}
           
         </View>
 

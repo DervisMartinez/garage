@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useMyMoto } from '../../context/MotoContext';
 import { calculateWearPercentage, COMPONENT_NAMES, COMPONENT_LIFESPAN_KM } from '../../../constants/telemetry';
 import { getMotoSpecs } from '../../../data/specs';
+import { isCar } from '../../../domain/entities/Moto';
 
 interface WebTelemetrySectionProps {
   onOpenSpecs: () => void;
@@ -42,6 +43,8 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
   const wearData = useMemo(() => {
     if (!myMoto) return [];
 
+    const isVehicleCar = isCar(myMoto);
+
     const getComponentLastOdo = (type: string, fallback: number) => {
       const rec = records.find((r) => r.type === type);
       return rec ? rec.odometer : fallback;
@@ -50,63 +53,71 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
     const oilWear = calculateWearPercentage(
       myMoto.currentOdometer,
       getComponentLastOdo('oil', 0),
-      'oil'
+      'oil',
+      undefined,
+      isVehicleCar
     );
 
     const brakesFrontWear = calculateWearPercentage(
       myMoto.currentOdometer,
       getComponentLastOdo('brakes_front', 0),
-      'brakes_front'
+      'brakes_front',
+      undefined,
+      isVehicleCar
     );
 
-    const chainWear = calculateWearPercentage(
+    const chainOrBeltWear = calculateWearPercentage(
       myMoto.currentOdometer,
-      getComponentLastOdo('chain', 0),
-      'chain'
+      getComponentLastOdo(isVehicleCar ? 'timing_belt' : 'chain', 0),
+      (isVehicleCar ? 'timing_belt' : 'chain') as any,
+      undefined,
+      isVehicleCar
     );
 
     const tiresWear = calculateWearPercentage(
       myMoto.currentOdometer,
       getComponentLastOdo('tires_front', 0),
-      'tires_front'
+      'tires_front',
+      undefined,
+      isVehicleCar
     );
 
     return [
       {
         id: 'oil',
-        name: 'Aceite de Motor (4T)',
+        name: isVehicleCar ? 'Aceite & Filtro Motor' : 'Aceite de Motor (4T)',
         wear: oilWear,
-        maxKm: COMPONENT_LIFESPAN_KM.oil,
+        maxKm: isVehicleCar ? 7500 : COMPONENT_LIFESPAN_KM.oil,
         icon: 'opacity',
-        iconFamily: 'material',
-        recommendation: specs?.oilTypeRecommended || '20W-50 4T JASO MA2',
+        iconFamily: 'material' as const,
+        recommendation: specs?.oilTypeRecommended || (isVehicleCar ? '10W-30 Semi-Sintético' : '20W-50 4T JASO MA2'),
+      },
+      {
+        id: isVehicleCar ? 'timing_belt' : 'chain',
+        name: isVehicleCar ? 'Correa de Distribución (Tiempo)' : 'Cadena de Transmisión',
+        wear: chainOrBeltWear,
+        maxKm: isVehicleCar ? 45000 : COMPONENT_LIFESPAN_KM.chain,
+        icon: isVehicleCar ? 'sync' : 'link',
+        iconFamily: 'material' as const,
+        recommendation: isVehicleCar ? (specs?.timingBeltType || 'Correa DOHC 16V') : (specs?.chainType || 'Paso 428H reforzada'),
       },
       {
         id: 'brakes',
-        name: 'Pastillas de Freno',
+        name: isVehicleCar ? 'Frenos Del. & Tras. (ABS)' : 'Pastillas de Freno',
         wear: brakesFrontWear,
-        maxKm: COMPONENT_LIFESPAN_KM.brakes_front,
+        maxKm: isVehicleCar ? 30000 : COMPONENT_LIFESPAN_KM.brakes_front,
         icon: 'disc-alert',
-        iconFamily: 'community',
-        recommendation: specs?.brakesFront || 'Disco hidráulico',
-      },
-      {
-        id: 'chain',
-        name: 'Cadena de Transmisión',
-        wear: chainWear,
-        maxKm: COMPONENT_LIFESPAN_KM.chain,
-        icon: 'link',
-        iconFamily: 'material',
-        recommendation: specs?.chainType || 'Paso 428H reforzada',
+        iconFamily: 'community' as const,
+        recommendation: specs?.brakesFront || (isVehicleCar ? 'Discos ventilados 256mm' : 'Disco hidráulico'),
       },
       {
         id: 'tires',
-        name: 'Neumáticos (Presión)',
+        name: isVehicleCar ? 'Neumáticos (195/55 R15)' : 'Neumáticos (Presión)',
         wear: tiresWear,
-        maxKm: COMPONENT_LIFESPAN_KM.tires_front,
+        maxKm: isVehicleCar ? 40000 : COMPONENT_LIFESPAN_KM.tires_front,
         icon: 'tire',
-        iconFamily: 'community',
-        recommendation: `Del: ${specs?.frontTirePressure || '28 PSI'} • Tras: ${specs?.rearTirePressure || '32 PSI'}`,
+        iconFamily: 'community' as const,
+        recommendation: `Del: ${specs?.frontTirePressure || (isVehicleCar ? '30 PSI' : '28 PSI')} • Tras: ${specs?.rearTirePressure || '32 PSI'}`,
       },
     ];
   }, [myMoto, records, specs]);
