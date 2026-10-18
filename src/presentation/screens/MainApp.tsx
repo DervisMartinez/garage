@@ -39,11 +39,13 @@ import { EmergencyCrashModal } from '../components/EmergencyCrashModal';
 import { MotoInspectionModal } from '../components/MotoInspectionModal';
 import { getMotoSpecs } from '../../data/specs';
 import { isWebPlatform } from '../utils/platformMode';
+import { ComponentType } from '../../constants/telemetry';
 
 export const MainApp = () => {
   const { colors, mode } = useTheme();
   const { myMoto, updateMoto, addRecord } = useMyMoto();
   const [activeTab, setActiveTab] = useState<'moto' | 'specs' | 'services' | 'wallet' | 'history' | 'profile'>('moto');
+  const [servicesInitialComp, setServicesInitialComp] = useState<ComponentType | undefined>(undefined);
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
 
@@ -222,6 +224,10 @@ export const MainApp = () => {
                 onOpenQuickFuel={() => setQuickFuelVisible(true)}
                 onScrollToTelemetry={scrollToTelemetry}
                 onOpenInspection={() => setInspectionModalVisible(true)}
+                onOpenServicesTab={() => {
+                  setServicesInitialComp('oil');
+                  setActiveTab('services');
+                }}
               />
 
               {/* TELEMETRY & WEAR GRID */}
@@ -229,7 +235,14 @@ export const MainApp = () => {
                 onOpenSpecs={() => setActiveTab('specs')}
                 onOpenQuickOdo={() => setQuickOdoVisible(true)}
                 onOpenQuickFuel={() => setQuickFuelVisible(true)}
-                onOpenServicesTab={() => setActiveTab('services')}
+                onOpenServicesTab={(comp?: string) => {
+                  if (comp) {
+                    setServicesInitialComp(comp as ComponentType);
+                  } else {
+                    setServicesInitialComp(undefined);
+                  }
+                  setActiveTab('services');
+                }}
               />
             </View>
           )}
@@ -242,7 +255,7 @@ export const MainApp = () => {
 
           {activeTab === 'services' && (
             <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
-              <ServicesTab />
+              <ServicesTab initialComponent={servicesInitialComp} />
             </View>
           )}
 
@@ -393,7 +406,7 @@ export const MainApp = () => {
         <View style={{ flex: 1, paddingBottom: 68 + insets.bottom }}>
           {activeTab === 'moto' && <DashboardTab />}
           {activeTab === 'specs' && <SpecsTab onNavigateToServices={() => setActiveTab('services')} />}
-          {activeTab === 'services' && <ServicesTab />}
+          {activeTab === 'services' && <ServicesTab initialComponent={servicesInitialComp} />}
           {activeTab === 'history' && <HistoryTab />}
           {activeTab === 'wallet' && <WalletTab />}
           {activeTab === 'profile' && <ProfileTab />}

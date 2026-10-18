@@ -95,15 +95,6 @@ export const CAR_CATALOG: CatalogVehicle[] = [
   {
     id: 'chevrolet-optra-2011',
     brand: 'CHEVROLET',
-    model: 'Optra 2011',
-    vehicleType: 'car',
-    category: 'SEDAN',
-    year: 2011,
-    imageRes: require('../../assets/images/autos/CHEVROLET/SEDAN/OPTRA 2011.png'),
-  },
-  {
-    id: 'chevrolet-optra-advance-2011',
-    brand: 'CHEVROLET',
     model: 'Optra Advance 2011',
     vehicleType: 'car',
     category: 'SEDAN',

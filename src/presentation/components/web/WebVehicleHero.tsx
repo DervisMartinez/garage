@@ -15,6 +15,7 @@ interface WebVehicleHeroProps {
   onOpenQuickFuel: () => void;
   onScrollToTelemetry: () => void;
   onOpenInspection?: () => void;
+  onOpenServicesTab?: () => void;
 }
 
 export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
@@ -24,6 +25,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
   onOpenQuickFuel,
   onScrollToTelemetry,
   onOpenInspection,
+  onOpenServicesTab,
 }) => {
   const { colors, mode } = useTheme();
   const { myMoto, motos, selectMoto, records } = useMyMoto();
@@ -83,13 +85,22 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
   const prevMotoName = motos.length > 1 ? `${motos[(activeIndex - 1 + motos.length) % motos.length].brand} ${motos[(activeIndex - 1 + motos.length) % motos.length].model}` : '';
   const nextMotoName = motos.length > 1 ? `${motos[(activeIndex + 1) % motos.length].brand} ${motos[(activeIndex + 1) % motos.length].model}` : '';
 
+  const isOilConfigured = useMemo(() => {
+    if (!myMoto) return false;
+    if (myMoto.isFromAgency) return true;
+    return records.some((r) => r.type === 'oil');
+  }, [myMoto, records]);
+
   // Oil telemetry calculation
   const oilWear = useMemo(() => {
     if (!myMoto) return 100;
     const oilRecords = records.filter((r) => r.type === 'oil');
-    const lastOilOdo = oilRecords.length > 0 ? oilRecords[0].odometer : 0;
-    return calculateWearPercentage(myMoto.currentOdometer, lastOilOdo, 'oil');
-  }, [myMoto, records]);
+    if (!isOilConfigured) {
+      return 0;
+    }
+    const lastOilOdo = oilRecords.length > 0 ? Math.max(...oilRecords.map((r) => r.odometer)) : 0;
+    return calculateWearPercentage(myMoto.currentOdometer, lastOilOdo, 'oil', undefined, isCar(myMoto));
+  }, [myMoto, records, isOilConfigured]);
 
   if (!myMoto) return null;
 
@@ -181,13 +192,13 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
                   style={[
                     styles.bikeImage, 
                     { 
-                      height: isSmallPhone ? 240 : (isMobile ? 300 : (windowWidth < 1200 ? 380 : 460)) 
+                      height: isSmallPhone ? 220 : (isMobile ? 270 : (windowWidth < 1340 ? 330 : 400)) 
                     }
                   ]}
                   resizeMode="contain"
                 />
               ) : (
-                <View style={[styles.bikePlaceholder, { height: isMobile ? 240 : 400 }]}>
+                <View style={[styles.bikePlaceholder, { height: isMobile ? 220 : 330 }]}>
                   <MaterialIcons name={isCar(myMoto) ? "directions-car" : "two-wheeler"} size={isMobile ? 80 : 130} color="#4169E1" />
                   <Text style={[styles.bikePlaceholderText, { color: colors.onSurfaceVariant }]}>
                     {myMoto.brand} {myMoto.model}
@@ -222,14 +233,16 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
                 </Text>
               </View>
 
-              {/* SOFT GROUND SHADOW */}
+              {/* SOFT REALISTIC GROUND CONTACT SHADOW */}
               <View style={{
-                width: isMobile ? '82%' : '85%',
-                height: isMobile ? 20 : 28,
+                width: isMobile ? '70%' : '75%',
+                height: 10,
                 marginHorizontal: 'auto',
-                marginTop: isMobile ? -16 : -24,
-                borderRadius: 14,
-                backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.14)',
+                marginTop: isMobile ? -8 : -14,
+                borderRadius: 100,
+                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.16)',
+                filter: 'blur(8px)',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.22)',
               } as any} />
             </TouchableOpacity>
 
@@ -311,26 +324,48 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
               <View style={[styles.telemetrySpecItem, { flex: 1 }]}>
                 <Text style={[styles.specLabel, { color: colors.onSurfaceVariant }]}>SALUD DE ACEITE</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={[
-                    styles.specValueMain, 
-                    { 
-                      color: oilWear > 40 ? '#00ae78' : (oilWear > 15 ? '#ffb703' : '#ba1a1a'),
-                      fontSize: isSmallPhone ? 18 : 22,
-                    }
-                  ]}>
-                    {oilWear}%
-                  </Text>
-                  <View style={[styles.healthBadge, {
-                    backgroundColor: oilWear > 40 ? 'rgba(0, 174, 120, 0.15)' : 'rgba(186, 26, 26, 0.15)',
-                    borderColor: oilWear > 40 ? '#00ae78' : '#ba1a1a',
-                  }]}>
-                    <Text style={[styles.healthBadgeText, {
-                      color: oilWear > 40 ? '#00ae78' : '#ffb4ab',
-                      fontSize: 8.5,
-                    }]}>
-                      {oilWear > 40 ? 'ÓPTIMO' : (oilWear > 15 ? 'ATENCIÓN' : 'CAMBIO')}
-                    </Text>
-                  </View>
+                  {!isOilConfigured ? (
+                    <TouchableOpacity
+                      onPress={onOpenServicesTab || onScrollToTelemetry}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.specValueMain, { color: '#ff9500', fontSize: isSmallPhone ? 18 : 22 }]}>
+                        0%
+                      </Text>
+                      <View style={[styles.healthBadge, {
+                        backgroundColor: 'rgba(255, 149, 0, 0.15)',
+                        borderColor: '#ff9500',
+                      }]}>
+                        <Text style={[styles.healthBadgeText, { color: '#ff9500', fontSize: 8.5 }]}>
+                          AJUSTAR
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : (
+                    <>
+                      <Text style={[
+                        styles.specValueMain, 
+                        { 
+                          color: oilWear > 40 ? '#00ae78' : (oilWear > 15 ? '#ffb703' : '#ba1a1a'),
+                          fontSize: isSmallPhone ? 18 : 22,
+                        }
+                      ]}>
+                        {oilWear}%
+                      </Text>
+                      <View style={[styles.healthBadge, {
+                        backgroundColor: oilWear > 40 ? 'rgba(0, 174, 120, 0.15)' : (oilWear > 15 ? 'rgba(255, 183, 3, 0.15)' : 'rgba(186, 26, 26, 0.15)'),
+                        borderColor: oilWear > 40 ? '#00ae78' : (oilWear > 15 ? '#ffb703' : '#ba1a1a'),
+                      }]}>
+                        <Text style={[styles.healthBadgeText, {
+                          color: oilWear > 40 ? '#00ae78' : (oilWear > 15 ? '#ffb703' : '#ffb4ab'),
+                          fontSize: 8.5,
+                        }]}>
+                          {oilWear > 40 ? 'ÓPTIMO' : (oilWear > 15 ? 'ATENCIÓN' : 'CAMBIO')}
+                        </Text>
+                      </View>
+                    </>
+                  )}
                 </View>
               </View>
             </View>

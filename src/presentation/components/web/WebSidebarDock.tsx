@@ -20,8 +20,8 @@ export const WebSidebarDock: React.FC<WebSidebarDockProps> = ({
   const { width } = useWindowDimensions();
   const isDark = mode === 'dark';
 
-  // On narrower desktop viewports (< 1200px), shortcuts are directly available in the top navbar
-  if (width < 1200) {
+  // Only show the floating dock on wide displays (>= 1440px) to prevent overlapping content
+  if (width < 1440) {
     return null;
   }
 

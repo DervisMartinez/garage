@@ -25,17 +25,14 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
   const [motoMenuVisible, setMotoMenuVisible] = useState(false);
   const { width } = useWindowDimensions();
 
-  // Finely tuned responsive breakpoints:
-  // - isDesktopWide: Full desktop view with expanded navbar labels (>= 1260px)
-  // - isDesktopCompact: Compact desktop view that prevents clipping on standard 1080p / 1366px screens without 75% zoom (1024px - 1259px)
-  // - isTablet: Tablet view (768px - 1023px)
-  // - isMobileWeb: Mobile screens (< 1024px)
-  // - isSmallPhone: Small phone viewports (< 480px)
-  // - isTinyPhone: Ultra-compact viewports (< 370px)
-  const isDesktopWide = width >= 1260;
-  const isDesktopCompact = width >= 1024 && width < 1260;
-  const isTablet = width >= 768 && width < 1024;
-  const isMobileWeb = width < 1024;
+  // Clean responsive thresholds:
+  // - showInlineTabs: Only on wide displays (>= 1340px) with ample room for 3 columns.
+  // - showSubNav: On all laptop, tablet, and mobile displays (< 1340px) to guarantee ZERO overlap!
+  const isDesktopWide = width >= 1340;
+  const isDesktopCompact = width >= 1024 && width < 1340;
+  const isTablet = width >= 600 && width < 1024;
+  const showInlineTabs = width >= 1340;
+  const showSubNav = width < 1340;
   const isSmallPhone = width < 480;
   const isTinyPhone = width < 370;
   const isCurrentCar = isCar(myMoto);
@@ -249,8 +246,8 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
           )}
         </View>
 
-        {/* CENTER: DESKTOP NAVIGATION TABS (visible >= 1024px) */}
-        {!isMobileWeb && (
+        {/* CENTER: DESKTOP NAVIGATION TABS (visible >= 1340px only) */}
+        {showInlineTabs && (
           <View style={styles.centerNavContainer}>
             <View style={[styles.centerNavScroll, { gap: isDesktopWide ? 8 : 4 }]}>
               {navItems.map((item) => {
@@ -377,8 +374,8 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
 
       </View>
 
-      {/* RESPONSIVE MOBILE WEB HORIZONTAL SUB-NAVIGATION (< 1024px) */}
-      {isMobileWeb && (
+      {/* RESPONSIVE HORIZONTAL SUB-NAVIGATION (< 1340px) */}
+      {showSubNav && (
         <View style={[
           styles.mobileSubNav,
           { 
@@ -389,7 +386,7 @@ export const WebHeader: React.FC<WebHeaderProps> = ({
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.mobileSubNavScroll}
+            contentContainerStyle={[styles.mobileSubNavScroll, width >= 768 && { justifyContent: 'center', width: '100%' }]}
           >
             {navItems.map((item) => {
               const isActive = activeTab === item.id;

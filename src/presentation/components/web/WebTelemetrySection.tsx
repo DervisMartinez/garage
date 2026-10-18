@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform, useWindowDimensions
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useMyMoto } from '../../context/MotoContext';
-import { calculateWearPercentage, COMPONENT_NAMES, COMPONENT_LIFESPAN_KM } from '../../../constants/telemetry';
+import { calculateWearPercentage, COMPONENT_NAMES, COMPONENT_LIFESPAN_KM, ComponentType } from '../../../constants/telemetry';
 import { getMotoSpecs } from '../../../data/specs';
 import { isCar } from '../../../domain/entities/Moto';
 
@@ -11,7 +11,7 @@ interface WebTelemetrySectionProps {
   onOpenSpecs: () => void;
   onOpenQuickOdo: () => void;
   onOpenQuickFuel: () => void;
-  onOpenServicesTab: () => void;
+  onOpenServicesTab: (comp?: string) => void;
 }
 
 export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
@@ -45,82 +45,106 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
 
     const isVehicleCar = isCar(myMoto);
 
-    const getComponentLastOdo = (type: string, fallback: number) => {
-      const rec = records.find((r) => r.type === type);
-      return rec ? rec.odometer : fallback;
+    const getComponentData = (
+      type: ComponentType,
+      defaultName: string,
+      defaultMaxKm: number,
+      icon: string,
+      iconFamily: 'material' | 'community',
+      recommendation: string
+    ) => {
+      const typeRecords = records.filter((r) => r.type === type);
+      const isConfigured = typeRecords.length > 0 || !!myMoto.isFromAgency;
+
+      if (!isConfigured) {
+        return {
+          id: type,
+          name: defaultName,
+          wear: 0,
+          isConfigured: false,
+          maxKm: defaultMaxKm,
+          icon,
+          iconFamily,
+          recommendation,
+        };
+      }
+
+      const lastOdo = typeRecords.length > 0 ? Math.max(...typeRecords.map((r) => r.odometer)) : 0;
+      let override = undefined;
+      if (type === 'oil') {
+        const lastRecord = typeRecords.reduce((prev, current) => (prev.odometer > current.odometer ? prev : current), typeRecords[0]);
+        if (isVehicleCar) {
+          if (lastRecord?.notes?.includes('Sintético')) override = 7500;
+          else override = 5000;
+        } else {
+          if (lastRecord?.notes?.includes('Mineral')) override = 3000;
+          else if (lastRecord?.notes?.includes('Semi')) override = 5000;
+          else if (lastRecord?.notes?.includes('Sintético')) override = 8000;
+        }
+      }
+
+      const wear = calculateWearPercentage(
+        myMoto.currentOdometer,
+        lastOdo,
+        type as any,
+        override,
+        isVehicleCar
+      );
+
+      return {
+        id: type,
+        name: defaultName,
+        wear,
+        isConfigured: true,
+        maxKm: defaultMaxKm,
+        icon,
+        iconFamily,
+        recommendation,
+      };
     };
 
-    const oilWear = calculateWearPercentage(
-      myMoto.currentOdometer,
-      getComponentLastOdo('oil', 0),
+    const oil = getComponentData(
       'oil',
-      undefined,
-      isVehicleCar
+      isVehicleCar ? 'Aceite & Filtro Motor' : 'Aceite de Motor (4T)',
+      isVehicleCar ? 7500 : COMPONENT_LIFESPAN_KM.oil,
+      'opacity',
+      'material',
+      specs?.oilTypeRecommended || (isVehicleCar ? '10W-30 Semi-Sintético' : '20W-50 4T JASO MA2')
     );
 
-    const brakesFrontWear = calculateWearPercentage(
-      myMoto.currentOdometer,
-      getComponentLastOdo('brakes_front', 0),
+    const beltOrChain = getComponentData(
+      (isVehicleCar ? 'timing_belt' : 'chain') as ComponentType,
+      isVehicleCar ? 'Correa de Distribución (Tiempo)' : 'Cadena de Transmisión',
+      isVehicleCar ? 45000 : COMPONENT_LIFESPAN_KM.chain,
+      isVehicleCar ? 'sync' : 'link',
+      'material',
+      isVehicleCar ? (specs?.timingBeltType || 'Correa DOHC 16V') : (specs?.chainType || 'Paso 428H reforzada')
+    );
+
+    const brakes = getComponentData(
       'brakes_front',
-      undefined,
-      isVehicleCar
+      isVehicleCar ? 'Frenos Del. & Tras. (ABS)' : 'Pastillas de Freno',
+      isVehicleCar ? 30000 : COMPONENT_LIFESPAN_KM.brakes_front,
+      'disc-alert',
+      'community',
+      specs?.brakesFront || (isVehicleCar ? 'Discos ventilados 256mm' : 'Disco hidráulico')
     );
 
-    const chainOrBeltWear = calculateWearPercentage(
-      myMoto.currentOdometer,
-      getComponentLastOdo(isVehicleCar ? 'timing_belt' : 'chain', 0),
-      (isVehicleCar ? 'timing_belt' : 'chain') as any,
-      undefined,
-      isVehicleCar
-    );
-
-    const tiresWear = calculateWearPercentage(
-      myMoto.currentOdometer,
-      getComponentLastOdo('tires_front', 0),
+    const tires = getComponentData(
       'tires_front',
-      undefined,
-      isVehicleCar
+      isVehicleCar ? 'Neumáticos (195/55 R15)' : 'Neumáticos (Presión)',
+      isVehicleCar ? 40000 : COMPONENT_LIFESPAN_KM.tires_front,
+      'tire',
+      'community',
+      `Del: ${specs?.frontTirePressure || (isVehicleCar ? '30 PSI' : '28 PSI')} • Tras: ${specs?.rearTirePressure || '32 PSI'}`
     );
 
-    return [
-      {
-        id: 'oil',
-        name: isVehicleCar ? 'Aceite & Filtro Motor' : 'Aceite de Motor (4T)',
-        wear: oilWear,
-        maxKm: isVehicleCar ? 7500 : COMPONENT_LIFESPAN_KM.oil,
-        icon: 'opacity',
-        iconFamily: 'material' as const,
-        recommendation: specs?.oilTypeRecommended || (isVehicleCar ? '10W-30 Semi-Sintético' : '20W-50 4T JASO MA2'),
-      },
-      {
-        id: isVehicleCar ? 'timing_belt' : 'chain',
-        name: isVehicleCar ? 'Correa de Distribución (Tiempo)' : 'Cadena de Transmisión',
-        wear: chainOrBeltWear,
-        maxKm: isVehicleCar ? 45000 : COMPONENT_LIFESPAN_KM.chain,
-        icon: isVehicleCar ? 'sync' : 'link',
-        iconFamily: 'material' as const,
-        recommendation: isVehicleCar ? (specs?.timingBeltType || 'Correa DOHC 16V') : (specs?.chainType || 'Paso 428H reforzada'),
-      },
-      {
-        id: 'brakes',
-        name: isVehicleCar ? 'Frenos Del. & Tras. (ABS)' : 'Pastillas de Freno',
-        wear: brakesFrontWear,
-        maxKm: isVehicleCar ? 30000 : COMPONENT_LIFESPAN_KM.brakes_front,
-        icon: 'disc-alert',
-        iconFamily: 'community' as const,
-        recommendation: specs?.brakesFront || (isVehicleCar ? 'Discos ventilados 256mm' : 'Disco hidráulico'),
-      },
-      {
-        id: 'tires',
-        name: isVehicleCar ? 'Neumáticos (195/55 R15)' : 'Neumáticos (Presión)',
-        wear: tiresWear,
-        maxKm: isVehicleCar ? 40000 : COMPONENT_LIFESPAN_KM.tires_front,
-        icon: 'tire',
-        iconFamily: 'community' as const,
-        recommendation: `Del: ${specs?.frontTirePressure || (isVehicleCar ? '30 PSI' : '28 PSI')} • Tras: ${specs?.rearTirePressure || '32 PSI'}`,
-      },
-    ];
+    return [oil, beltOrChain, brakes, tires];
   }, [myMoto, records, specs]);
+
+  const hasUnconfigured = useMemo(() => {
+    return wearData.some((item) => !item.isConfigured);
+  }, [wearData]);
 
   // Financial summary
   const totalFuelUSD = useMemo(() => {
@@ -152,7 +176,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
 
         <TouchableOpacity
           style={[styles.openServicesBtn, { borderColor: isDark ? '#40485c' : '#d0d4dc' }]}
-          onPress={onOpenServicesTab}
+          onPress={() => onOpenServicesTab()}
           activeOpacity={0.8}
         >
           <Text style={[styles.openServicesBtnText, { color: colors.onSurface }]}>VER TODOS LOS SERVICIOS</Text>
@@ -160,12 +184,52 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
         </TouchableOpacity>
       </View>
 
+      {/* INITIAL CALIBRATION NOTICE (When vehicle has unconfigured components) */}
+      {hasUnconfigured && (
+        <View style={[
+          styles.unconfiguredBanner,
+          {
+            backgroundColor: isDark ? 'rgba(255, 149, 0, 0.12)' : 'rgba(255, 149, 0, 0.08)',
+            borderColor: 'rgba(255, 149, 0, 0.35)',
+          }
+        ]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+            <MaterialIcons name="build-circle" size={24} color="#ff9500" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.unconfiguredBannerTitle, { color: isDark ? '#ffb703' : '#b25e00' }]}>
+                Ajuste Inicial Requerido
+              </Text>
+              <Text style={[styles.unconfiguredBannerDesc, { color: colors.onSurfaceVariant }]}>
+                {myMoto.isFromAgency
+                  ? 'Vehículo de agencia: los ciclos arrancan desde 0 km.'
+                  : 'Ingresa el kilometraje de tus últimos servicios para que la telemetría calcule el desgaste exacto desde cero.'}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[styles.unconfiguredBannerBtn, { backgroundColor: '#ff9500' }]}
+            onPress={() => onOpenServicesTab()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.unconfiguredBannerBtnText}>Ajustar Todo</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* 4 TELEMETRY WEAR CARDS (GRID) */}
       <View style={styles.wearCardsGrid}>
         {wearData.map((item) => {
-          const isHealthy = item.wear > 40;
-          const isWarning = item.wear <= 40 && item.wear > 15;
-          const statusColor = isHealthy ? '#00ae78' : (isWarning ? '#ffb703' : '#ba1a1a');
+          const isHealthy = item.isConfigured && item.wear > 40;
+          const isWarning = item.isConfigured && item.wear <= 40 && item.wear > 15;
+          const isUnconfigured = !item.isConfigured;
+
+          const statusColor = isUnconfigured 
+            ? '#ff9500' 
+            : (isHealthy ? '#00ae78' : (isWarning ? '#ffb703' : '#ba1a1a'));
+
+          const statusLabel = isUnconfigured
+            ? 'AJUSTAR'
+            : (isHealthy ? 'ÓPTIMO' : (isWarning ? 'ATENCIÓN' : 'RECAMBIO'));
 
           return (
             <View 
@@ -174,7 +238,9 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
                 styles.wearCard,
                 { 
                   backgroundColor: isDark ? '#191c21' : '#ffffff',
-                  borderColor: isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)',
+                  borderColor: isUnconfigured
+                    ? 'rgba(255, 149, 0, 0.45)'
+                    : (isDark ? 'rgba(64, 72, 92, 0.45)' : 'rgba(0, 0, 0, 0.08)'),
                   minWidth: windowWidth < 600 ? '100%' : 260,
                 }
               ]}
@@ -193,7 +259,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
                   borderColor: statusColor 
                 }]}>
                   <Text style={[styles.statusPillText, { color: statusColor }]}>
-                    {isHealthy ? 'ÓPTIMO' : (isWarning ? 'ATENCIÓN' : 'RECAMBIO')}
+                    {statusLabel}
                   </Text>
                 </View>
               </View>
@@ -213,20 +279,39 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
                     style={[
                       styles.progressBarFill, 
                       { 
-                        width: `${item.wear}%`, 
+                        width: isUnconfigured ? '0%' : `${item.wear}%`, 
                         backgroundColor: statusColor 
                       }
                     ]} 
                   />
                 </View>
                 <Text style={[styles.wearPercentText, { color: statusColor }]}>
-                  {item.wear}%
+                  {isUnconfigured ? '0%' : `${item.wear}%`}
                 </Text>
               </View>
 
-              <Text style={[styles.wearSubDetail, { color: colors.onSurfaceVariant }]}>
-                Ciclo nominal: {item.maxKm.toLocaleString()} km
-              </Text>
+              {isUnconfigured ? (
+                <TouchableOpacity
+                  style={[
+                    styles.unconfiguredActionBtn,
+                    {
+                      borderColor: statusColor,
+                      backgroundColor: isDark ? 'rgba(255, 149, 0, 0.12)' : 'rgba(255, 149, 0, 0.08)',
+                    }
+                  ]}
+                  onPress={() => onOpenServicesTab(item.id)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="add-circle-outline" size={14} color={statusColor} />
+                  <Text style={[styles.unconfiguredActionText, { color: statusColor }]}>
+                    Ajustar servicio inicial
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={[styles.wearSubDetail, { color: colors.onSurfaceVariant }]}>
+                  Ciclo nominal: {item.maxKm.toLocaleString()} km
+                </Text>
+              )}
             </View>
           );
         })}
@@ -319,7 +404,7 @@ export const WebTelemetrySection: React.FC<WebTelemetrySectionProps> = ({
                 ${totalMaintenanceUSD.toFixed(2)}{' '}
                 <Text style={{ fontSize: windowWidth < 420 ? 11 : 13, color: colors.onSurfaceVariant }}>USD</Text>
               </Text>
-              <TouchableOpacity onPress={onOpenServicesTab} style={{ marginTop: 6 }}>
+              <TouchableOpacity onPress={() => onOpenServicesTab()} style={{ marginTop: 6 }}>
                 <Text style={styles.actionLinkText}>+ Nuevo servicio</Text>
               </TouchableOpacity>
             </View>
@@ -509,5 +594,51 @@ const styles = StyleSheet.create({
     color: '#00e3fd',
     fontSize: 11,
     fontFamily: 'Montserrat_600SemiBold',
+  },
+  unconfiguredBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 20,
+    gap: 12,
+  },
+  unconfiguredBannerTitle: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_700Bold',
+    marginBottom: 2,
+  },
+  unconfiguredBannerDesc: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_400Regular',
+    lineHeight: 16,
+  },
+  unconfiguredBannerBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignSelf: 'center',
+  },
+  unconfiguredBannerBtnText: {
+    color: '#111319',
+    fontSize: 12,
+    fontFamily: 'Montserrat_700Bold',
+  },
+  unconfiguredActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  unconfiguredActionText: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_700Bold',
   },
 });

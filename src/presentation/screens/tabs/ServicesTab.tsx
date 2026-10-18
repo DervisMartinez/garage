@@ -6,14 +6,24 @@ import { useTheme } from '../../context/ThemeContext';
 import { ComponentType, COMPONENT_NAMES, getVehicleComponents } from '../../../constants/telemetry';
 import { isCar } from '../../../domain/entities/Moto';
 
-export const ServicesTab = () => {
+interface ServicesTabProps {
+  initialComponent?: ComponentType;
+}
+
+export const ServicesTab: React.FC<ServicesTabProps> = ({ initialComponent }) => {
   const { myMoto, records, addRecord, updateMoto } = useMyMoto();
   const { colors } = useTheme();
 
   const isCurrentCar = isCar(myMoto);
   const comps: ComponentType[] = getVehicleComponents(isCurrentCar);
 
-  const [selectedComp, setSelectedComp] = useState<ComponentType>('oil');
+  const [selectedComp, setSelectedComp] = useState<ComponentType>(initialComponent || 'oil');
+
+  React.useEffect(() => {
+    if (initialComponent) {
+      setSelectedComp(initialComponent);
+    }
+  }, [initialComponent]);
   const [odoStr, setOdoStr] = useState(myMoto?.currentOdometer.toString() || '0');
   const [costStr, setCostStr] = useState('');
   const [notes, setNotes] = useState('');
