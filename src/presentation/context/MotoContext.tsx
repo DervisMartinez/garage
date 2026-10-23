@@ -27,10 +27,18 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isAddingMoto, setIsAddingMoto] = useState(false);
 
+  // In-memory cache for service records by moto_id to make vehicle pagination instant
+  const recordsCacheRef = React.useRef<Map<string, ServiceRecord[]>>(new Map());
+  const recordsFetchTimeRef = React.useRef<Map<string, number>>(new Map());
+  const initialLoadDoneRef = React.useRef(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        loadDataFromCloud();
+        if (!initialLoadDoneRef.current) {
+          initialLoadDoneRef.current = true;
+          loadDataFromCloud();
+        }
       } else {
         setIsLoaded(true);
       }
@@ -38,11 +46,17 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        loadDataFromCloud();
+        if (!initialLoadDoneRef.current) {
+          initialLoadDoneRef.current = true;
+          loadDataFromCloud();
+        }
       } else {
         setMotos([]);
         setMyMoto(null);
         setRecords([]);
+        recordsCacheRef.current.clear();
+        recordsFetchTimeRef.current.clear();
+        initialLoadDoneRef.current = false;
         setIsLoaded(true);
       }
     });
@@ -54,7 +68,8 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
 
   const loadDataFromCloud = async (preferredMotoId?: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user || (await supabase.auth.getUser()).data?.user;
       if (!user) return;
 
       const { data: motosData } = await supabase
@@ -122,19 +137,35 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    if (!myMoto) {
+      setRecords([]);
+      return;
+    }
+
+    const motoId = myMoto.id;
+    // 1. Instant cache hit: render immediately with zero network delay
+    const cached = recordsCacheRef.current.get(motoId);
+    if (cached) {
+      setRecords(cached);
+    }
+
+    // 2. Throttle network revalidation (don't query Supabase if fetched within last 20s)
+    const lastFetch = recordsFetchTimeRef.current.get(motoId) || 0;
+    const now = Date.now();
+    if (cached && now - lastFetch < 20000) {
+      return;
+    }
+
+    let isMounted = true;
     const loadRecords = async () => {
-      if (!myMoto) {
-        setRecords([]);
-        return;
-      }
       try {
         const { data: recordsData } = await supabase
           .from('service_records')
           .select('*')
-          .eq('moto_id', myMoto.id)
+          .eq('moto_id', motoId)
           .order('created_at', { ascending: false });
 
-        if (recordsData) {
+        if (isMounted && recordsData) {
           const parsedRecords: ServiceRecord[] = recordsData.map(r => ({
             id: r.id,
             type: r.type as any,
@@ -143,13 +174,19 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
             costUSD: r.cost_usd,
             notes: r.notes
           }));
+          recordsCacheRef.current.set(motoId, parsedRecords);
+          recordsFetchTimeRef.current.set(motoId, Date.now());
           setRecords(parsedRecords);
         }
       } catch (e) {
         console.error('Error cargando records', e);
       }
     };
+
     loadRecords();
+    return () => {
+      isMounted = false;
+    };
   }, [myMoto?.id]);
 
   const saveMoto = async (moto: Moto) => {
@@ -199,8 +236,10 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
   const updateMoto = async (updates: Partial<Moto>) => {
     if (!myMoto) return;
     setMyMoto(prev => prev ? { ...prev, ...updates } : null);
+    setMotos(prev => prev.map(m => m.id === myMoto.id ? { ...m, ...updates } : m));
     
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user || (await supabase.auth.getUser()).data?.user;
     if (user) {
       const dbUpdates: any = {};
       if (updates.plate !== undefined) dbUpdates.plate = updates.plate;
@@ -213,7 +252,6 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
       
       if (Object.keys(dbUpdates).length > 0) {
         await supabase.from('motos').update(dbUpdates).eq('id', myMoto.id);
-        await loadDataFromCloud();
       }
     }
   };
@@ -221,6 +259,11 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
   const selectMoto = (id: string) => {
     const moto = motos.find(m => m.id === id);
     if (moto) {
+      // 1. Immediately apply cached records for this vehicle with 0ms delay
+      const cached = recordsCacheRef.current.get(moto.id);
+      if (cached) {
+        setRecords(cached);
+      }
       setMyMoto(moto);
     }
   };
@@ -229,6 +272,8 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
     // 1. Optimistic local state update so UI updates immediately
     const remaining = motos.filter(m => m.id !== id);
     setMotos(remaining);
+    recordsCacheRef.current.delete(id);
+    recordsFetchTimeRef.current.delete(id);
     if (myMoto?.id === id) {
       setMyMoto(remaining.length > 0 ? remaining[0] : null);
     }
@@ -247,8 +292,15 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addRecord = async (record: ServiceRecord) => {
-    setRecords(prev => [record, ...prev]);
-    const { data: { user } } = await supabase.auth.getUser();
+    setRecords(prev => {
+      const updated = [record, ...prev];
+      if (myMoto) {
+        recordsCacheRef.current.set(myMoto.id, updated);
+      }
+      return updated;
+    });
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user || (await supabase.auth.getUser()).data?.user;
     if (user && myMoto) {
       await supabase.from('service_records').insert({
         moto_id: myMoto.id,
@@ -263,7 +315,13 @@ export const MotoProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteRecord = async (id: string) => {
-    setRecords(prev => prev.filter(r => r.id !== id));
+    setRecords(prev => {
+      const updated = prev.filter(r => r.id !== id);
+      if (myMoto) {
+        recordsCacheRef.current.set(myMoto.id, updated);
+      }
+      return updated;
+    });
     await supabase.from('service_records').delete().eq('id', id);
   };
 

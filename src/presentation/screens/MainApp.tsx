@@ -46,9 +46,23 @@ export const MainApp = () => {
   const { colors, mode } = useTheme();
   const { myMoto, updateMoto, addRecord } = useMyMoto();
   const [activeTab, setActiveTab] = useState<'moto' | 'specs' | 'services' | 'wallet' | 'history' | 'profile'>('moto');
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['moto']));
   const [servicesInitialComp, setServicesInitialComp] = useState<ComponentType | undefined>(undefined);
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
+
+  const handleSelectTab = (tab: 'moto' | 'specs' | 'services' | 'wallet' | 'history' | 'profile') => {
+    setVisitedTabs((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+    setActiveTab(tab);
+    if (isWebPlatform()) {
+      desktopScrollRef.current?.scrollTo({ y: 0, animated: false });
+    }
+  };
 
   // Desktop threshold: 920px
   const isDesktop = windowWidth >= 920;
@@ -113,7 +127,7 @@ export const MainApp = () => {
   const plusScale = useRef(new Animated.Value(1)).current;
 
   const handleTabPress = (id: 'moto' | 'services' | 'wallet' | 'history' | 'profile', index: number) => {
-    setActiveTab(id);
+    handleSelectTab(id);
 
     // Spring elevate the active tab and lower inactive tabs (mobile)
     tabs.forEach((_, i) => {
@@ -196,7 +210,7 @@ export const MainApp = () => {
         {/* RESPONSIVE WEB TOP HEADER (Adapts cleanly to desktop, tablet, and mobile browsers) */}
         <WebHeader
           activeTab={activeTab}
-          onSelectTab={setActiveTab}
+          onSelectTab={handleSelectTab}
           onOpenQuickOdo={() => setQuickOdoVisible(true)}
           onOpenQuickFuel={() => setQuickFuelVisible(true)}
           onOpenReport={() => setReportModalVisible(true)}
@@ -206,77 +220,75 @@ export const MainApp = () => {
         <WebSidebarDock
           onOpenQuickOdo={() => setQuickOdoVisible(true)}
           onOpenQuickFuel={() => setQuickFuelVisible(true)}
-          onOpenSpecs={() => setActiveTab('specs')}
+          onOpenSpecs={() => handleSelectTab('specs')}
           onOpenStats={() => setStatsModalVisible(true)}
         />
 
-        {/* WEB MAIN VIEW */}
+        {/* WEB MAIN VIEW - TABS PERSIST IN MEMORY FOR INSTANT 0MS NAVIGATION */}
         <ScrollView 
           ref={desktopScrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={{ minHeight: '100%', paddingBottom: 60 }}
           showsVerticalScrollIndicator={true}
         >
-          {activeTab === 'moto' && (
-            <View style={{ width: '100%' }}>
-              {/* VEHICLE SHOWCASE HERO */}
-              <WebVehicleHero
-                onOpenSpecs={() => setActiveTab('specs')}
-                onOpenStats={() => setStatsModalVisible(true)}
-                onOpenQuickOdo={() => setQuickOdoVisible(true)}
-                onOpenQuickFuel={() => setQuickFuelVisible(true)}
-                onScrollToTelemetry={scrollToTelemetry}
-                onOpenInspection={() => setInspectionModalVisible(true)}
-                onOpenReport={() => setReportModalVisible(true)}
-                onOpenServicesTab={() => {
-                  setServicesInitialComp('oil');
-                  setActiveTab('services');
-                }}
-              />
+          <View style={{ width: '100%', display: activeTab === 'moto' ? 'flex' : 'none' }}>
+            {/* VEHICLE SHOWCASE HERO */}
+            <WebVehicleHero
+              onOpenSpecs={() => handleSelectTab('specs')}
+              onOpenStats={() => setStatsModalVisible(true)}
+              onOpenQuickOdo={() => setQuickOdoVisible(true)}
+              onOpenQuickFuel={() => setQuickFuelVisible(true)}
+              onScrollToTelemetry={scrollToTelemetry}
+              onOpenInspection={() => setInspectionModalVisible(true)}
+              onOpenReport={() => setReportModalVisible(true)}
+              onOpenServicesTab={() => {
+                setServicesInitialComp('oil');
+                handleSelectTab('services');
+              }}
+            />
 
-              {/* TELEMETRY & WEAR GRID */}
-              <WebTelemetrySection
-                onOpenSpecs={() => setActiveTab('specs')}
-                onOpenQuickOdo={() => setQuickOdoVisible(true)}
-                onOpenQuickFuel={() => setQuickFuelVisible(true)}
-                onOpenServicesTab={(comp?: string) => {
-                  if (comp) {
-                    setServicesInitialComp(comp as ComponentType);
-                  } else {
-                    setServicesInitialComp(undefined);
-                  }
-                  setActiveTab('services');
-                }}
-              />
+            {/* TELEMETRY & WEAR GRID */}
+            <WebTelemetrySection
+              onOpenSpecs={() => handleSelectTab('specs')}
+              onOpenQuickOdo={() => setQuickOdoVisible(true)}
+              onOpenQuickFuel={() => setQuickFuelVisible(true)}
+              onOpenServicesTab={(comp?: string) => {
+                if (comp) {
+                  setServicesInitialComp(comp as ComponentType);
+                } else {
+                  setServicesInitialComp(undefined);
+                }
+                handleSelectTab('services');
+              }}
+            />
+          </View>
+
+          {visitedTabs.has('specs') && (
+            <View style={{ width: '100%', display: activeTab === 'specs' ? 'flex' : 'none' }}>
+              <SpecsTab onNavigateToServices={() => handleSelectTab('services')} />
             </View>
           )}
 
-          {activeTab === 'specs' && (
-            <View style={{ width: '100%' }}>
-              <SpecsTab onNavigateToServices={() => setActiveTab('services')} />
-            </View>
-          )}
-
-          {activeTab === 'services' && (
-            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
+          {visitedTabs.has('services') && (
+            <View style={[styles.desktopTabContainer, { display: activeTab === 'services' ? 'flex' : 'none', paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
               <ServicesTab initialComponent={servicesInitialComp} />
             </View>
           )}
 
-          {activeTab === 'history' && (
-            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
+          {visitedTabs.has('history') && (
+            <View style={[styles.desktopTabContainer, { display: activeTab === 'history' ? 'flex' : 'none', paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
               <HistoryTab />
             </View>
           )}
 
-          {activeTab === 'wallet' && (
-            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
+          {visitedTabs.has('wallet') && (
+            <View style={[styles.desktopTabContainer, { display: activeTab === 'wallet' ? 'flex' : 'none', paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
               <WalletTab />
             </View>
           )}
 
-          {activeTab === 'profile' && (
-            <View style={[styles.desktopTabContainer, { paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
+          {visitedTabs.has('profile') && (
+            <View style={[styles.desktopTabContainer, { display: activeTab === 'profile' ? 'flex' : 'none', paddingHorizontal: windowWidth < 768 ? (windowWidth < 480 ? 10 : 16) : 32, paddingTop: windowWidth < 768 ? 14 : 24 }]}>
               <ProfileTab onOpenReport={() => setReportModalVisible(true)} />
             </View>
           )}
@@ -416,12 +428,34 @@ export const MainApp = () => {
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ flex: 1, paddingBottom: 68 + insets.bottom }}>
-          {activeTab === 'moto' && <DashboardTab />}
-          {activeTab === 'specs' && <SpecsTab onNavigateToServices={() => setActiveTab('services')} />}
-          {activeTab === 'services' && <ServicesTab initialComponent={servicesInitialComp} />}
-          {activeTab === 'history' && <HistoryTab />}
-          {activeTab === 'wallet' && <WalletTab />}
-          {activeTab === 'profile' && <ProfileTab onOpenReport={() => setReportModalVisible(true)} />}
+          <View style={{ flex: 1, display: activeTab === 'moto' ? 'flex' : 'none' }}>
+            <DashboardTab />
+          </View>
+          {visitedTabs.has('specs') && (
+            <View style={{ flex: 1, display: activeTab === 'specs' ? 'flex' : 'none' }}>
+              <SpecsTab onNavigateToServices={() => handleSelectTab('services')} />
+            </View>
+          )}
+          {visitedTabs.has('services') && (
+            <View style={{ flex: 1, display: activeTab === 'services' ? 'flex' : 'none' }}>
+              <ServicesTab initialComponent={servicesInitialComp} />
+            </View>
+          )}
+          {visitedTabs.has('history') && (
+            <View style={{ flex: 1, display: activeTab === 'history' ? 'flex' : 'none' }}>
+              <HistoryTab />
+            </View>
+          )}
+          {visitedTabs.has('wallet') && (
+            <View style={{ flex: 1, display: activeTab === 'wallet' ? 'flex' : 'none' }}>
+              <WalletTab />
+            </View>
+          )}
+          {visitedTabs.has('profile') && (
+            <View style={{ flex: 1, display: activeTab === 'profile' ? 'flex' : 'none' }}>
+              <ProfileTab onOpenReport={() => setReportModalVisible(true)} />
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
 

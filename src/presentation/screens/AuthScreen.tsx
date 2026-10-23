@@ -18,13 +18,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { LegalConsentCheckboxes } from '../components/LegalConsentCheckboxes';
 import { LegalDocModal, LegalDocType } from '../components/LegalDocModal';
+import { ForgotPasswordModal, ForgotPasswordStep } from '../components/ForgotPasswordModal';
 import { recordLegalConsent } from '../../services/legalConsentService';
 
 interface Props {
   onBack?: () => void;
+  initialRecoveryMode?: boolean;
 }
 
-export const AuthScreen: React.FC<Props> = ({ onBack }) => {
+export const AuthScreen: React.FC<Props> = ({ onBack, initialRecoveryMode = false }) => {
   // Theme and responsive state
   const { colors, mode, isDark } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
@@ -55,6 +57,19 @@ export const AuthScreen: React.FC<Props> = ({ onBack }) => {
   const [showLegalErrors, setShowLegalErrors] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [selectedLegalDoc, setSelectedLegalDoc] = useState<LegalDocType>('terms');
+
+  // Supabase Auth Recovery State
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(initialRecoveryMode);
+  const [forgotPasswordStep, setForgotPasswordStep] = useState<ForgotPasswordStep>(
+    initialRecoveryMode ? 'reset' : 'request'
+  );
+
+  React.useEffect(() => {
+    if (initialRecoveryMode) {
+      setForgotPasswordStep('reset');
+      setShowForgotPasswordModal(true);
+    }
+  }, [initialRecoveryMode]);
 
   const F = {
     bold: 'Montserrat_700Bold',
@@ -369,9 +384,25 @@ export const AuthScreen: React.FC<Props> = ({ onBack }) => {
                   </View>
 
                   <View>
-                    <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold }]}>
-                      CONTRASEÑA
-                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <Text style={[styles.fieldLabel, { color: colors.onSurfaceVariant, fontFamily: F.semibold, marginBottom: 0 }]}>
+                        CONTRASEÑA
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setForgotPasswordStep('request');
+                          setShowForgotPasswordModal(true);
+                        }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2, cursor: Platform.OS === 'web' ? ('pointer' as any) : undefined }}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialIcons name="vpn-key" size={13} color={tokens.secondary} />
+                        <Text style={{ fontSize: 11, color: tokens.secondary, fontFamily: F.bold, textDecorationLine: 'underline' }}>
+                          ¿Olvidaste tu clave?
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
                     <View style={[styles.input, { flexDirection: 'row', alignItems: 'center', backgroundColor: tokens.surfaceContainer, borderColor: tokens.outline, paddingHorizontal: 14 }]}>
                       <TextInput 
                         style={{ flex: 1, height: 48, color: colors.onSurface, fontFamily: F.medium, fontSize: 14 }} 
@@ -394,6 +425,21 @@ export const AuthScreen: React.FC<Props> = ({ onBack }) => {
                         />
                       </TouchableOpacity>
                     </View>
+
+                    {/* BADGE DESTACADO: ¿OLVIDASTE TU CONTRASEÑA? */}
+                    <TouchableOpacity
+                      onPress={() => {
+                        setForgotPasswordStep('request');
+                        setShowForgotPasswordModal(true);
+                      }}
+                      style={styles.forgotPasswordBtn}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons name="lock-reset" size={16} color={tokens.secondary} />
+                      <Text style={[styles.forgotPasswordText, { color: tokens.secondary, fontFamily: F.bold }]}>
+                        ¿Olvidaste tu contraseña? Restablecer acceso
+                      </Text>
+                    </TouchableOpacity>
                   </View>
 
                   {/* Botón Ingresar */}
@@ -780,6 +826,17 @@ export const AuthScreen: React.FC<Props> = ({ onBack }) => {
           }
         }}
       />
+
+      {/* MODAL DE RECUPERACIÓN DE CONTRASEÑA SUPABASE */}
+      <ForgotPasswordModal
+        visible={showForgotPasswordModal}
+        initialEmail={email}
+        initialStep={forgotPasswordStep}
+        onClose={() => setShowForgotPasswordModal(false)}
+        onSuccess={() => {
+          setIsLogin(true);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -1005,5 +1062,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 4,
+  },
+  forgotPasswordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 227, 253, 0.08)',
+    borderWidth: 0.8,
+    borderColor: 'rgba(0, 227, 253, 0.35)',
+    cursor: Platform.OS === 'web' ? ('pointer' as any) : undefined,
+  },
+  forgotPasswordText: {
+    fontSize: 12,
+    letterSpacing: 0.3,
   },
 });

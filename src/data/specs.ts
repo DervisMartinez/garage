@@ -383,7 +383,94 @@ export const MOTO_SPECS_DB: Record<string, MotoSpecs> = {
     dimensions: 'Largo: 4.520 mm | Ancho: 1.725 mm | Alto: 1.445 mm | Batalla: 2.600 mm',
     trunkCapacity: '405 Litros',
     equipment: 'Chevystar Platinum con pantalla 4.3" y GPS, Climatizador digital, Doble Airbag, Sunroof',
-  }
+  },
+  'toyota-samurai fj60 1982': {
+    engineType: 'Toyota 2F, 6 Cilindros en línea, OHV a gasolina, 12 válvulas',
+    displacement: '4.230 cc (4.2 Litros)',
+    hp: '135 HP @ 3.600 RPM',
+    torque: '285 Nm (210 lb-pie) @ 1.800 RPM',
+    transmission: 'Manual 4 velocidades sincrónica (caja H41/H42 con reversa)',
+    weight: '2.040 kg (Peso en vacío) | PBT: 2.630 kg',
+    fuelCapacity: '90 Litros (aprox. 23.8 galones) - Carburador doble garganta',
+    oilCapacity: '7.8 Litros (con filtro)',
+    oilTypeRecommended: '20W-50 / 15W-40 Mineral para motor 2F pesado',
+    coolantCapacity: '14.5 Litros (Radiador de latón/cobre con vaso de expansión)',
+    frontTireSize: '235/75 R15 o 31x10.50 R15 (Rines 15" 6x139.7)',
+    frontTirePressure: '30 - 32 PSI',
+    rearTireSize: '235/75 R15 o 31x10.50 R15',
+    rearTirePressure: '32 - 35 PSI',
+    timingBeltType: 'Distribución por engranajes directos (Gear-driven, sin correa)',
+    sparkPlug: 'NGK BPR5EY / Denso W16EX-U (Luz: 0.8 mm)',
+    battery: '12V 75Ah - 700 CCA',
+    brakesFront: 'Discos ventilados asistidos por vacío con cáliper flotante',
+    brakesRear: 'Tambores hidráulicos de servicio pesado con auto-ajuste',
+    cooling: 'Líquido presurizado con fan clutch de acople viscoso',
+    maintenanceIntervalOil: 'Cada 5.000 km',
+    maintenanceIntervalTimingBelt: 'Engranajes directos - Libre de mantenimiento',
+    suspensionFront: 'Eje rígido con ballestas semi-elípticas y barra estabilizadora',
+    suspensionRear: 'Eje rígido con ballestas semi-elípticas reforzadas',
+    dimensions: 'Largo: 4.675 mm | Ancho: 1.800 mm | Alto: 1.750 mm | Batalla: 2.730 mm',
+    trunkCapacity: '1.200 Litros (ampliable con asientos abatibles)',
+    equipment: 'Tracción 4x4 con transfer de 2 velocidades (2H/4H/N/4L), cubos manuales Aisin/Warn, Dirección hidráulica, A/C, 5 puertas',
+  },
+  'toyota-samurai 1982': {
+    engineType: 'Toyota 2F, 6 Cilindros en línea, OHV a gasolina, 12 válvulas',
+    displacement: '4.230 cc (4.2 Litros)',
+    hp: '135 HP @ 3.600 RPM',
+    torque: '285 Nm (210 lb-pie) @ 1.800 RPM',
+    transmission: 'Manual 4 velocidades sincrónica (caja H41/H42 con reversa)',
+    weight: '2.040 kg (Peso en vacío)',
+    fuelCapacity: '90 Litros - Carburador doble garganta',
+    oilCapacity: '7.8 Litros (con filtro)',
+    oilTypeRecommended: '20W-50 / 15W-40 Mineral para motor 2F pesado',
+    coolantCapacity: '14.5 Litros',
+    frontTireSize: '235/75 R15 o 31x10.50 R15',
+    frontTirePressure: '30 - 32 PSI',
+    rearTireSize: '235/75 R15 o 31x10.50 R15',
+    rearTirePressure: '32 - 35 PSI',
+    timingBeltType: 'Distribución por engranajes directos (Gear-driven, sin correa)',
+    sparkPlug: 'NGK BPR5EY / Denso W16EX-U',
+    battery: '12V 75Ah - 700 CCA',
+    brakesFront: 'Discos ventilados asistidos',
+    brakesRear: 'Tambores hidráulicos de servicio pesado',
+    cooling: 'Líquido presurizado con fan clutch',
+    maintenanceIntervalOil: 'Cada 5.000 km',
+    maintenanceIntervalTimingBelt: 'Engranajes directos - Libre de mantenimiento',
+    suspensionFront: 'Eje rígido con ballestas semi-elípticas',
+    suspensionRear: 'Eje rígido con ballestas semi-elípticas reforzadas',
+    dimensions: 'Largo: 4.675 mm | Ancho: 1.800 mm | Alto: 1.750 mm | Batalla: 2.730 mm',
+    trunkCapacity: '1.200 Litros',
+    equipment: 'Tracción 4x4 (2H/4H/N/4L), Dirección hidráulica, A/C, carrocería SUV 5 puertas',
+  },
+  'toyota-samurai': {
+    engineType: 'Toyota 2F, 6 Cilindros en línea, OHV a gasolina, 12 válvulas',
+    displacement: '4.230 cc (4.2 Litros)',
+    hp: '135 HP @ 3.600 RPM',
+    torque: '285 Nm (210 lb-pie) @ 1.800 RPM',
+    transmission: 'Manual 4 velocidades sincrónica (caja H41/H42 con reversa)',
+    weight: '2.040 kg',
+    fuelCapacity: '90 Litros - Carburador doble garganta',
+    oilCapacity: '7.8 Litros',
+    oilTypeRecommended: '20W-50 / 15W-40 Mineral',
+    coolantCapacity: '14.5 Litros',
+    frontTireSize: '235/75 R15 o 31x10.50 R15',
+    frontTirePressure: '30 - 32 PSI',
+    rearTireSize: '235/75 R15 o 31x10.50 R15',
+    rearTirePressure: '32 - 35 PSI',
+    timingBeltType: 'Distribución por engranajes directos (Gear-driven)',
+    sparkPlug: 'NGK BPR5EY',
+    battery: '12V 75Ah',
+    brakesFront: 'Discos ventilados asistidos',
+    brakesRear: 'Tambores hidráulicos',
+    cooling: 'Líquido presurizado con fan clutch',
+    maintenanceIntervalOil: 'Cada 5.000 km',
+    maintenanceIntervalTimingBelt: 'Engranajes directos - Libre de mantenimiento',
+    suspensionFront: 'Eje rígido con ballestas semi-elípticas',
+    suspensionRear: 'Eje rígido con ballestas semi-elípticas',
+    dimensions: 'Largo: 4.675 mm | Ancho: 1.800 mm | Alto: 1.750 mm',
+    trunkCapacity: '1.200 Litros',
+    equipment: 'Tracción 4x4 con reductora (2H/4H/N/4L), Dirección hidráulica, A/C',
+  },
 };
 
 export const getMotoSpecs = (brand: string, model: string): MotoSpecs => {
@@ -397,6 +484,17 @@ export const getMotoSpecs = (brand: string, model: string): MotoSpecs => {
 
   if (MOTO_SPECS_DB[exactKey]) {
     return MOTO_SPECS_DB[exactKey];
+  }
+
+  // Detect Toyota Samurai / Land Cruiser FJ60
+  if (
+    cleanBrand.includes('toyota') ||
+    cleanModel.includes('samurai') ||
+    cleanModel.includes('samuray') ||
+    cleanModel.includes('fj60') ||
+    cleanModel.includes('land cruiser')
+  ) {
+    return MOTO_SPECS_DB['toyota-samurai fj60 1982'];
   }
 
   // Detect Optra or Chevrolet car

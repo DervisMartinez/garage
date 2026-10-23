@@ -8,6 +8,8 @@ import { LandingScreen } from '@/presentation/screens/LandingScreen';
 import { supabase } from '@/data/supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
+import { handleRecoveryDeepLink } from '@/services/authRecoveryService';
 
 const PreloadScreen = () => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -42,6 +44,7 @@ export default function HomeScreen() {
   const { myMoto, isLoaded, isAddingMoto } = useMyMoto();
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   // Mantenemos un mínimo de tiempo para que se aprecie la animación (opcional, 1.5s)
   const [minWaitDone, setMinWaitDone] = useState(false);
@@ -55,18 +58,48 @@ export default function HomeScreen() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
-      if (session) {
+      if (session && !isRecoveryMode) {
         setViewState('app');
       }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveryMode(true);
+        setViewState('auth');
+        return;
+      }
+
       if (session) {
-        setViewState('app');
+        if (!isRecoveryMode) {
+          setViewState('app');
+        }
       } else {
+        setIsRecoveryMode(false);
         setViewState('landing');
       }
+    });
+
+    // Escucha de enlaces profundos (Deep Links) en Native / Web
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleRecoveryDeepLink(url).then((res) => {
+          if (res.isRecovery) {
+            setIsRecoveryMode(true);
+            setViewState('auth');
+          }
+        });
+      }
+    });
+
+    const urlListener = Linking.addEventListener('url', ({ url }) => {
+      handleRecoveryDeepLink(url).then((res) => {
+        if (res.isRecovery) {
+          setIsRecoveryMode(true);
+          setViewState('auth');
+        }
+      });
     });
 
     setTimeout(() => {
@@ -75,8 +108,9 @@ export default function HomeScreen() {
 
     return () => {
       authListener?.subscription.unsubscribe();
+      urlListener.remove();
     };
-  }, []);
+  }, [isRecoveryMode]);
 
   if (authLoading || !isLoaded || !minWaitDone) {
     return <PreloadScreen />;
@@ -87,6 +121,14 @@ export default function HomeScreen() {
   // 100% PURA APP MÓVIL SIN ADULTERACIONES NI LANDING WEB
   // ==========================================
   if (!isWeb) {
+    if (isRecoveryMode) {
+      return (
+        <AuthScreen
+          initialRecoveryMode={true}
+          onBack={() => setIsRecoveryMode(false)}
+        />
+      );
+    }
     if (!session) {
       return <AuthScreen />;
     }
@@ -100,6 +142,18 @@ export default function HomeScreen() {
   // WEB PLATFORM FLOW (Port 8081 / Web domain):
   // Portada de entrada (Landing) -> Acceder -> App Web
   // ==========================================
+  if (isRecoveryMode) {
+    return (
+      <AuthScreen
+        initialRecoveryMode={true}
+        onBack={() => {
+          setIsRecoveryMode(false);
+          setViewState('landing');
+        }}
+      />
+    );
+  }
+
   if (viewState === 'landing') {
     return (
       <LandingScreen
