@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
+import { View, Text, Animated, Easing, StyleSheet, Platform } from 'react-native';
 import { useMyMoto } from '@/presentation/context/MotoContext';
 import { SetupScreen } from '@/presentation/screens/SetupScreen';
 import { MainApp } from '@/presentation/screens/MainApp';
@@ -9,7 +9,8 @@ import { supabase } from '@/data/supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { handleRecoveryDeepLink } from '@/services/authRecoveryService';
+import { handleRecoveryDeepLink, cleanUrlHash } from '@/services/authRecoveryService';
+import { ForgotPasswordStep } from '@/presentation/components/ForgotPasswordModal';
 
 const PreloadScreen = () => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -45,6 +46,8 @@ export default function HomeScreen() {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [recoveryStep, setRecoveryStep] = useState<ForgotPasswordStep>('reset');
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
   // Mantenemos un mínimo de tiempo para que se aprecie la animación (opcional, 1.5s)
   const [minWaitDone, setMinWaitDone] = useState(false);
@@ -67,6 +70,8 @@ export default function HomeScreen() {
       setSession(session);
       if (event === 'PASSWORD_RECOVERY') {
         setIsRecoveryMode(true);
+        setRecoveryStep('reset');
+        setRecoveryError(null);
         setViewState('auth');
         return;
       }
@@ -81,25 +86,39 @@ export default function HomeScreen() {
       }
     });
 
+    const processIncomingUrl = (url: string) => {
+      if (!url) return;
+      handleRecoveryDeepLink(url).then((res) => {
+        if (res.isRecovery) {
+          setIsRecoveryMode(true);
+          setRecoveryStep('reset');
+          setRecoveryError(null);
+          setViewState('auth');
+        } else if (res.error) {
+          setIsRecoveryMode(true);
+          setRecoveryStep('request');
+          setRecoveryError(res.error);
+          setViewState('auth');
+        }
+      });
+    };
+
+    // En navegador web, procesar la URL activa (por si contiene tokens o error de enlace expirado)
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.location.hash || window.location.search) {
+        processIncomingUrl(window.location.href);
+      }
+    }
+
     // Escucha de enlaces profundos (Deep Links) en Native / Web
     Linking.getInitialURL().then((url) => {
       if (url) {
-        handleRecoveryDeepLink(url).then((res) => {
-          if (res.isRecovery) {
-            setIsRecoveryMode(true);
-            setViewState('auth');
-          }
-        });
+        processIncomingUrl(url);
       }
     });
 
     const urlListener = Linking.addEventListener('url', ({ url }) => {
-      handleRecoveryDeepLink(url).then((res) => {
-        if (res.isRecovery) {
-          setIsRecoveryMode(true);
-          setViewState('auth');
-        }
-      });
+      processIncomingUrl(url);
     });
 
     setTimeout(() => {
@@ -125,7 +144,12 @@ export default function HomeScreen() {
       return (
         <AuthScreen
           initialRecoveryMode={true}
-          onBack={() => setIsRecoveryMode(false)}
+          initialRecoveryStep={recoveryStep}
+          initialRecoveryError={recoveryError}
+          onBack={() => {
+            setIsRecoveryMode(false);
+            setRecoveryError(null);
+          }}
         />
       );
     }
@@ -146,8 +170,11 @@ export default function HomeScreen() {
     return (
       <AuthScreen
         initialRecoveryMode={true}
+        initialRecoveryStep={recoveryStep}
+        initialRecoveryError={recoveryError}
         onBack={() => {
           setIsRecoveryMode(false);
+          setRecoveryError(null);
           setViewState('landing');
         }}
       />

@@ -24,9 +24,16 @@ import { recordLegalConsent } from '../../services/legalConsentService';
 interface Props {
   onBack?: () => void;
   initialRecoveryMode?: boolean;
+  initialRecoveryStep?: ForgotPasswordStep;
+  initialRecoveryError?: string | null;
 }
 
-export const AuthScreen: React.FC<Props> = ({ onBack, initialRecoveryMode = false }) => {
+export const AuthScreen: React.FC<Props> = ({
+  onBack,
+  initialRecoveryMode = false,
+  initialRecoveryStep = 'request',
+  initialRecoveryError = null,
+}) => {
   // Theme and responsive state
   const { colors, mode, isDark } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
@@ -60,16 +67,16 @@ export const AuthScreen: React.FC<Props> = ({ onBack, initialRecoveryMode = fals
 
   // Supabase Auth Recovery State
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(initialRecoveryMode);
-  const [forgotPasswordStep, setForgotPasswordStep] = useState<ForgotPasswordStep>(
-    initialRecoveryMode ? 'reset' : 'request'
-  );
+  const [forgotPasswordStep, setForgotPasswordStep] = useState<ForgotPasswordStep>(initialRecoveryStep);
+  const [forgotPasswordError, setForgotPasswordError] = useState<string | null>(initialRecoveryError);
 
   React.useEffect(() => {
     if (initialRecoveryMode) {
-      setForgotPasswordStep('reset');
+      setForgotPasswordStep(initialRecoveryStep);
+      setForgotPasswordError(initialRecoveryError);
       setShowForgotPasswordModal(true);
     }
-  }, [initialRecoveryMode]);
+  }, [initialRecoveryMode, initialRecoveryStep, initialRecoveryError]);
 
   const F = {
     bold: 'Montserrat_700Bold',
@@ -832,7 +839,11 @@ export const AuthScreen: React.FC<Props> = ({ onBack, initialRecoveryMode = fals
         visible={showForgotPasswordModal}
         initialEmail={email}
         initialStep={forgotPasswordStep}
-        onClose={() => setShowForgotPasswordModal(false)}
+        initialErrorMessage={forgotPasswordError}
+        onClose={() => {
+          setShowForgotPasswordModal(false);
+          setForgotPasswordError(null);
+        }}
         onSuccess={() => {
           setIsLogin(true);
         }}

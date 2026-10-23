@@ -18,6 +18,7 @@ import {
   requestPasswordReset,
   verifyRecoveryOtp,
   updatePilotPassword,
+  isUserSessionActive,
 } from '../../services/authRecoveryService';
 
 export type ForgotPasswordStep = 'request' | 'reset' | 'success';
@@ -26,6 +27,7 @@ interface Props {
   visible: boolean;
   initialEmail?: string;
   initialStep?: ForgotPasswordStep;
+  initialErrorMessage?: string | null;
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -34,6 +36,7 @@ export const ForgotPasswordModal: React.FC<Props> = ({
   visible,
   initialEmail = '',
   initialStep = 'request',
+  initialErrorMessage = null,
   onClose,
   onSuccess,
 }) => {
@@ -44,12 +47,13 @@ export const ForgotPasswordModal: React.FC<Props> = ({
   const [step, setStep] = useState<ForgotPasswordStep>(initialStep);
   const [email, setEmail] = useState(initialEmail);
   const [otpToken, setOtpToken] = useState('');
+  const [showOtpField, setShowOtpField] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(initialErrorMessage);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   // Sincronizar estado cuando el modal se abre
@@ -58,13 +62,14 @@ export const ForgotPasswordModal: React.FC<Props> = ({
       setStep(initialStep);
       setEmail(initialEmail);
       setOtpToken('');
+      setShowOtpField(false);
       setNewPassword('');
       setConfirmPassword('');
-      setErrorMessage(null);
+      setErrorMessage(initialErrorMessage);
       setInfoMessage(null);
       setLoading(false);
     }
-  }, [visible, initialEmail, initialStep]);
+  }, [visible, initialEmail, initialStep, initialErrorMessage]);
 
   const F = {
     extrabold: 'Montserrat_800ExtraBold',
@@ -138,7 +143,7 @@ export const ForgotPasswordModal: React.FC<Props> = ({
 
     setLoading(true);
     try {
-      // Si el usuario ingresó código OTP de 6 dígitos, verificarlo primero
+      // 1. Si el usuario ingresó código OTP de 6 dígitos, verificarlo primero
       if (otpToken.trim()) {
         const otpRes = await verifyRecoveryOtp(email, otpToken);
         if (!otpRes.success) {
@@ -146,9 +151,19 @@ export const ForgotPasswordModal: React.FC<Props> = ({
           setLoading(false);
           return;
         }
+      } else {
+        // 2. Verificar si existe sesión de recuperación activa (establecida al hacer clic en el correo)
+        const hasSession = await isUserSessionActive();
+        if (!hasSession) {
+          setErrorMessage(
+            'No se detectó una sesión de recuperación activa. Si recibiste varios correos, asegúrate de abrir el enlace "Reset password" del correo más reciente, o solicita un nuevo enlace abajo.'
+          );
+          setLoading(false);
+          return;
+        }
       }
 
-      // Actualizar la contraseña en Supabase Auth
+      // 3. Actualizar la contraseña en Supabase Auth
       const updateRes = await updatePilotPassword(newPassword);
       if (!updateRes.success) {
         setErrorMessage(updateRes.message || 'No se pudo actualizar la contraseña.');
@@ -252,10 +267,27 @@ export const ForgotPasswordModal: React.FC<Props> = ({
               {/* MENSAJES DE ERROR / INFO */}
               {errorMessage && (
                 <View style={[styles.alertBox, { backgroundColor: tokens.alertContainer, borderColor: tokens.alert }]}>
-                  <MaterialIcons name="error-outline" size={18} color={tokens.alert} />
-                  <Text style={[styles.alertText, { color: tokens.alert, fontFamily: F.semibold }]}>
-                    {errorMessage}
-                  </Text>
+                  <MaterialIcons name="error-outline" size={20} color={tokens.alert} style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.alertText, { color: tokens.alert, fontFamily: F.semibold }]}>
+                      {errorMessage}
+                    </Text>
+                    {step === 'reset' && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setErrorMessage(null);
+                          setStep('request');
+                        }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialIcons name="refresh" size={16} color={tokens.alert} />
+                        <Text style={{ color: tokens.alert, fontFamily: F.bold, fontSize: 12, textDecorationLine: 'underline' }}>
+                          Solicitar nuevo enlace de recuperación
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               )}
 
@@ -272,7 +304,7 @@ export const ForgotPasswordModal: React.FC<Props> = ({
               {step === 'request' && (
                 <View style={{ gap: 16 }}>
                   <Text style={[styles.descriptionText, { color: tokens.textSecondary, fontFamily: F.regular }]}>
-                    Ingresa el correo electrónico asociado a tu cuenta de piloto. Te enviaremos un enlace seguro y un código numérico para restablecer tu acceso.
+                    Ingresa el correo electrónico asociado a tu cuenta de piloto. Te enviaremos un enlace seguro a tu bandeja para restablecer tu contraseña.
                   </Text>
 
                   <View>
@@ -324,7 +356,7 @@ export const ForgotPasswordModal: React.FC<Props> = ({
                     )}
                   </TouchableOpacity>
 
-                  {/* ACCESO RÁPIDO SI YA POSEE EL CÓDIGO O ENLACE */}
+                  {/* ACCESO RÁPIDO SI YA POSEE EL ENLACE */}
                   <TouchableOpacity
                     onPress={() => {
                       setErrorMessage(null);
@@ -335,7 +367,7 @@ export const ForgotPasswordModal: React.FC<Props> = ({
                   >
                     <MaterialCommunityIcons name="email-check-outline" size={18} color={tokens.secondary} />
                     <Text style={[styles.switchStepText, { color: tokens.secondary, fontFamily: F.semibold }]}>
-                      ¿Ya recibiste el código o abriste el enlace? Haz clic aquí
+                      ¿Ya abriste el enlace en tu correo? Ingresa tu contraseña aquí
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -351,43 +383,9 @@ export const ForgotPasswordModal: React.FC<Props> = ({
                         Instrucciones despachadas
                       </Text>
                       <Text style={[styles.statusBannerSub, { color: tokens.textSecondary, fontFamily: F.regular }]}>
-                        Revisa tu bandeja {email ? `(${email})` : ''} e ingresa tus nuevos datos.
+                        Abre el botón "Reset password" del correo más reciente que te llegó para autorizar el cambio.
                       </Text>
                     </View>
-                  </View>
-
-                  {/* CAMPO DE CÓDIGO OTP (OPCIONAL SI VIENE DE ENLACE DIRECTO) */}
-                  <View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <Text style={[styles.inputLabel, { color: tokens.textSecondary, fontFamily: F.semibold }]}>
-                        CÓDIGO DE 6 DÍGITOS
-                      </Text>
-                      <Text style={{ fontSize: 10, color: tokens.textSecondary, fontFamily: F.medium }}>
-                        (Opcional si diste clic al enlace)
-                      </Text>
-                    </View>
-                    <TextInput
-                      style={[
-                        styles.textInput,
-                        {
-                          backgroundColor: tokens.surfaceContainer,
-                          borderColor: tokens.outline,
-                          color: tokens.textPrimary,
-                          fontFamily: F.bold,
-                          letterSpacing: 3,
-                          textAlign: 'center',
-                        },
-                      ]}
-                      placeholder="123456"
-                      placeholderTextColor={tokens.textSecondary}
-                      value={otpToken}
-                      onChangeText={(val) => {
-                        setOtpToken(val);
-                        setErrorMessage(null);
-                      }}
-                      keyboardType="number-pad"
-                      maxLength={8}
-                    />
                   </View>
 
                   {/* NUEVA CONTRASEÑA */}
@@ -510,6 +508,47 @@ export const ForgotPasswordModal: React.FC<Props> = ({
                     </View>
                   </View>
 
+                  {/* OPCIÓN SECUNDARIA: CÓDIGO DE 6 DÍGITOS */}
+                  <TouchableOpacity
+                    onPress={() => setShowOtpField(!showOtpField)}
+                    style={{ alignSelf: 'center', paddingVertical: 4 }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 11, color: tokens.secondary, fontFamily: F.semibold, textDecorationLine: 'underline' }}>
+                      {showOtpField ? 'Ocultar campo de código' : '¿Tu correo incluye un código de 6 dígitos? Ingrésalo aquí'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {showOtpField && (
+                    <View>
+                      <Text style={[styles.inputLabel, { color: tokens.textSecondary, fontFamily: F.semibold }]}>
+                        CÓDIGO NUMÉRICO DE 6 DÍGITOS
+                      </Text>
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          {
+                            backgroundColor: tokens.surfaceContainer,
+                            borderColor: tokens.outline,
+                            color: tokens.textPrimary,
+                            fontFamily: F.bold,
+                            letterSpacing: 3,
+                            textAlign: 'center',
+                          },
+                        ]}
+                        placeholder="123456"
+                        placeholderTextColor={tokens.textSecondary}
+                        value={otpToken}
+                        onChangeText={(val) => {
+                          setOtpToken(val);
+                          setErrorMessage(null);
+                        }}
+                        keyboardType="number-pad"
+                        maxLength={8}
+                      />
+                    </View>
+                  )}
+
                   {/* BOTÓN ACTUALIZAR */}
                   <TouchableOpacity
                     style={[
@@ -546,7 +585,7 @@ export const ForgotPasswordModal: React.FC<Props> = ({
                   >
                     <MaterialIcons name="arrow-back" size={16} color={tokens.textSecondary} />
                     <Text style={[styles.backStepText, { color: tokens.textSecondary, fontFamily: F.semibold }]}>
-                      Cambiar correo o solicitar nuevo código
+                      Cambiar correo o solicitar nuevo enlace
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -712,8 +751,8 @@ const styles = StyleSheet.create({
   },
   alertBox: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    alignItems: 'flex-start',
+    gap: 10,
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -721,7 +760,6 @@ const styles = StyleSheet.create({
   },
   alertText: {
     fontSize: 12,
-    flex: 1,
     lineHeight: 18,
   },
   switchStepBtn: {

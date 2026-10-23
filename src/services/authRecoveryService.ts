@@ -5,6 +5,7 @@ import { supabase } from '../data/supabaseClient';
 export interface RecoveryResult {
   success: boolean;
   message?: string;
+  isExpired?: boolean;
 }
 
 /**
@@ -14,14 +15,14 @@ export function formatAuthError(error: any): string {
   if (!error) return 'Ocurrió un error inesperado. Inténtalo nuevamente.';
   const rawMsg = error.message || String(error);
 
+  if (rawMsg.includes('otp_expired') || rawMsg.includes('Email link is invalid or has expired') || rawMsg.includes('Token has expired')) {
+    return 'El enlace de recuperación ha expirado o ya fue utilizado. Si solicitaste varios correos, asegúrate de abrir el enlace del correo más reciente.';
+  }
   if (rawMsg.includes('once every') || rawMsg.includes('over_email_send_rate_limit')) {
-    return 'Por motivos de seguridad, debes esperar un momento antes de solicitar otro enlace de recuperación.';
+    return 'Por motivos de seguridad, debes esperar 60 segundos antes de solicitar otro enlace de recuperación.';
   }
   if (rawMsg.includes('User not found') || rawMsg.includes('Unable to validate email address')) {
     return 'No encontramos un piloto registrado con ese correo electrónico.';
-  }
-  if (rawMsg.includes('Token has expired') || rawMsg.includes('invalid') || rawMsg.includes('Token is invalid')) {
-    return 'El código o enlace de recuperación ha expirado o no es válido. Solicita uno nuevo.';
   }
   if (rawMsg.includes('Password should be at least')) {
     return 'La nueva contraseña debe tener al menos 6 caracteres.';
@@ -30,7 +31,7 @@ export function formatAuthError(error: any): string {
     return 'La nueva contraseña debe ser distinta a la contraseña anterior.';
   }
   if (rawMsg.includes('Auth session missing') || rawMsg.includes('session_not_found')) {
-    return 'No hay una sesión de recuperación activa. Ingresa el código de 6 dígitos que te enviamos por correo.';
+    return 'No se detectó una sesión activa de recuperación. Asegúrate de hacer clic en el enlace "Reset password" del correo más reciente.';
   }
   if (rawMsg.includes('Network request failed')) {
     return 'Problema de conexión a internet. Revisa tu red e inténtalo nuevamente.';
@@ -40,8 +41,32 @@ export function formatAuthError(error: any): string {
 }
 
 /**
+ * Limpia el hash de error o tokens de la barra de direcciones en navegador web
+ * para evitar que un hash caducado permanezca al recargar la página.
+ */
+export function cleanUrlHash(): void {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history && window.location.hash) {
+    try {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    } catch {}
+  }
+}
+
+/**
+ * Verifica si existe una sesión activa actualmente en Supabase.
+ */
+export async function isUserSessionActive(): Promise<boolean> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return Boolean(data?.session);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Solicita el restablecimiento de contraseña enviando un correo al usuario
- * con enlace seguro de recuperación y token OTP de Supabase.
+ * con enlace seguro de recuperación.
  */
 export async function requestPasswordReset(email: string): Promise<RecoveryResult> {
   const cleanEmail = email.trim().toLowerCase();
@@ -74,7 +99,7 @@ export async function requestPasswordReset(email: string): Promise<RecoveryResul
 
     return {
       success: true,
-      message: 'Hemos enviado un enlace y código de recuperación a tu correo.',
+      message: 'Hemos enviado las instrucciones a tu correo. Abre el último mensaje que recibas.',
     };
   } catch (err: any) {
     return {
@@ -85,8 +110,7 @@ export async function requestPasswordReset(email: string): Promise<RecoveryResul
 }
 
 /**
- * Valida el código de 6 dígitos (OTP token) recibido por correo para activar
- * la sesión temporal de recuperación.
+ * Valida un código OTP de 6 dígitos si la plantilla de correo de Supabase lo provee.
  */
 export async function verifyRecoveryOtp(email: string, token: string): Promise<RecoveryResult> {
   const cleanEmail = email.trim().toLowerCase();
@@ -102,7 +126,7 @@ export async function verifyRecoveryOtp(email: string, token: string): Promise<R
   if (!cleanToken || cleanToken.length < 6) {
     return {
       success: false,
-      message: 'Ingresa el código numérico de 6 dígitos recibido por correo.',
+      message: 'Ingresa el código numérico de 6 dígitos.',
     };
   }
 
@@ -140,7 +164,7 @@ export async function verifyRecoveryOtp(email: string, token: string): Promise<R
 }
 
 /**
- * Actualiza la contraseña del usuario autenticado (en sesión de recuperación o activa).
+ * Actualiza la contraseña del usuario autenticado en la sesión de recuperación.
  */
 export async function updatePilotPassword(newPassword: string): Promise<RecoveryResult> {
   const cleanPassword = newPassword.trim();
@@ -177,17 +201,33 @@ export async function updatePilotPassword(newPassword: string): Promise<Recovery
 }
 
 /**
- * Analiza un enlace profundo (Deep Link) o URL con fragmento de recuperación
- * (#access_token=... o ?code=...) y establece la sesión en Supabase.
+ * Analiza un enlace profundo o URL web buscando tokens de acceso o errores de expiración.
  */
-export async function handleRecoveryDeepLink(url: string): Promise<{ isRecovery: boolean; error?: string }> {
+export async function handleRecoveryDeepLink(
+  url: string
+): Promise<{ isRecovery: boolean; error?: string; isExpired?: boolean }> {
   if (!url) return { isRecovery: false };
 
   try {
-    // Caso 1: Fragmento de URL (#access_token=...&refresh_token=...&type=recovery)
+    // Caso 1: Fragmento de URL (#access_token=... o #error=...)
     if (url.includes('#')) {
       const hash = url.split('#')[1];
       const params = new URLSearchParams(hash);
+
+      const urlError = params.get('error');
+      const errorCode = params.get('error_code');
+      const errorDesc = params.get('error_description');
+
+      if (urlError || errorCode) {
+        cleanUrlHash();
+        let msg = 'El enlace de recuperación es inválido o ha expirado.';
+        if (errorCode === 'otp_expired' || (errorDesc && errorDesc.includes('expired'))) {
+          msg =
+            'El enlace de recuperación ha expirado o ya fue utilizado. Si solicitaste varios correos, abre únicamente el enlace del correo más reciente.';
+        }
+        return { isRecovery: false, error: msg, isExpired: true };
+      }
+
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
       const type = params.get('type');
@@ -198,6 +238,8 @@ export async function handleRecoveryDeepLink(url: string): Promise<{ isRecovery:
           refresh_token: refreshToken,
         });
 
+        cleanUrlHash();
+
         if (error) {
           return { isRecovery: false, error: formatAuthError(error) };
         }
@@ -206,14 +248,28 @@ export async function handleRecoveryDeepLink(url: string): Promise<{ isRecovery:
       }
     }
 
-    // Caso 2: Parámetro de consulta PKCE (?code=...)
-    if (url.includes('code=')) {
-      const queryString = url.split('?')[1]?.split('#')[0];
-      const params = new URLSearchParams(queryString);
-      const code = params.get('code');
+    // Caso 2: Parámetros de consulta (?code=... o ?error=...)
+    if (url.includes('?')) {
+      const query = url.split('?')[1]?.split('#')[0];
+      const params = new URLSearchParams(query);
 
+      const urlError = params.get('error');
+      const errorCode = params.get('error_code');
+
+      if (urlError || errorCode) {
+        cleanUrlHash();
+        let msg = 'El enlace de recuperación es inválido o ha expirado.';
+        if (errorCode === 'otp_expired') {
+          msg = 'El enlace ha expirado o ya fue utilizado. Abre el correo más reciente recibido.';
+        }
+        return { isRecovery: false, error: msg, isExpired: true };
+      }
+
+      const code = params.get('code');
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
+        cleanUrlHash();
+
         if (error) {
           return { isRecovery: false, error: formatAuthError(error) };
         }
