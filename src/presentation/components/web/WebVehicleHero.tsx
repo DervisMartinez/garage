@@ -114,9 +114,10 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
           styles.heroContainer, 
           { 
             paddingHorizontal: isSmallPhone ? 14 : (isMobile ? 20 : (windowWidth < 1200 ? 28 : 40)),
-            minHeight: isMobile ? 'auto' : (windowWidth < 1200 ? 520 : 600),
+            minHeight: isMobile ? undefined : (windowWidth < 1200 ? 520 : 600),
             paddingTop: isMobile ? 18 : 36,
-            paddingBottom: isMobile ? 20 : 28,
+            paddingBottom: isMobile ? 28 : 28,
+            justifyContent: isMobile ? 'flex-start' : 'space-between',
           }
         ]}
       >
@@ -153,7 +154,8 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
           { 
             flexDirection: isMobile ? 'column' : 'row',
             gap: isMobile ? 16 : (windowWidth < 1200 ? 16 : 24),
-            alignItems: 'center',
+            alignItems: isMobile ? 'stretch' : 'center',
+            justifyContent: isMobile ? 'flex-start' : 'space-between',
           }
         ]}>
           
@@ -178,8 +180,11 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
           <View style={[
             styles.bikeShowcaseContainer,
             {
+              flex: isMobile ? 0 : 1.6,
+              flexGrow: isMobile ? 0 : 1.6,
+              flexShrink: 0,
               width: '100%',
-              minHeight: isSmallPhone ? 200 : (isMobile ? 260 : 420),
+              minHeight: isSmallPhone ? 180 : (isMobile ? 220 : 420),
             }
           ]}>
             <TouchableOpacity 
@@ -240,7 +245,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
               <View style={{
                 width: isMobile ? '70%' : '75%',
                 height: 10,
-                marginHorizontal: 'auto',
+                alignSelf: 'center',
                 marginTop: isMobile ? -8 : -14,
                 borderRadius: 100,
                 backgroundColor: isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.16)',
@@ -275,8 +280,11 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
           <View style={[
             styles.heroInfoBlock, 
             { 
+              flex: isMobile ? 0 : 1,
+              flexGrow: isMobile ? 0 : 1,
+              flexShrink: 0,
               maxWidth: isMobile ? '100%' : (windowWidth < 1200 ? 350 : 420),
-              width: isMobile ? '100%' : 'auto',
+              width: '100%',
               paddingLeft: isMobile ? 0 : (windowWidth < 1200 ? 6 : 12),
             }
           ]}>
@@ -380,6 +388,7 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
                 flexDirection: isSmallPhone ? 'column' : 'row',
                 width: '100%',
                 gap: 10,
+                marginTop: isMobile ? 12 : 6,
               }
             ]}>
               <TouchableOpacity
@@ -444,8 +453,9 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
           styles.subPillsRow, 
           { 
             justifyContent: isMobile ? 'center' : 'flex-start', 
-            marginTop: isSmallPhone ? 16 : (isMobile ? 18 : 0),
+            marginTop: isSmallPhone ? 20 : (isMobile ? 22 : 0),
             gap: isSmallPhone ? 8 : 10,
+            width: '100%',
           }
         ]}>
           {onOpenInspection && (
@@ -486,11 +496,14 @@ export const WebVehicleHero: React.FC<WebVehicleHeroProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.subPill, { borderColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc' }]}
+            style={[styles.subPill, { 
+              borderColor: isDark ? 'rgba(64, 72, 92, 0.5)' : '#d0d4dc',
+              paddingHorizontal: isSmallPhone ? 10 : 14,
+            }]}
             onPress={onOpenStats}
             activeOpacity={0.8}
           >
-            <Text style={[styles.subPillText, { color: colors.onSurface }]}>+ CALENDARIO Y GASTOS</Text>
+            <Text style={[styles.subPillText, { color: colors.onSurface, fontSize: isSmallPhone ? 10 : 10.5 }]}>+ CALENDARIO Y GASTOS</Text>
           </TouchableOpacity>
 
           {/* REPORTE EXPEDIENTE PDF */}
@@ -572,7 +585,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bikeShowcaseContainer: {
-    flex: 1.6,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -610,7 +622,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   heroInfoBlock: {
-    flex: 1,
+    width: '100%',
   },
   brandBadgeRow: {
     flexDirection: 'row',

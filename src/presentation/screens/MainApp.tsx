@@ -193,7 +193,7 @@ export const MainApp = () => {
   };
 
   const scrollToTelemetry = () => {
-    desktopScrollRef.current?.scrollTo({ y: 550, animated: true });
+    desktopScrollRef.current?.scrollTo({ y: windowWidth < 900 ? 680 : 550, animated: true });
   };
 
   const isDark = mode === 'dark';
@@ -228,7 +228,7 @@ export const MainApp = () => {
         <ScrollView 
           ref={desktopScrollRef}
           style={{ flex: 1 }}
-          contentContainerStyle={{ minHeight: '100%', paddingBottom: 60 }}
+          contentContainerStyle={{ minHeight: '100%', paddingBottom: windowWidth < 768 ? 90 : 60 }}
           showsVerticalScrollIndicator={true}
         >
           <View style={{ width: '100%', display: activeTab === 'moto' ? 'flex' : 'none' }}>
