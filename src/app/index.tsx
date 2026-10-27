@@ -41,11 +41,34 @@ const PreloadScreen = () => {
 
 import { isWebPlatform } from '@/presentation/utils/platformMode';
 
+const checkIsRecoveryInitial = () => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const href = window.location.href || '';
+    if (
+      hash.includes('type=recovery') ||
+      hash.includes('access_token') ||
+      hash.includes('error=') ||
+      search.includes('type=recovery') ||
+      search.includes('code=') ||
+      href.includes('reset-password')
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export default function HomeScreen() {
   const { myMoto, isLoaded, isAddingMoto } = useMyMoto();
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+
+  // Detección síncrona inicial de modo recuperación para evitar parpadeos o redirección prematura al dashboard
+  const initialRecovery = checkIsRecoveryInitial();
+  const isRecoveryModeRef = useRef(initialRecovery);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(initialRecovery);
   const [recoveryStep, setRecoveryStep] = useState<ForgotPasswordStep>('reset');
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
@@ -53,7 +76,7 @@ export default function HomeScreen() {
   const [minWaitDone, setMinWaitDone] = useState(false);
 
   // Estado de navegación inicial para la versión WEB: 'landing' | 'auth' | 'app'
-  const [viewState, setViewState] = useState<'landing' | 'auth' | 'app'>('landing');
+  const [viewState, setViewState] = useState<'landing' | 'auth' | 'app'>(initialRecovery ? 'auth' : 'landing');
 
   const isWeb = isWebPlatform();
 
@@ -61,7 +84,7 @@ export default function HomeScreen() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
-      if (session && !isRecoveryMode) {
+      if (session && !isRecoveryModeRef.current) {
         setViewState('app');
       }
     });
@@ -69,6 +92,7 @@ export default function HomeScreen() {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       if (event === 'PASSWORD_RECOVERY') {
+        isRecoveryModeRef.current = true;
         setIsRecoveryMode(true);
         setRecoveryStep('reset');
         setRecoveryError(null);
@@ -77,12 +101,13 @@ export default function HomeScreen() {
       }
 
       if (session) {
-        if (!isRecoveryMode) {
+        if (!isRecoveryModeRef.current) {
           setViewState('app');
         }
       } else {
-        setIsRecoveryMode(false);
-        setViewState('landing');
+        if (!isRecoveryModeRef.current) {
+          setViewState('landing');
+        }
       }
     });
 
@@ -90,11 +115,13 @@ export default function HomeScreen() {
       if (!url) return;
       handleRecoveryDeepLink(url).then((res) => {
         if (res.isRecovery) {
+          isRecoveryModeRef.current = true;
           setIsRecoveryMode(true);
           setRecoveryStep('reset');
           setRecoveryError(null);
           setViewState('auth');
         } else if (res.error) {
+          isRecoveryModeRef.current = true;
           setIsRecoveryMode(true);
           setRecoveryStep('request');
           setRecoveryError(res.error);
@@ -129,7 +156,7 @@ export default function HomeScreen() {
       authListener?.subscription.unsubscribe();
       urlListener.remove();
     };
-  }, [isRecoveryMode]);
+  }, []);
 
   if (authLoading || !isLoaded || !minWaitDone) {
     return <PreloadScreen />;
@@ -146,7 +173,18 @@ export default function HomeScreen() {
           initialRecoveryMode={true}
           initialRecoveryStep={recoveryStep}
           initialRecoveryError={recoveryError}
+          onRecoveryComplete={() => {
+            isRecoveryModeRef.current = false;
+            setIsRecoveryMode(false);
+            setRecoveryError(null);
+          }}
+          onCloseRecovery={() => {
+            isRecoveryModeRef.current = false;
+            setIsRecoveryMode(false);
+            setRecoveryError(null);
+          }}
           onBack={() => {
+            isRecoveryModeRef.current = false;
             setIsRecoveryMode(false);
             setRecoveryError(null);
           }}
@@ -172,7 +210,20 @@ export default function HomeScreen() {
         initialRecoveryMode={true}
         initialRecoveryStep={recoveryStep}
         initialRecoveryError={recoveryError}
+        onRecoveryComplete={() => {
+          isRecoveryModeRef.current = false;
+          setIsRecoveryMode(false);
+          setRecoveryError(null);
+          setViewState('app');
+        }}
+        onCloseRecovery={() => {
+          isRecoveryModeRef.current = false;
+          setIsRecoveryMode(false);
+          setRecoveryError(null);
+          setViewState('auth');
+        }}
         onBack={() => {
+          isRecoveryModeRef.current = false;
           setIsRecoveryMode(false);
           setRecoveryError(null);
           setViewState('landing');

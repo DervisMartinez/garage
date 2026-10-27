@@ -40,14 +40,35 @@ export function formatAuthError(error: any): string {
   return rawMsg;
 }
 
+export const CANONICAL_APP_URL = 'https://garage-sigma-silk.vercel.app';
+
+/**
+ * Obtiene la URL de redirección adecuada para autenticación y recuperación.
+ * Siempre prefiere el dominio oficial desplegado en Vercel, o el origin actual
+ * si se ejecuta en un dominio web real en la nube.
+ */
+export function getAuthRedirectUrl(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
+    const origin = window.location.origin;
+    if (origin.startsWith('http://') || origin.startsWith('https://')) {
+      if (!origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+        return origin;
+      }
+    }
+  }
+  // En cualquier otro caso (mobile, emulador, o localhost para no generar enlaces rotos),
+  // siempre apuntar al dominio oficial desplegado en Vercel
+  return CANONICAL_APP_URL;
+}
+
 /**
  * Limpia el hash de error o tokens de la barra de direcciones en navegador web
  * para evitar que un hash caducado permanezca al recargar la página.
  */
 export function cleanUrlHash(): void {
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history && window.location.hash) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history) {
     try {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      window.history.replaceState(null, '', window.location.pathname);
     } catch {}
   }
 }
@@ -57,8 +78,10 @@ export function cleanUrlHash(): void {
  */
 export async function isUserSessionActive(): Promise<boolean> {
   try {
-    const { data } = await supabase.auth.getSession();
-    return Boolean(data?.session);
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData?.session) return true;
+    const { data: userData } = await supabase.auth.getUser();
+    return Boolean(userData?.user);
   } catch {
     return false;
   }
@@ -66,7 +89,7 @@ export async function isUserSessionActive(): Promise<boolean> {
 
 /**
  * Solicita el restablecimiento de contraseña enviando un correo al usuario
- * con enlace seguro de recuperación.
+ * con enlace seguro de recuperación apuntando a Vercel.
  */
 export async function requestPasswordReset(email: string): Promise<RecoveryResult> {
   const cleanEmail = email.trim().toLowerCase();
@@ -79,12 +102,7 @@ export async function requestPasswordReset(email: string): Promise<RecoveryResul
   }
 
   try {
-    const redirectUrl =
-      Platform.OS === 'web'
-        ? typeof window !== 'undefined'
-          ? `${window.location.origin}`
-          : undefined
-        : Linking.createURL('reset-password');
+    const redirectUrl = getAuthRedirectUrl();
 
     const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
       redirectTo: redirectUrl,
@@ -244,7 +262,7 @@ export async function handleRecoveryDeepLink(
           return { isRecovery: false, error: formatAuthError(error) };
         }
 
-        return { isRecovery: type === 'recovery' || true };
+        return { isRecovery: type === 'recovery' || Boolean(accessToken) };
       }
     }
 
@@ -255,11 +273,12 @@ export async function handleRecoveryDeepLink(
 
       const urlError = params.get('error');
       const errorCode = params.get('error_code');
+      const errorDesc = params.get('error_description');
 
       if (urlError || errorCode) {
         cleanUrlHash();
         let msg = 'El enlace de recuperación es inválido o ha expirado.';
-        if (errorCode === 'otp_expired') {
+        if (errorCode === 'otp_expired' || (errorDesc && errorDesc.includes('expired'))) {
           msg = 'El enlace ha expirado o ya fue utilizado. Abre el correo más reciente recibido.';
         }
         return { isRecovery: false, error: msg, isExpired: true };

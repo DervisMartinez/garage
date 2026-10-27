@@ -26,6 +26,8 @@ interface Props {
   initialRecoveryMode?: boolean;
   initialRecoveryStep?: ForgotPasswordStep;
   initialRecoveryError?: string | null;
+  onRecoveryComplete?: () => void;
+  onCloseRecovery?: () => void;
 }
 
 export const AuthScreen: React.FC<Props> = ({
@@ -33,6 +35,8 @@ export const AuthScreen: React.FC<Props> = ({
   initialRecoveryMode = false,
   initialRecoveryStep = 'request',
   initialRecoveryError = null,
+  onRecoveryComplete,
+  onCloseRecovery,
 }) => {
   // Theme and responsive state
   const { colors, mode, isDark } = useTheme();
@@ -843,9 +847,11 @@ export const AuthScreen: React.FC<Props> = ({
         onClose={() => {
           setShowForgotPasswordModal(false);
           setForgotPasswordError(null);
+          onCloseRecovery?.();
         }}
         onSuccess={() => {
           setIsLogin(true);
+          onRecoveryComplete?.();
         }}
       />
     </KeyboardAvoidingView>
